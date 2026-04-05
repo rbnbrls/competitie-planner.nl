@@ -22,6 +22,7 @@ import TeamsPage from "./pages/tenant/Teams";
 import SpeelrondesPage from "./pages/tenant/Speelrondes";
 import RondeDetailPage from "./pages/tenant/RondeDetail";
 import HistoriePage from "./pages/tenant/Historie";
+import DisplayPage from "./pages/Display";
 
 function SuperadminRoutes() {
   const { user } = useAuth();
@@ -70,7 +71,13 @@ function AppRoutes() {
   }
 
   if (isDisplayPanel) {
-    return <div className="p-8">Display module - coming soon</div>;
+    return (
+      <Routes>
+        <Route path="/:slug" element={<DisplayPage />} />
+        <Route path="/:slug/:token" element={<DisplayPage />} />
+        <Route path="*" element={<DisplayPage />} />
+      </Routes>
+    );
   }
 
   if (isTenant) {

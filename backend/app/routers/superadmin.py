@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -230,3 +231,107 @@ async def get_club_users_count(
     result = await db.execute(select(func.count(User.id)).where(User.club_id == club_id))
     count = result.scalar()
     return {"count": count}
+
+
+class BillingUpdate(BaseModel):
+    billing_info: str | None = None
+
+
+@router.get("/billing")
+async def get_billing_overview(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> dict:
+    result = await db.execute(select(Club))
+    clubs = result.scalars().all()
+
+    trials = []
+    actives = []
+    suspended = []
+
+    now = datetime.utcnow()
+
+    for c in clubs:
+        entry = {
+            "id": str(c.id),
+            "naam": c.naam,
+            "slug": c.slug,
+            "status": c.status,
+            "trial_ends_at": c.trial_ends_at.isoformat() if c.trial_ends_at else None,
+            "billing_info": c.billing_info,
+        }
+
+        if c.status == "trial":
+            trials.append(entry)
+        elif c.status == "active":
+            actives.append(entry)
+        elif c.status == "suspended":
+            suspended.append(entry)
+
+    return {
+        "trials": trials,
+        "actives": actives,
+        "suspended": suspended,
+        "summary": {
+            "total_trials": len(trials),
+            "total_actives": len(actives),
+            "total_suspended": len(suspended),
+        },
+    }
+
+
+@router.post("/clubs/{club_id}/billing")
+async def update_club_billing(
+    club_id: UUID,
+    data: BillingUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> dict:
+    result = await db.execute(select(Club).where(Club.id == club_id))
+    club = result.scalar_one_or_none()
+    if not club:
+        raise HTTPException(status_code=404, detail="Club not found")
+
+    if data.billing_info is not None:
+        club.billing_info = data.billing_info
+
+    await db.commit()
+    await db.refresh(club)
+
+    return {
+        "id": str(club.id),
+        "billing_info": club.billing_info,
+    }
+
+
+@router.get("/billing/export")
+async def export_billing_csv(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> dict:
+    result = await db.execute(select(Club))
+    clubs = result.scalars().all()
+
+    import csv
+    import io
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Naam", "Slug", "Status", "Trial ends", "Billing info"])
+
+    for c in clubs:
+        writer.writerow(
+            [
+                str(c.id),
+                c.naam,
+                c.slug,
+                c.status,
+                c.trial_ends_at.isoformat() if c.trial_ends_at else "",
+                c.billing_info or "",
+            ]
+        )
+
+    return {
+        "csv": output.getvalue(),
+        "filename": "billing_export.csv",
+    }

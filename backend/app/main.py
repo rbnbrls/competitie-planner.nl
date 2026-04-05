@@ -5,7 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import engine
-from app.routers import auth, superadmin, tenant, tenant_settings, planning
+from app.routers import (
+    auth,
+    superadmin,
+    tenant,
+    tenant_settings,
+    planning,
+    display,
+    competitions,
+    teams,
+    onboarding,
+)
 
 
 @asynccontextmanager
@@ -33,6 +43,10 @@ app.include_router(superadmin.router, prefix="/api/v1")
 app.include_router(tenant.router, prefix="/api/v1")
 app.include_router(tenant_settings.router, prefix="/api/v1")
 app.include_router(planning.router, prefix="/api/v1")
+app.include_router(display.router, prefix="/api/v1")
+app.include_router(competitions.router, prefix="/api/v1")
+app.include_router(teams.router, prefix="/api/v1")
+app.include_router(onboarding.router, prefix="/api/v1")
 
 
 @app.get("/health")

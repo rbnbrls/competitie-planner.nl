@@ -2,7 +2,7 @@
 phase: 6
 naam: Publicatie & narrowcasting display
 duur: 2 weken
-status: todo
+status: completed
 ---
 
 # Fase 6 — Publicatie & narrowcasting display

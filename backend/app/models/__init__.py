@@ -43,6 +43,7 @@ class Club(Base):
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     max_banen: Mapped[int] = mapped_column(SmallInteger, default=8)
     max_competities: Mapped[int] = mapped_column(SmallInteger, default=5)
+    billing_info: Mapped[str | None] = mapped_column(Text, default=None)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -68,6 +69,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_opt_out: Mapped[bool] = mapped_column(Boolean, default=False)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     last_login: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -145,6 +148,7 @@ class Competitie(Base):
     feestdagen: Mapped[list[date]] = mapped_column(ARRAY(Date), default=[])
     inhaal_datums: Mapped[list[date]] = mapped_column(ARRAY(Date), default=[])
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

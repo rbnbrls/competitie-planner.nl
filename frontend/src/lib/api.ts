@@ -178,6 +178,7 @@ export const tenantApi = {
     notitie?: string;
   }) => api.patch(`/tenant/toewijzingen/${toewijzingId}`, data),
   publishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/publish`),
+  depublishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/depublish`),
   getCompetitieHistorie: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/historie`),
 };
 

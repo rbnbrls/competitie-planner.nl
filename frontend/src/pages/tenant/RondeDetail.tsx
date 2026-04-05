@@ -181,8 +181,11 @@ export default function RondeDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isDepublishing, setIsDepublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -249,13 +252,47 @@ export default function RondeDetailPage() {
 
     setIsPublishing(true);
     try {
-      await tenantApi.publishRonde(rondeId);
+      const res = await tenantApi.publishRonde(rondeId);
       setRonde((prev) => (prev ? { ...prev, status: "gepubliceerd" } : null));
+      if (res.data.public_url) {
+        setPublicUrl(res.data.public_url);
+      }
       setMessage("Ronde gepubliceerd");
     } catch {
       setMessage("Fout bij publiceren");
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleDepublish = async () => {
+    if (!rondeId) return;
+
+    if (!window.confirm("Weet je zeker dat je de publicatie wilt intrekken? De indeling is dan niet meer zichtbaar op de display.")) {
+      return;
+    }
+
+    setIsDepublishing(true);
+    try {
+      await tenantApi.depublishRonde(rondeId);
+      setRonde((prev) => (prev ? { ...prev, status: "concept" } : null));
+      setPublicUrl(null);
+      setMessage("Ronde gedepubliceerd");
+    } catch {
+      setMessage("Fout bij depubliceren");
+    } finally {
+      setIsDepublishing(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(window.location.origin + publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setMessage("Kopiëren mislukt");
     }
   };
 
@@ -338,8 +375,8 @@ export default function RondeDetailPage() {
         </div>
         <div className="flex gap-2">
           {ronde.status === "gepubliceerd" ? (
-            <span className="px-3 py-1 bg-green-100 text-green-800 rounded">
-              Gepubliceerd
+            <span className="px-3 py-1 bg-green-100 text-green-800 rounded flex items-center gap-2">
+              Gepubliceerd ✓
             </span>
           ) : (
             <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded">Concept</span>
@@ -354,6 +391,27 @@ export default function RondeDetailPage() {
           }`}
         >
           {message}
+        </div>
+      )}
+
+      {publicUrl && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded flex items-center gap-2">
+          <span className="text-sm text-blue-800">Publieke URL:</span>
+          <code className="text-sm text-blue-600 bg-white px-2 py-1 rounded">{window.location.origin}{publicUrl}</code>
+          <button
+            onClick={handleCopyUrl}
+            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+          >
+            {copied ? "Gekopieerd!" : "Kopieer"}
+          </button>
+          <a
+            href={window.location.origin + publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+          >
+            Open display
+          </a>
         </div>
       )}
 
@@ -372,9 +430,21 @@ export default function RondeDetailPage() {
               disabled={isPublishing}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
             >
-              {isPublishing ? "Publiceren..." : "Publiceren"}
+              {isPublishing ? "Publiceren..." : "Publiceer indeling"}
             </button>
           )}
+        </div>
+      )}
+
+      {isReadOnly && (
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={handleDepublish}
+            disabled={isDepublishing}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+          >
+            {isDepublishing ? "Depubliceren..." : "Depubliceren"}
+          </button>
         </div>
       )}
 

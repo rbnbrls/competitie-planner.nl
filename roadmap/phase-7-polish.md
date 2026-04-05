@@ -2,7 +2,7 @@
 phase: 7
 naam: Polish, notificaties & uitbreidingen
 duur: 3+ weken
-status: todo
+status: completed
 ---
 
 # Fase 7 — Polish, notificaties & uitbreidingen

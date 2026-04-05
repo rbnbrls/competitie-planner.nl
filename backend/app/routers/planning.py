@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,8 @@ from app.services.planning import (
     update_planning_historie,
 )
 from app.services.auth import get_password_hash
+from app.services.email import EmailService
+from app.services.pdf import PDFService
 
 router = APIRouter(prefix="/tenant", tags=["planning"])
 
@@ -289,17 +292,81 @@ async def publish_ronde(
 
     import secrets
 
+    if not ronde.public_token:
+        ronde.public_token = secrets.token_urlsafe(32)
+
     ronde.status = "gepubliceerd"
     ronde.published_at = datetime.utcnow()
     ronde.published_by = user.id
-    ronde.public_token = secrets.token_urlsafe(32)
+
+    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
+    competitie = result.scalar_one_or_none()
+    email_notification_sent = False
+
+    if competitie and competitie.email_notifications_enabled:
+        email_service = EmailService(db)
+        email_result = await email_service.send_publication_notification(ronde_uuid)
+        email_notification_sent = email_result.get("sent", 0) > 0
+
+    await db.commit()
+    await db.refresh(ronde)
 
     await update_planning_historie(ronde_uuid, db)
+
+    public_url = f"/display/{club.slug}/{ronde.public_token}"
 
     return {
         "id": str(ronde.id),
         "status": ronde.status,
         "public_token": ronde.public_token,
+        "public_url": public_url,
+        "email_notification_sent": email_notification_sent,
+    }
+
+
+@router.post("/rondes/{ronde_id}/depublish")
+async def depublish_ronde(
+    ronde_id: str,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        ronde_uuid = UUID(ronde_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid ronde ID",
+        )
+
+    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+    ronde = result.scalar_one_or_none()
+    if not ronde:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Speelronde not found",
+        )
+
+    if ronde.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    if ronde.status != "gepubliceerd":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ronde is not published",
+        )
+
+    ronde.status = "concept"
+
+    await db.commit()
+    await db.refresh(ronde)
+
+    return {
+        "id": str(ronde.id),
+        "status": ronde.status,
     }
 
 
@@ -424,3 +491,50 @@ async def list_banen_for_planning(
         }
         for b in banen
     ]
+
+
+@router.get("/rondes/{ronde_id}/pdf")
+async def download_ronde_pdf(
+    ronde_id: str,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    user, club = current
+    try:
+        ronde_uuid = UUID(ronde_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid ronde ID",
+        )
+
+    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+    ronde = result.scalar_one_or_none()
+    if not ronde:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Speelronde not found",
+        )
+
+    if ronde.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    if ronde.status != "gepubliceerd":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only published roundes can be exported to PDF",
+        )
+
+    pdf_service = PDFService(db)
+    pdf_content = await pdf_service.generate_banenindeling_pdf(ronde_uuid)
+
+    filename = f"banenindeling-{club.slug}-{ronde.datum.strftime('%Y-%m-%d')}.pdf"
+
+    return Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

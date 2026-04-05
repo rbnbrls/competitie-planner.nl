@@ -400,6 +400,8 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     role: str | None = None
     is_active: bool | None = None
+    email_opt_out: bool | None = None
+    onboarding_completed: bool | None = None
 
 
 @router.get("/users/{user_id}")
@@ -474,6 +476,10 @@ async def update_user(
         user_obj.role = data.role
     if data.is_active is not None:
         user_obj.is_active = data.is_active
+    if data.email_opt_out is not None:
+        user_obj.email_opt_out = data.email_opt_out
+    if data.onboarding_completed is not None:
+        user_obj.onboarding_completed = data.onboarding_completed
 
     await db.commit()
     await db.refresh(user_obj)
