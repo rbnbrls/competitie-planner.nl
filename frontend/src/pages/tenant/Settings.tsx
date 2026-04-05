@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { tenantApi } from "../../lib/api";
-import { useAuth } from "../../contexts/AuthContext";
 
 interface ClubSettings {
   id: string;
@@ -15,7 +14,6 @@ interface ClubSettings {
 }
 
 export default function SettingsPage() {
-  const { club } = useAuth();
   const [settings, setSettings] = useState<ClubSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

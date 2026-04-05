@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   DndContext,
   DragEndEvent,
@@ -174,7 +174,6 @@ function SortableToewijzingRow({
 
 export default function RondeDetailPage() {
   const { rondeId, competitieId } = useParams<{ rondeId: string; competitieId: string }>();
-  const navigate = useNavigate();
   const [ronde, setRonde] = useState<RondeDetail | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [banen, setBanen] = useState<Baan[]>([]);

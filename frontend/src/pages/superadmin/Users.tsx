@@ -18,7 +18,7 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
-  const [clubFilter, setClubFilter] = useState("");
+  const clubFilter = "";
 
   useEffect(() => {
     setIsLoading(true);

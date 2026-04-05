@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { superadminApi } from "../../lib/api";
 
 interface Club {
@@ -18,7 +18,6 @@ interface Club {
 
 export default function ClubDetailPage() {
   const { clubId } = useParams<{ clubId: string }>();
-  const navigate = useNavigate();
   const [club, setClub] = useState<Club | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
