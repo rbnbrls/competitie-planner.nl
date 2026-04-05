@@ -12,7 +12,7 @@ from app.routers import (
     tenant_settings,
     planning,
     display,
-    competitions,
+    competities,
     teams,
     onboarding,
 )
@@ -44,7 +44,7 @@ app.include_router(tenant.router, prefix="/api/v1")
 app.include_router(tenant_settings.router, prefix="/api/v1")
 app.include_router(planning.router, prefix="/api/v1")
 app.include_router(display.router, prefix="/api/v1")
-app.include_router(competitions.router, prefix="/api/v1")
+app.include_router(competities.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
 
