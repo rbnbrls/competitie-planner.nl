@@ -274,6 +274,8 @@ class BaanToewijzing(Base):
     )
 
     ronde: Mapped["Speelronde"] = relationship("Speelronde", back_populates="baantoewijzingen")
+    team: Mapped["Team"] = relationship("Team")
+    baan: Mapped["Baan"] = relationship("Baan")
 
 
 class PlanningHistorie(Base):
@@ -316,6 +318,8 @@ class PlanningHistorie(Base):
     )
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="planninghistorie")
+    team: Mapped["Team"] = relationship("Team")
+    baan: Mapped["Baan"] = relationship("Baan")
 
 
 class StatusChange(Base):
@@ -335,3 +339,28 @@ class StatusChange(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (Index("idx_status_changes_club", "club_id"),)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    club_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clubs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (Index("idx_password_reset_tokens_user", "user_id"),)
+
+    club: Mapped["Club"] = relationship("Club")
+    user: Mapped["User"] = relationship("User")

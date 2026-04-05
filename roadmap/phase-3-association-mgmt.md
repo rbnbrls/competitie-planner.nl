@@ -2,7 +2,7 @@
 phase: 3
 naam: Verenigingsbeheer & branding
 duur: 2 weken
-status: todo
+status: done
 ---
 
 # Fase 3 — Verenigingsbeheer, auth & branding

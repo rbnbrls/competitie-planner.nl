@@ -2,7 +2,7 @@
 phase: 5
 naam: Planningsengine & indeling UI
 duur: 3 weken
-status: todo
+status: in_progress
 ---
 
 # Fase 5 — Planningsengine & indeling UI

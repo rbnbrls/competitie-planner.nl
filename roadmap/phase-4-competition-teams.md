@@ -2,7 +2,7 @@
 phase: 4
 naam: Competitie & team beheer
 duur: 2 weken
-status: todo
+status: in_progress
 ---
 
 # Fase 4 — Competitie & team beheer
