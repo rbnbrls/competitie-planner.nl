@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    labels:
+      - "traefik.http.routers.frontend.rule=HostRegexp(`{subdomain:.+}.competitie-planner.nl`)"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=https://api.competitie-planner.nl
+      - VITE_PLATFORM_DOMAIN=competitie-planner.nl
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    labels:
+      - "traefik.http.routers.api.rule=Host(`api.competitie-planner.nl`)"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+    env_file:
+      - ./backend/.env
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: competitieplanner
+      POSTGRES_USER: cpuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+volumes:
+  pgdata:
