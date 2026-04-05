@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginPage from "./pages/Login";
-import SuperadminLayout from "./pages/superadmin/Layout";
+import RegisterAdminPage from "./pages/admin/RegisterAdmin";
 import DashboardPage from "./pages/superadmin/Dashboard";
 import ClubsPage from "./pages/superadmin/Clubs";
 import NewClubPage from "./pages/superadmin/NewClub";
@@ -23,14 +23,8 @@ import SpeelrondesPage from "./pages/tenant/Speelrondes";
 import RondeDetailPage from "./pages/tenant/RondeDetail";
 import HistoriePage from "./pages/tenant/Historie";
 import DisplayPage from "./pages/Display";
-
-function SuperadminRoutes() {
-  const { user } = useAuth();
-  if (!user?.is_superadmin) {
-    return <Navigate to="/login" replace />;
-  }
-  return <Outlet />;
-}
+import { useState, useEffect } from "react";
+import { authApi } from "./lib/api";
 
 function TenantRoutes() {
   const { user } = useAuth();
@@ -38,6 +32,72 @@ function TenantRoutes() {
     return <TenantLoginPage />;
   }
   return <Outlet />;
+}
+
+function AdminWrapper() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [adminExists, setAdminExists] = useState<boolean | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    authApi.adminExists()
+      .then((res) => setAdminExists(res.data.exists))
+      .catch(() => setAdminExists(false))
+      .finally(() => setIsChecking(false));
+  }, []);
+
+  if (isChecking || authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+  }
+
+  if (!adminExists) {
+    return <RegisterAdminPage onRegisterSuccess={() => window.location.reload()} />;
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  if (!user.is_superadmin) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <AdminRoutesInner />;
+}
+
+function AdminRoutesInner() {
+  return (
+    <>
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-gray-900">Superadmin Panel</h1>
+              <div className="ml-8 flex space-x-4">
+                <a href="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                <a href="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
+                <a href="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</a>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-600 mr-4">{useAuth().user?.email}</span>
+              <button onClick={() => { useAuth().logout(); window.location.href = '/login'; }} className="text-sm text-gray-600 hover:text-gray-900">Uitloggen</button>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/clubs" element={<ClubsPage />} />
+          <Route path="/clubs/new" element={<NewClubPage />} />
+          <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
+          <Route path="/users" element={<UsersPage />} />
+        </Routes>
+      </main>
+    </>
+  );
 }
 
 function AppRoutes() {
@@ -55,17 +115,7 @@ function AppRoutes() {
   if (isAdminPanel) {
     return (
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<SuperadminLayout />}>
-          <Route element={<SuperadminRoutes />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/clubs" element={<ClubsPage />} />
-            <Route path="/clubs/new" element={<NewClubPage />} />
-            <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
-            <Route path="/users" element={<UsersPage />} />
-          </Route>
-        </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<AdminWrapper />} />
       </Routes>
     );
   }

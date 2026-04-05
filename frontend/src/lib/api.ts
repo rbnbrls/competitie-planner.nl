@@ -51,6 +51,11 @@ export const authApi = {
     }),
   logout: () => api.post("/auth/logout"),
   me: () => api.get("/auth/me"),
+  adminExists: () => api.get("/auth/admin-exists"),
+  registerAdmin: (email: string, password: string, fullName: string) =>
+    api.post("/auth/register-admin", null, {
+      params: { email, password, full_name: fullName },
+    }),
 };
 
 export const tenantApi = {

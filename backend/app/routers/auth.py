@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -14,6 +14,7 @@ from app.services.auth import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    get_password_hash,
     verify_password,
 )
 
@@ -157,3 +158,63 @@ async def get_me(
 @router.post("/logout")
 async def logout() -> dict:
     return {"message": "Logged out successfully"}
+
+
+@router.get("/admin-exists")
+async def admin_exists(db: AsyncSession = Depends(get_db)) -> dict:
+    result = await db.execute(select(func.count(User.id)).where(User.is_superadmin == True))
+    count = result.scalar()
+    return {"exists": count > 0}
+
+
+@router.post("/register-admin")
+async def register_admin(
+    email: str,
+    password: str,
+    full_name: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await db.execute(select(func.count(User.id)).where(User.is_superadmin == True))
+    if result.scalar() > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin already exists",
+        )
+
+    result = await db.execute(select(User).where(User.email == email))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    password_hash = get_password_hash(password)
+    new_user = User(
+        email=email,
+        password_hash=password_hash,
+        full_name=full_name,
+        role="admin",
+        is_superadmin=True,
+        is_active=True,
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    access_token = create_access_token(
+        data={
+            "sub": str(new_user.id),
+            "email": new_user.email,
+            "role": new_user.role,
+            "club_id": None,
+            "club_slug": None,
+            "is_superadmin": True,
+        }
+    )
+    refresh_token = create_refresh_token(new_user.id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
