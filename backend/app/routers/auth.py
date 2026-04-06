@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -98,7 +98,7 @@ async def login(
     )
     refresh_token = create_refresh_token(user.id)
 
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(UTC)
     await db.commit()
 
     return {

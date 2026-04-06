@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -150,7 +150,7 @@ async def login(
     )
     refresh_token = create_refresh_token(user.id)
 
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(UTC)
     await db.commit()
 
     return {
@@ -256,7 +256,7 @@ async def create_invite(
     import secrets
 
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=48)
+    expires_at = datetime.now(UTC) + timedelta(hours=48)
 
     invite = InviteToken(
         club_id=club.id,
@@ -299,7 +299,7 @@ async def accept_invite(
             detail="Invalid or expired invite token",
         )
 
-    if invite.expires_at < datetime.utcnow():
+    if invite.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite token has expired",
@@ -382,7 +382,7 @@ async def forgot_password(
         from app.models import PasswordResetToken
 
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(hours=1)
+        expires_at = datetime.now(UTC) + timedelta(hours=1)
 
         reset_token = PasswordResetToken(
             club_id=club.id,
@@ -427,7 +427,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    if reset_token.expires_at < datetime.utcnow():
+    if reset_token.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",

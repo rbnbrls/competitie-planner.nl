@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -345,7 +345,7 @@ async def publish_ronde(
         ronde.public_token = secrets.token_urlsafe(32)
 
     ronde.status = "gepubliceerd"
-    ronde.published_at = datetime.utcnow()
+    ronde.published_at = datetime.now(UTC)
     ronde.published_by = user.id
 
     result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))

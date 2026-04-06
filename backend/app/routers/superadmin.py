@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -32,7 +32,7 @@ async def get_dashboard(
     users = users_result.scalars().all()
     total_users = len(users)
 
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = datetime.now(UTC) - timedelta(days=7)
     active_users = sum(1 for u in users if u.last_login and u.last_login >= week_ago)
 
     recent_clubs = sorted(clubs, key=lambda c: c.created_at, reverse=True)[:5]
@@ -134,7 +134,7 @@ async def create_club(
         telefoon=club_data.telefoon,
         website=club_data.website,
         status="trial",
-        trial_ends_at=datetime.utcnow() + timedelta(days=7),
+        trial_ends_at=datetime.now(UTC) + timedelta(days=7),
     )
     db.add(club)
     await db.commit()
@@ -249,7 +249,7 @@ async def get_billing_overview(
     actives = []
     suspended = []
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     for c in clubs:
         entry = {
