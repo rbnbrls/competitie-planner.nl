@@ -1,10 +1,10 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime, timezone, time
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -27,9 +27,9 @@ class BaanToewijzingResponse(BaseModel):
     id: str
     team_id: str
     baan_id: str
-    tijdslot_start: str | None
-    tijdslot_eind: str | None
-    notitie: str | None
+    tijdslot_start: str
+    tijdslot_eind: str | None = None
+    notitie: str | None = None
 
 
 class SpeelrondeDetailResponse(BaseModel):
@@ -121,7 +121,7 @@ async def generate_indeling(
                 "id": str(t.id),
                 "team_id": str(t.team_id),
                 "baan_id": str(t.baan_id),
-                "tijdslot_start": t.tijdslot_start.isoformat() if t.tijdslot_start else None,
+                "tijdslot_start": t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
                 "tijdslot_eind": t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
                 "notitie": t.notitie,
             }
@@ -175,7 +175,7 @@ async def get_ronde_detail(
                 id=str(t.id),
                 team_id=str(t.team_id),
                 baan_id=str(t.baan_id),
-                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else None,
+                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
                 tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
                 notitie=t.notitie,
             )
@@ -267,7 +267,34 @@ async def update_toewijzing(
         toewijzing.baan_id = baan_uuid
 
     if data.tijdslot_start is not None:
-        toewijzing.tijdslot_start = datetime.strptime(data.tijdslot_start, "%H:%M").time()
+        new_start = datetime.strptime(data.tijdslot_start, "%H:%M").time()
+        new_end = toewijzing.tijdslot_eind
+
+        result = await db.execute(
+            select(BaanToewijzing).where(
+                and_(
+                    BaanToewijzing.ronde_id == toewijzing.ronde_id,
+                    BaanToewijzing.baan_id == toewijzing.baan_id,
+                    BaanToewijzing.id != toewijzing.id,
+                )
+            )
+        )
+        existing_toewijzingen = result.scalars().all()
+
+        for existing in existing_toewijzingen:
+            if existing.tijdslot_eind is None or existing.tijdslot_start is None:
+                continue
+
+            if not (
+                new_start >= existing.tijdslot_eind
+                or (new_end and new_end <= existing.tijdslot_start)
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Tijdslot overlapt met bestaande toewijzing ({existing.tijdslot_start.isoformat()} - {existing.tijdslot_eind.isoformat()})",
+                )
+
+        toewijzing.tijdslot_start = new_start
     if data.tijdslot_eind is not None:
         toewijzing.tijdslot_eind = datetime.strptime(data.tijdslot_eind, "%H:%M").time()
     if data.notitie is not None:

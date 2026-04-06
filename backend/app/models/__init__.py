@@ -213,6 +213,11 @@ class Wedstrijd(Base):
     __tablename__ = "wedstrijden"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    competitie_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("competities.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     ronde_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("speelrondes.id", ondelete="CASCADE"),
@@ -228,7 +233,16 @@ class Wedstrijd(Base):
         ForeignKey("teams.id", ondelete="CASCADE"),
         nullable=False,
     )
-    status: Mapped[str] = mapped_column(String(20), default="ingepland")
+    status: Mapped[str] = mapped_column(String(20), default="gepland")
+    speeldatum: Mapped[date | None] = mapped_column(Date, default=None)
+    speeltijd: Mapped[time | None] = mapped_column(Time, default=None)
+    baan_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("banen.id"), default=None
+    )
+    uitslag_thuisteam: Mapped[int | None] = mapped_column(SmallInteger, default=None)
+    uitslag_uitteam: Mapped[int | None] = mapped_column(SmallInteger, default=None)
+    scorendetails: Mapped[str | None] = mapped_column(Text, default=None)
+    notitie: Mapped[str | None] = mapped_column(Text, default=None)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
@@ -239,11 +253,13 @@ class Wedstrijd(Base):
         UniqueConstraint(
             "ronde_id", "thuisteam_id", "uitteam_id", name="uq_wedstrijden_ronde_teams"
         ),
+        Index("idx_wedstrijden_competitie", "competitie_id"),
         Index("idx_wedstrijden_ronde", "ronde_id"),
         Index("idx_wedstrijden_thuisteam", "thuisteam_id"),
         Index("idx_wedstrijden_uitteam", "uitteam_id"),
     )
 
+    competitie: Mapped["Competitie"] = relationship("Competitie")
     ronde: Mapped["Speelronde"] = relationship("Speelronde")
     thuisteam: Mapped["Team"] = relationship(
         "Team", foreign_keys=[thuisteam_id], back_populates="wedstrijden_thuis"
@@ -251,6 +267,7 @@ class Wedstrijd(Base):
     uitteam: Mapped["Team"] = relationship(
         "Team", foreign_keys=[uitteam_id], back_populates="wedstrijden_uit"
     )
+    baan: Mapped["Baan"] = relationship("Baan")
 
 
 class Speelronde(Base):
@@ -314,7 +331,7 @@ class BaanToewijzing(Base):
         UUID(as_uuid=True), ForeignKey("banen.id"), nullable=False
     )
 
-    tijdslot_start: Mapped[time | None] = mapped_column(Time, default=None)
+    tijdslot_start: Mapped[time] = mapped_column(Time, nullable=False, default=time(19, 0))
     tijdslot_eind: Mapped[time | None] = mapped_column(Time, default=None)
     notitie: Mapped[str | None] = mapped_column(Text, default=None)
 
@@ -324,7 +341,9 @@ class BaanToewijzing(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("ronde_id", "baan_id", name="uq_toewijzingen_ronde_baan"),
+        UniqueConstraint(
+            "ronde_id", "baan_id", "tijdslot_start", name="uq_toewijzingen_ronde_baan_tijdslot"
+        ),
         Index("idx_toewijzingen_ronde", "ronde_id"),
         Index("idx_toewijzingen_team", "team_id"),
     )

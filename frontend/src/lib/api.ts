@@ -186,18 +186,44 @@ export const tenantApi = {
   depublishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/depublish`),
   getCompetitieHistorie: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/historie`),
   getWedstrijden: (rondeId: string) => api.get(`/tenant/wedstrijden/${rondeId}`),
+  getWedstrijdenByCompetitie: (competitieId: string, params?: { status_filter?: string }) => 
+    api.get("/tenant/wedstrijden", { params: { competitie_id: competitieId, ...params } }),
   createWedstrijd: (data: {
+    competitie_id: string;
     ronde_id: string;
     thuisteam_id: string;
     uitteam_id: string;
     status?: string;
+    speeldatum?: string;
+    speeltijd?: string;
+    notitie?: string;
   }) => api.post("/tenant/wedstrijden", data),
   updateWedstrijd: (wedstrijdId: string, data: {
     thuisteam_id?: string;
     uitteam_id?: string;
     status?: string;
+    speeldatum?: string;
+    speeltijd?: string;
+    uitslag_thuisteam?: number;
+    uitslag_uitteam?: number;
+    notitie?: string;
   }) => api.patch(`/tenant/wedstrijden/${wedstrijdId}`, data),
   deleteWedstrijd: (wedstrijdId: string) => api.delete(`/tenant/wedstrijden/${wedstrijdId}`),
+  importWedstrijden: (competitieId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post(`/tenant/wedstrijden/competitie/${competitieId}/import`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  getThuisPerRonde: (competitieId: string) => 
+    api.get(`/tenant/wedstrijden/competitie/${competitieId}/thuis-per-ronde`),
+  exportAgenda: (competitieId: string) => 
+    api.get(`/tenant/wedstrijden/competitie/${competitieId}/agenda-export`, { 
+      responseType: "blob" 
+    }),
+  validateWedstrijden: (competitieId: string) => 
+    api.get(`/tenant/wedstrijden/competitie/${competitieId}/validatie`),
 };
 
 export const superadminApi = {

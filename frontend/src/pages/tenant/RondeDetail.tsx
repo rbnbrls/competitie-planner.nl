@@ -39,7 +39,7 @@ interface Toewijzing {
   id: string;
   team_id: string;
   baan_id: string;
-  tijdslot_start?: string;
+  tijdslot_start: string;
   tijdslot_eind?: string;
   notitie?: string;
   team?: Team;
@@ -360,6 +360,22 @@ export default function RondeDetailPage() {
   const isReadOnly = ronde?.status === "gepubliceerd";
   const toewijzingIds = ronde?.toewijzingen?.map((t) => t.id) || [];
 
+  const toewijzingenPerBaan = (ronde?.toewijzingen || []).reduce(
+    (acc: Record<string, Toewijzing[]>, t) => {
+      if (!acc[t.baan_id]) {
+        acc[t.baan_id] = [];
+      }
+      acc[t.baan_id].push(t);
+      return acc;
+    },
+    {}
+  );
+
+  const parseTimeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
   const thuisteamIds = new Set(wedstrijden.map((w) => w.thuisteam_id));
   const thuisteams = teams.filter((t) => thuisteamIds.has(t.id));
   const teamsForDropdown = thuisteamIds.size > 0 ? thuisteams : teams;
@@ -485,6 +501,63 @@ export default function RondeDetailPage() {
         </div>
       )}
 
+      {ronde.toewijzingen && ronde.toewijzingen.length > 0 && (
+        <div className="mb-6 bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-3">Tijdlijn per baan</h2>
+          <div className="space-y-4">
+            {banen
+              .filter((b) => toewijzingenPerBaan[b.id]?.length > 0)
+              .map((baan) => {
+                const baanToewijzingen = toewijzingenPerBaan[baan.id] || [];
+                return (
+                  <div key={baan.id} className="border rounded-lg p-3">
+                    <div className="font-medium mb-2 flex items-center gap-2">
+                      <span className="text-lg">Baan {baan.nummer}</span>
+                      {baan.naam && <span className="text-gray-500">({baan.naam})</span>}
+                      {baan.overdekt && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                          Overdekt
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative h-8 bg-gray-100 rounded overflow-hidden">
+                      {baanToewijzingen.map((t, idx) => {
+                        const startMinutes = t.tijdslot_start ? parseTimeToMinutes(t.tijdslot_start) : 19 * 60;
+                        const endMinutes = t.tijdslot_eind ? parseTimeToMinutes(t.tijdslot_eind) : 21 * 60;
+                        const team = teams.find((team) => team.id === t.team_id);
+                        const width = Math.max(((endMinutes - startMinutes) / 180) * 100, 15);
+                        const left = ((startMinutes - 18 * 60) / 180) * 100;
+                        return (
+                          <div
+                            key={t.id}
+                            className="absolute h-6 top-1 rounded text-xs text-white truncate px-1 flex items-center overflow-hidden"
+                            style={{
+                              left: `${Math.max(left, 0)}%`,
+                              width: `${Math.min(width, 100 - left)}%`,
+                              backgroundColor: idx % 2 === 0 ? "#3B82F6" : "#10B981",
+                            }}
+                            title={`${team?.naam || "-"}: ${t.tijdslot_start?.slice(0, 5) || "19:00"} - ${t.tijdslot_eind?.slice(0, 5) || "21:00"}`}
+                          >
+                            {team?.naam || "-"}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>18:00</span>
+                      <span>19:00</span>
+                      <span>20:00</span>
+                      <span>21:00</span>
+                      <span>22:00</span>
+                      <span>23:00</span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -508,11 +581,25 @@ export default function RondeDetailPage() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {isReadOnly ? (
-              (ronde.toewijzingen || []).map((t) => {
-                const team = teams.find((team) => team.id === t.team_id);
-                const baan = banen.find((baan) => baan.id === t.baan_id);
+              Object.entries(
+                (ronde.toewijzingen || []).reduce(
+                  (acc: Record<string, Toewijzing[]>, t) => {
+                    const key = `${t.baan_id}-${t.tijdslot_start || "default"}`;
+                    if (!acc[key]) {
+                      acc[key] = [];
+                    }
+                    acc[key].push(t);
+                    return acc;
+                  },
+                  {}
+                )
+              ).map(([key, toewijzingen]) => {
+                const first = toewijzingen[0];
+                const baan = banen.find((b) => b.id === first.baan_id);
+                const startTime = first.tijdslot_start?.slice(0, 5) || "19:00";
+                const endTime = first.tijdslot_eind?.slice(0, 5) || "";
                 return (
-                  <tr key={t.id} className="border-b">
+                  <tr key={key} className="border-b">
                     <td className="px-4 py-3">
                       <span className="text-lg">{baan?.nummer}</span>
                     </td>
@@ -526,11 +613,28 @@ export default function RondeDetailPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">{team?.naam || "-"}</td>
                     <td className="px-4 py-3">
-                      {t.tijdslot_start?.slice(0, 5)} - {t.tijdslot_eind?.slice(0, 5)}
+                      <div className="space-y-1">
+                        {toewijzingen.map((t) => {
+                          const team = teams.find((team) => team.id === t.team_id);
+                          return (
+                            <div key={t.id} className="flex items-center gap-2">
+                              <span className="font-medium">{team?.naam || "-"}</span>
+                              {t.notitie && (
+                                <span className="text-xs text-gray-500">({t.notitie})</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </td>
-                    <td className="px-4 py-3">{t.notitie}</td>
+                    <td className="px-4 py-3">
+                      {startTime}
+                      {endTime && ` - ${endTime}`}
+                    </td>
+                    <td className="px-4 py-3">
+                      {toewijzingen.length > 1 ? "Meerdere teams" : toewijzingen[0].notitie}
+                    </td>
                   </tr>
                 );
               })

@@ -16,9 +16,9 @@ class DisplayToewijzing(BaseModel):
     baan_nummer: int
     baan_naam: str | None
     team_naam: str
-    tijdslot_start: str | None
-    tijdslot_eind: str | None
-    notitie: str | None
+    tijdslot_start: str
+    tijdslot_eind: str | None = None
+    notitie: str | None = None
 
 
 class DisplayRonde(BaseModel):
@@ -90,7 +90,7 @@ async def get_display_by_token(
                 baan_nummer=baan.nummer,
                 baan_naam=baan.naam,
                 team_naam=team.naam,
-                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else None,
+                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
                 tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
                 notitie=t.notitie,
             )
@@ -190,7 +190,7 @@ async def get_display_current(
                 baan_nummer=baan.nummer,
                 baan_naam=baan.naam,
                 team_naam=team.naam,
-                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else None,
+                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
                 tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
                 notitie=t.notitie,
             )
