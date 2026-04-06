@@ -15,6 +15,7 @@ from app.routers import (
     competities,
     teams,
     onboarding,
+    payments,
 )
 
 
@@ -47,6 +48,7 @@ app.include_router(display.router, prefix="/api/v1")
 app.include_router(competities.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
+app.include_router(payments.router, prefix="/api/v1")
 
 
 @app.get("/health")

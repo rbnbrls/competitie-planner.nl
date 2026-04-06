@@ -12,6 +12,7 @@ export default function TenantLayout() {
     { path: "/branding", label: "Huisstijl" },
     { path: "/banen", label: "Banen" },
     { path: "/gebruikers", label: "Gebruikers" },
+    { path: "/checkout", label: "Betalingen" },
   ];
 
   return (

@@ -77,6 +77,9 @@ export default function SuperadminLayout() {
                 <Link to="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                   Gebruikers
                 </Link>
+                <Link to="/payments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  Betalingen
+                </Link>
               </div>
             </div>
             <div className="flex items-center">

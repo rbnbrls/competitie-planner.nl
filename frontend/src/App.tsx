@@ -7,6 +7,7 @@ import ClubsPage from "./pages/superadmin/Clubs";
 import NewClubPage from "./pages/superadmin/NewClub";
 import ClubDetailPage from "./pages/superadmin/ClubDetail";
 import UsersPage from "./pages/superadmin/Users";
+import PaymentsPage from "./pages/superadmin/Payments";
 import TenantLoginPage from "./pages/tenant/Login";
 import TenantLayout from "./pages/tenant/Layout";
 import TenantDashboard from "./pages/tenant/Dashboard";
@@ -22,15 +23,49 @@ import TeamsPage from "./pages/tenant/Teams";
 import SpeelrondesPage from "./pages/tenant/Speelrondes";
 import RondeDetailPage from "./pages/tenant/RondeDetail";
 import HistoriePage from "./pages/tenant/Historie";
+import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
 import { useState, useEffect } from "react";
-import { authApi } from "./lib/api";
+import { useNavigate, useLocation } from "react-router-dom";
+import { authApi, paymentApi } from "./lib/api";
 
 function TenantRoutes() {
   const { user } = useAuth();
+  const [paymentStatus, setPaymentStatus] = useState<{ has_active_mandate: boolean; paid_competitions: string[] } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password"];
+    if (publicPaths.some(p => location.pathname.startsWith(p))) {
+      setIsLoading(false);
+      return;
+    }
+
+    paymentApi.getCheckoutStatus()
+      .then(res => setPaymentStatus(res.data))
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [user, location.pathname]);
+
   if (!user) {
     return <TenantLoginPage />;
   }
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+  }
+
+  const isCheckoutPage = location.pathname === "/checkout";
+  const hasAccess = paymentStatus?.has_active_mandate && paymentStatus.paid_competitions.length > 0;
+
+  if (!hasAccess && !isCheckoutPage && location.pathname !== "/instellingen" && location.pathname !== "/branding" && location.pathname !== "/banen" && location.pathname !== "/gebruikers") {
+    return <Navigate to="/checkout" replace />;
+  }
+
   return <Outlet />;
 }
 
@@ -94,6 +129,7 @@ function AdminRoutesInner() {
           <Route path="/clubs/new" element={<NewClubPage />} />
           <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
         </Routes>
       </main>
     </>
@@ -145,6 +181,7 @@ function AppRoutes() {
             <Route path="/banen" element={<BanenPage />} />
             <Route path="/gebruikers" element={<UsersTenantPage />} />
             <Route path="/competities" element={<CompetitiesPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/teams/:competitieId" element={<TeamsPage />} />
             <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
             <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />

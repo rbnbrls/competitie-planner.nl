@@ -1,101 +1,117 @@
-# Competitie-Planner — Project Documentation
+# Competitie-Planner — Gebruikershandleiding
 
-> SaaS platform voor tennisverenigingen om banenindelingen te beheren en te publiceren via narrowcasting.
-
----
-
-## Repository structuur
-
-```
-/
-├── README.md                          ← dit bestand
-├── architecture/
-│   ├── 01-system-overview.md          ← systeem architectuur & techstack
-│   ├── 02-saas-multitenancy.md        ← multi-tenant & subdomain model
-│   ├── 03-auth-and-roles.md           ← auth systeem & rollenmodel
-│   └── 04-public-display.md           ← narrowcasting & publieke URL
-├── datamodel/
-│   ├── 01-core-schema.md              ← alle database tabellen
-│   └── 02-scheduling-algorithm.md     ← rotatie-algoritme uitleg
-└── roadmap/
-    ├── 00-overview.md                 ← roadmap samenvatting
-    ├── phase-1-setup.md               ← infra, CI/CD, database
-    ├── phase-2-superadmin.md          ← platform admin & tenant onboarding
-    ├── phase-3-association-mgmt.md    ← verenigingsbeheer & auth
-    ├── phase-4-competition-teams.md   ← competitie & team beheer
-    ├── phase-5-planning-engine.md     ← planningsengine & indeling UI
-    ├── phase-6-publish-display.md     ← publicatie & narrowcasting
-    └── phase-7-polish.md              ← notificaties, PDF, KNLTB
-```
+> Welkom! Deze handleiding legt uit wat Competitie-Planner is en hoe je de website kunt gebruiken om tenniswedstrijden te plannen voor jouw vereniging.
 
 ---
 
-## Product samenvatting
+## Wat is Competitie-Planner?
 
-**Competitie-Planner** is een multi-tenant SaaS platform waarmee tennisverenigingen hun KNLTB banenindeling kunnen beheren. Elke vereniging krijgt een eigen subdomain (bijv. `myclub.competitie-planner.nl`), eigen branding (kleuren, logo), en een publieke display-URL geschikt voor narrowcasting via iframe.
+Competitie-Planner is een online tool waarmee tennisverenigingen eenvoudig hun competitie-roosters kunnen maken en publiceren. Of je nu tennisclublid, teamcaptain of baanplanner bent — met deze website kun je:
 
-### Kernfunctionaliteiten
-
-- **Platform admin** — Ruben beheert alle tenants, gebruikers en facturering via een superadmin panel op `admin.competitie-planner.nl`
-- **Verenigingsbeheer** — per vereniging: banen, eigenschappen, kleuren, logo
-- **Competitie configuratie** — start/eind datums, feestdagen, inhaalrondes
-- **Team beheer** — teams, captains, KNLTB speelklassen
-- **Automatische indeling** — rotatie-algoritme dat eerlijke baan-verdeling over weken garandeert
-- **Handmatige correctie** — drag & drop na automatische indeling
-- **Publicatie** — één klik publiceert de indeling op een publieke, iframe-compatibele URL
-- **Narrowcasting display** — auto-refresh, groot lettertype, verenigingskleuren
-
-### Domeinen
-
-| Subdomain | Doel | Auth |
-|-----------|------|------|
-| `admin.competitie-planner.nl` | Platform superadmin (Ruben) | Superadmin login |
-| `[slug].competitie-planner.nl` | Vereniging admin portal | Vereniging users |
-| `display.competitie-planner.nl/[slug]/[token]` | Publieke banenindeling | Geen |
+- Teams en spelers indelen over beschikbare banen
+- Wedstrijdroosters automatisch laten genereren
+- Het rooster publiceren zodat iedereen het kan zien
+- Het rooster tonen op een scherm in de club (bijvoorbeeld bij de bar of ingang)
 
 ---
 
-## Techstack
+## Hoe werkt het?
 
-| Laag | Technologie | Reden |
-|------|-------------|-------|
-| Frontend | React 18 + Vite + TypeScript | Snelle builds, goede DX |
-| UI components | shadcn/ui + Tailwind CSS | Productie-klaar, toegankelijk |
-| Routing | React Router v6 | File-based routing |
-| Server state | TanStack Query v5 | Caching, optimistic updates |
-| Drag & drop | dnd-kit | Lichtgewicht, accessible |
-| Backend | FastAPI (Python 3.12) | Async, type-safe, bekend |
-| ORM | SQLAlchemy 2.x async | Type-safe queries |
-| Migraties | Alembic | Versiebeheerd schema |
-| Auth | JWT (python-jose) + bcrypt | Stateless, veilig |
-| Database | PostgreSQL 16 | ACID, JSON columns |
-| Email | Resend API | Transactionele email |
-| Deployment | Coolify + Traefik | Eigen server, auto TLS |
-| CI/CD | GitHub Actions | Automatisch testen & deployen |
-| Containers | Docker + docker-compose | Reproduceerbaar |
+### Stap 1: Inloggen
+
+Je ontvangt een inloglink van je verenigingsbeheerder. Klik op de link en log in met je e-mailadres en wachtwoord.
+
+### Stap 2: Jouw vereniging openen
+
+Na het inloggen kom je op het dashboard van jouw vereniging. Hier zie je een overzicht van:
+
+- De banen die beschikbaar zijn
+- De teams die meedoen aan de competitie
+- De geplande wedstrijden
+
+### Stap 3: Een nieuw rooster maken
+
+1. Klik op **Nieuw rooster** om een nieuwe competitie-week te plannen.
+2. Kies de datums waarvoor je het rooster wilt maken.
+3. Geef aan welke banen beschikbaar zijn en welke tijden.
+4. Selecteer de teams die willen spelen.
+
+Het systeem genereert automatisch een eerlijk rooster waarbij teams zoveel mogelijk gelijk verdeeld worden over alle beschikbare banen.
+
+### Stap 4: Rooster controleren en aanpassen
+
+Na het genereren zie je het rooster in een overzichtelijke tabel. Wil je iets veranderen? Dan kun je:
+
+- Teams verslepen naar een andere baan of tijdstip
+- Datums aanpassen
+- Bepaalde wedstrijden verplaatsen
+
+### Stap 5: Rooster publiceren
+
+Klik op **Publiceren** om het rooster live te zetten. Nu kan iedereen het rooster bekijken via de openbare link van jouw vereniging.
 
 ---
 
-## Deployment model
+## Functies
 
-Alle services draaien als Docker containers op de eigen server van de platformbeheerder (Ruben). Coolify verzorgt orchestratie, Traefik regelt TLS en subdomain routing via wildcard certificaat (`*.competitie-planner.nl`).
+### Banen beheren
 
-```
-Internet → Traefik (wildcard TLS)
-               ├── admin.competitie-planner.nl      → Frontend container (superadmin)
-               ├── *.competitie-planner.nl           → Frontend container (per-tenant routing)
-               ├── api.competitie-planner.nl         → FastAPI backend
-               └── display.competitie-planner.nl     → Frontend container (public display)
-```
+Je kunt alle banen van jouw vereniging toevoegen en bewerken. Geef elke baan een naam (bijvoorbeeld "Baal 1" of "Centrecourt") en geef aan of het een binnenbaan of buitenbaan is.
+
+### Teams aanmaken
+
+Maak teams aan voor de competitie en wijs spelers toe aan elk team. Geef ook de contactgegevens van de teamcaptain op, zodat andere leden weten bij wie ze terecht kunnen.
+
+### Seizoensinstellingen
+
+Stel in wanneer het seizoen begint en eindigt, welke feestdagen er zijn (dan wordt er niet gespeeld), en of er inhaalrondes zijn ingepland.
+
+### Automatische indeling
+
+Het systeem gebruikt een slim algoritme dat teams eerlijk verdeelt over alle beschikbare banen. Geen team krijgt constant de minst ideale tijdstippen.
+
+### Handmatige correctie
+
+Na de automatische indeling kun je altijd handmatig aanpassingen doen. Sleep teams eenvoudig naar een andere plek in het rooster.
+
+### Publieke weergave
+
+Het gepubliceerde rooster is te zien op een speciale openbare pagina. Deze pagina is speciaal ontworpen voor weergave op een scherm in de club:
+
+- Grote letters, goed leesbaar vanaf een afstand
+- Automatisch verversen zodat wijzigingen direct zichtbaar zijn
+- Kleuren in de stijl van jouw vereniging
+
+### Narrowcasting
+
+Wil je het rooster tonen op een scherm bij de bar of ingang? Dan kun je de pagina openen in een browser en op volledig scherm zetten. Het scherm refresh automatisch zodat het rooster altijd up-to-date is.
 
 ---
 
-## Voor AI agents
+## Veelgestelde vragen
 
-Elke user story in de roadmap bestanden bevat:
-- **Als [rol] wil ik [actie] zodat [doel]** — standaard user story format
-- **AC:** — acceptance criteria als testbare condities
-- **Tags** — welk type agent de story oppakt (backend / frontend / infra / algoritme)
-- **Dependencies** — welke stories eerst klaar moeten zijn
+**Wie kan er allemaal inloggen?**  
+Dat hangt af van je vereniging. De verenigingsbeheerder bepaalt wie een account krijgt.
 
-Agents werken story-voor-story. Status wordt bijgehouden via YAML frontmatter in elk roadmap bestand.
+**Kan ik een oud rooster bekijken?**  
+Ja, alle gepubliceerde roosters worden bewaard. Je kunt ze raadplegen via het archief.
+
+**Wat moet ik doen als een team niet kan spelen?**  
+Je kunt de competitiegegevens aanpassen voordat je het rooster genereert. Geef aan welke teams niet kunnen spelen op bepaalde datums.
+
+**Kan ik het rooster exporteren?**  
+Je kunt het rooster bekijken op de website en eventueel printen of een screenshot maken.
+
+**Hoe zorg ik dat het rooster zichtbaar is voor iedereen?**  
+Na het publiceren krijg je een link die je kunt delen. Je kunt deze link ook gebruiken voor narrowcasting-schermen.
+
+---
+
+## Hulp nodig?
+
+Heb je vragen over het gebruik van Competitie-Planner? Neem dan contact op met je verenigingsbeheerder of stuur een e-mail naar support@competitie-planner.nl.
+Feedback, foutmeldingen of suggesties zijn altijd welkom! Gebruik het gitHub-issue systeem op de [GitHub-pagina van Competitie-Planner](https://github.com/rbnbrls/competitie-planner.nl/issues/new).
+
+---
+
+*Veel plezier met het plannen van de competitie!*

@@ -208,4 +208,25 @@ export const superadminApi = {
   getUser: (userId: string) => api.get(`/superadmin/users/${userId}`),
   updateUser: (userId: string, data: Record<string, unknown>) =>
     api.patch(`/superadmin/users/${userId}`, data),
+  getMollieConfig: () => api.get("/payments/config"),
+  saveMollieConfig: (apiKey: string) => api.post("/payments/config", { api_key: apiKey }),
+  listPrices: () => api.get("/payments/prices"),
+  savePrice: (data: {
+    competitie_naam: string;
+    price_small_club: number;
+    price_large_club: number;
+  }) => api.post("/payments/prices", data),
+  listMandates: (params?: { skip?: number; limit?: number }) =>
+    api.get("/payments/mandates", { params }),
+};
+
+export const paymentApi = {
+  getCheckoutStatus: () => api.get("/payments/checkout-status"),
+  getMandate: (clubId: string) => api.get(`/payments/mandates/${clubId}`),
+  createMandate: (data: { iban: string; consumer_name: string }) =>
+    api.post("/payments/mandates", data),
+  verifyMandate: (mandateId: string) =>
+    api.post(`/payments/mandates/${mandateId}/verify`),
+  createPayment: (competitieNaam: string, webhookUrl: string) =>
+    api.post("/payments/payments", { competitie_naam: competitieNaam }, { params: { webhook_url: webhookUrl } }),
 };
