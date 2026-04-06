@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
-import { Clock, Calendar, Settings } from "lucide-react";
+import { Clock, Calendar, Settings, Copy, Loader2 } from "lucide-react";
 
 interface Competitie {
   id: string;
@@ -53,6 +53,16 @@ export default function CompetitiesPage() {
     start_datum: "",
     eind_datum: "",
   });
+
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateData, setDuplicateData] = useState({
+    new_naam: "",
+    nieuwe_start_datum: "",
+    nieuwe_eind_datum: "",
+    copy_teams: true,
+  });
+  const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -128,6 +138,37 @@ export default function CompetitiesPage() {
     }
   };
 
+  const handleOpenDuplicate = (comp: Competitie) => {
+    setSelectedCompetitie(comp);
+    setDuplicateData({
+      new_naam: comp.naam + " (Kopie)",
+      nieuwe_start_datum: "",
+      nieuwe_eind_datum: "",
+      copy_teams: true,
+    });
+    setShowDuplicateModal(true);
+  };
+
+  const handleDuplicate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompetitie) return;
+    
+    setIsBulkOperationProgress({inProgress: true, text: "Competitie aan het kopiëren..."});
+    setIsSaving(true);
+    
+    try {
+      await tenantApi.duplicateCompetitie(selectedCompetitie.id, duplicateData);
+      setMessage("Competitie is met succes gekopieerd.");
+      loadCompetities();
+      setShowDuplicateModal(false);
+    } catch {
+      setMessage("Fout bij kopiëren van competitie.");
+    } finally {
+      setIsSaving(false);
+      setIsBulkOperationProgress({inProgress: false, text: ""});
+    }
+  };
+
   const addTijdslot = () => {
     setTijdslotConfig({
       ...tijdslotConfig,
@@ -188,6 +229,13 @@ export default function CompetitiesPage() {
       {message.includes("Fout") && (
         <div className="mb-4 p-3 rounded bg-red-100 text-red-700">
           {message}
+        </div>
+      )}
+
+      {isBulkOperationProgress.inProgress && (
+        <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+          <span className="text-indigo-800 font-medium">{isBulkOperationProgress.text}</span>
         </div>
       )}
 
@@ -296,6 +344,13 @@ export default function CompetitiesPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <button
+                    onClick={() => handleOpenDuplicate(comp)}
+                    className="text-gray-600 hover:text-gray-800 mr-3"
+                    title="Kopieer competitie"
+                  >
+                    <Copy size={16} />
+                  </button>
                   <button
                     onClick={() => handleOpenTijdslotConfig(comp)}
                     className="text-gray-600 hover:text-gray-800 mr-3"
@@ -515,6 +570,84 @@ export default function CompetitiesPage() {
                 {isSaving ? "Opslaan..." : "Opslaan"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showDuplicateModal && selectedCompetitie && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Competitie Kopiëren</h2>
+            <form onSubmit={handleDuplicate}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nieuwe naam
+                  </label>
+                  <input
+                    type="text"
+                    value={duplicateData.new_naam}
+                    onChange={(e) => setDuplicateData({ ...duplicateData, new_naam: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nieuwe startdatum
+                  </label>
+                  <input
+                    type="date"
+                    value={duplicateData.nieuwe_start_datum}
+                    onChange={(e) => setDuplicateData({ ...duplicateData, nieuwe_start_datum: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nieuwe einddatum
+                  </label>
+                  <input
+                    type="date"
+                    value={duplicateData.nieuwe_eind_datum}
+                    onChange={(e) => setDuplicateData({ ...duplicateData, nieuwe_eind_datum: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={duplicateData.copy_teams}
+                      onChange={(e) => setDuplicateData({ ...duplicateData, copy_teams: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700"> Neem teams over (zonder status/resultaten)</span>
+                  </label>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-gray-500">
+                Hiermee kopieer je de algemene instellingen en (optioneel) de teams naar een nieuw seizoen.
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDuplicateModal(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Annuleren
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSaving ? "Bezig..." : "Kopiëren"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

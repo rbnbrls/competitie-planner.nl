@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +13,16 @@ class Settings(BaseSettings):
     SUPER_ADMIN_EMAIL: str  # Required env var - no default
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     ENCRYPTION_KEY: str
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def format_database_url(cls, v: str | None) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            if v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):
+                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v or "postgresql+asyncpg://user:pass@localhost:5432/competitieplanner"
 
 
 settings = Settings()

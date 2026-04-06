@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { Loader2 } from "lucide-react";
 
 interface Speelronde {
   id: string;
@@ -27,6 +28,7 @@ export default function SpeelrondesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [message, setMessage] = useState("");
+  const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
 
   useEffect(() => {
     if (competitieId) {
@@ -82,6 +84,46 @@ export default function SpeelrondesPage() {
     setMessage("URL gekopieerd naar clipboard");
   };
 
+  const handleBulkGenerate = async () => {
+    if (!competitieId) return;
+    const conceptRondeIds = rondes.filter(r => r.status === "concept").map(r => r.id);
+    if (conceptRondeIds.length === 0) {
+      setMessage("Geen concept rondes om te genereren.");
+      return;
+    }
+    setIsBulkOperationProgress({inProgress: true, text: `Alle concept-rondes (${conceptRondeIds.length}) aan het genereren...`});
+    try {
+      await tenantApi.bulkGenerateRondes(competitieId, conceptRondeIds);
+      setMessage(`${conceptRondeIds.length} rondes zijn gegenereerd.`);
+      loadData();
+    } catch {
+      setMessage("Fout bij bulk genereren.");
+    } finally {
+      setIsBulkOperationProgress({inProgress: false, text: ""});
+    }
+  };
+
+  const handleBulkPublish = async () => {
+    if (!competitieId) return;
+    const conceptRondeIds = rondes.filter(r => r.status === "concept").map(r => r.id);
+    if (conceptRondeIds.length === 0) {
+      setMessage("Geen concept rondes om te publiceren.");
+      return;
+    }
+    if (!confirm(`Weet je zeker dat je alle concept-rondes (${conceptRondeIds.length}) wilt publiceren?`)) return;
+
+    setIsBulkOperationProgress({inProgress: true, text: `Alle concept-rondes (${conceptRondeIds.length}) aan het publiceren...`});
+    try {
+      await tenantApi.bulkPublishRondes(competitieId, conceptRondeIds);
+      setMessage(`${conceptRondeIds.length} concept rondes zijn gepubliceerd.`);
+      loadData();
+    } catch {
+      setMessage("Fout bij bulk publiceren.");
+    } finally {
+      setIsBulkOperationProgress({inProgress: false, text: ""});
+    }
+  };
+
   const filteredRondes = () => {
     if (filter === "all") return rondes;
     return rondes.filter((r) => r.status === filter);
@@ -128,26 +170,51 @@ export default function SpeelrondesPage() {
         </div>
       )}
 
-      <div className="mb-4 flex gap-4">
-        <button
-          onClick={() => setFilter("all")}
-          className={`px-3 py-1 rounded ${filter === "all" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-        >
-          Alle ({rondes.length})
-        </button>
-        <button
-          onClick={() => setFilter("concept")}
-          className={`px-3 py-1 rounded ${filter === "concept" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-        >
-          Concept ({rondes.filter((r) => r.status === "concept").length})
-        </button>
-        <button
-          onClick={() => setFilter("gepubliceerd")}
-          className={`px-3 py-1 rounded ${filter === "gepubliceerd" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-        >
-          Gepubliceerd ({rondes.filter((r) => r.status === "gepubliceerd").length})
-        </button>
+      <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setFilter("all")}
+            className={`px-3 py-1 rounded ${filter === "all" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          >
+            Alle ({rondes.length})
+          </button>
+          <button
+            onClick={() => setFilter("concept")}
+            className={`px-3 py-1 rounded ${filter === "concept" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          >
+            Concept ({rondes.filter((r) => r.status === "concept").length})
+          </button>
+          <button
+            onClick={() => setFilter("gepubliceerd")}
+            className={`px-3 py-1 rounded ${filter === "gepubliceerd" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          >
+            Gepubliceerd ({rondes.filter((r) => r.status === "gepubliceerd").length})
+          </button>
+        </div>
+        <div className="flex gap-3">
+            <button
+              onClick={handleBulkGenerate}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              disabled={isBulkOperationProgress.inProgress}
+            >
+              Genereer alle concept-rondes
+            </button>
+            <button
+              onClick={handleBulkPublish}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              disabled={isBulkOperationProgress.inProgress}
+            >
+              Publiceer alle
+            </button>
+        </div>
       </div>
+
+      {isBulkOperationProgress.inProgress && (
+          <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+              <span className="text-indigo-800 font-medium">{isBulkOperationProgress.text}</span>
+          </div>
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">

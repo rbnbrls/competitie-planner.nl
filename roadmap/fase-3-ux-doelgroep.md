@@ -4,24 +4,6 @@ De primaire gebruikers zijn vrijwilligers bij tennisverenigingen in de leeftijds
 
 
 
-## 3.3 Bulkacties
-**Prioriteit: MIDDEL** | **Geschatte omvang: Middel**
-
-Elke ronde moet apart worden gegenereerd en gepubliceerd. Bij 7 speeldagen x 3 competities = 21 keer handmatig klikken.
-
-**Taken:**
-- [ ] "Genereer alle rondes" knop per competitie
-- [ ] "Publiceer alle concept-rondes" met bevestigingsdialoog
-- [ ] Backend endpoints voor bulk-operaties
-- [ ] Bulk activeren/deactiveren van teams
-- [ ] "Kopieer competitie van vorig seizoen" functie (naam, banen, teams overnemen)
-- [ ] Voortgangsindicator bij bulk-operaties
-
-**Bestanden:**
-- `backend/app/routers/planning.py`
-- `backend/app/routers/competities.py`
-- `frontend/src/pages/tenant/Speelrondes.tsx`
-- `frontend/src/pages/tenant/Teams.tsx`
 
 ---
 

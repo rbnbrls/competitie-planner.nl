@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { Loader2 } from "lucide-react";
 
 interface Team {
   id: string;
@@ -31,6 +32,9 @@ export default function TeamsPage() {
   const [importPreview, setImportPreview] = useState<Team[]>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
 
   const [formData, setFormData] = useState({
     naam: "",
@@ -187,6 +191,38 @@ export default function TeamsPage() {
     }
   };
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedTeamIds(filteredTeams().map(t => t.id));
+    } else {
+      setSelectedTeamIds([]);
+    }
+  };
+
+  const handleSelectTeam = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    if (e.target.checked) {
+      setSelectedTeamIds([...selectedTeamIds, id]);
+    } else {
+      setSelectedTeamIds(selectedTeamIds.filter(selectedId => selectedId !== id));
+    }
+  };
+
+  const handleBulkActivate = async (activate: boolean) => {
+    if (selectedTeamIds.length === 0) return;
+    setIsBulkOperationProgress({inProgress: true, text: `Geselecteerde teams aan het ${activate ? 'activeren' : 'deactiveren'}...`});
+    
+    try {
+      await tenantApi.bulkActivateTeams(selectedTeamIds, activate);
+      setMessage(`Teams succesvol ${activate ? 'geactiveerd' : 'gedeactiveerd'}`);
+      loadData();
+      setSelectedTeamIds([]);
+    } catch {
+      setMessage("Fout bij bulk operatie");
+    } finally {
+      setIsBulkOperationProgress({inProgress: false, text: ""});
+    }
+  };
+
   const filteredTeams = () => {
     if (!searchTerm) return teams;
     const term = searchTerm.toLowerCase();
@@ -237,7 +273,14 @@ export default function TeamsPage() {
         </div>
       )}
 
-      <div className="mb-4">
+      {isBulkOperationProgress.inProgress && (
+        <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+          <span className="text-indigo-800 font-medium">{isBulkOperationProgress.text}</span>
+        </div>
+      )}
+
+      <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
         <input
           type="text"
           placeholder="Zoeken op naam..."
@@ -245,12 +288,40 @@ export default function TeamsPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-md w-full max-w-xs"
         />
+        
+        {selectedTeamIds.length > 0 && (
+          <div className="flex gap-2 items-center bg-blue-50 px-4 py-2 rounded-md">
+            <span className="text-sm font-medium mr-2">{selectedTeamIds.length} geselecteerd</span>
+            <button
+              onClick={() => handleBulkActivate(true)}
+              disabled={isBulkOperationProgress.inProgress}
+              className="text-sm px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Activeer
+            </button>
+            <button
+              onClick={() => handleBulkActivate(false)}
+              disabled={isBulkOperationProgress.inProgress}
+              className="text-sm px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Deactiveer
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left w-12">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-gray-300"
+                  checked={selectedTeamIds.length > 0 && selectedTeamIds.length === filteredTeams().length}
+                  onChange={handleSelectAll}
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Teamnaam
               </th>
@@ -271,6 +342,14 @@ export default function TeamsPage() {
           <tbody className="divide-y divide-gray-200">
             {filteredTeams().map((team) => (
               <tr key={team.id} className={!team.actief ? "bg-gray-50" : ""}>
+                <td className="px-6 py-4">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-gray-300"
+                    checked={selectedTeamIds.includes(team.id)}
+                    onChange={(e) => handleSelectTeam(e, team.id)}
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">{team.naam}</td>
                 <td className="px-6 py-4">
                   {team.captain_naam && (
