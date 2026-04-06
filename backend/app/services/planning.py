@@ -328,8 +328,8 @@ async def plan_competitie(
         "counts": {
             "rondes": len(rondes),
             "toewijzingen": len(new_toewijzingen),
-            "errors": len([l for l in logs if l["severity"] == "error"]),
-            "warnings": len([l for l in logs if l["severity"] == "warning"]),
+            "errors": len([log for log in logs if log["severity"] == "error"]),
+            "warnings": len([log for log in logs if log["severity"] == "warning"]),
         }
     }
 

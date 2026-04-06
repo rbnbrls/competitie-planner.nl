@@ -356,6 +356,7 @@ dev = [
 ]
 test = [
     { name = "aiosqlite" },
+    { name = "anyio" },
     { name = "factory-boy" },
     { name = "httpx" },
     { name = "pytest" },
@@ -395,6 +396,7 @@ dev = [
 ]
 test = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
+    { name = "anyio", specifier = ">=4.0.0" },
     { name = "factory-boy", specifier = ">=3.3.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "pytest", specifier = ">=8.3.0" },

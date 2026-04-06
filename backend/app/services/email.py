@@ -213,7 +213,7 @@ class EmailService:
                 "html": html,
             }
 
-            r = resend.Emails.send(params)
+            resend.Emails.send(params)
             return 1
         except Exception as e:
             print(f"Email send error: {e}")

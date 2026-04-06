@@ -39,6 +39,7 @@ test = [
     "factory-boy>=3.3.0",
     "pytest-cov>=6.0.0",
     "aiosqlite>=0.20.0",
+    "anyio>=4.0.0",
 ]
 
 [tool.setup.packages.find]
@@ -54,5 +55,6 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]

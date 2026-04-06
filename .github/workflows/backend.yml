@@ -69,13 +69,15 @@ jobs:
 
       - name: Run pytest with coverage
         working-directory: backend
+        env:
+          TEST_DATABASE_URL: "postgresql+asyncpg://user:pass@localhost:5432/competitieplanner_test"
         run: |
-          export TEST_DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/competitieplanner_test"
           uv run pytest tests/ \
             --cov=app \
             --cov-report=term-missing \
             --cov-report=xml \
-            -v
+            -v \
+            -p no:randomly
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

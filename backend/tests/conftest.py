@@ -6,7 +6,6 @@ os.environ["SUPER_ADMIN_EMAIL"] = "test@test.nl"
 os.environ["ENCRYPTION_KEY"] = "test-encryption-key-for-testing-32chars"
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
 from typing import AsyncGenerator
 
 import pytest
@@ -20,16 +19,15 @@ TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/competitieplanner_test"
 )
 
+# Tuned engine: pool_pre_ping avoids stale connections; pool_size large
+# enough to handle concurrent fixture DB operations within a single test.
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
+    pool_size=10,
+    max_overflow=5,
+    pool_pre_ping=True,
 )
-
-
-@pytest.fixture(scope="session")
-def anyio_backend():
-    return "asyncio"
-
 
 TestSessionLocal = async_sessionmaker(
     test_engine,
@@ -38,25 +36,49 @@ TestSessionLocal = async_sessionmaker(
 )
 
 
+# ---------------------------------------------------------------------------
+# Per-test schema reset.
+#
+# We drop/create tables for every test to guarantee isolation.  This is
+# straightforward and avoids all event-loop / scope mismatch issues that
+# arise with session-scoped async fixtures in pytest-asyncio ≥1.x.
+# The overhead is acceptable for a CI environment with a local PG instance.
+# ---------------------------------------------------------------------------
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create fresh database for each test."""
+    """Drop & recreate schema, then provide a session for the test.
+
+    Using a fresh schema gives perfect isolation without any nested-
+    transaction trickery that can conflict with asyncpg.
+    """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     async with TestSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            await session.rollback()
 
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create test client with database override."""
-    from app.main import app
+    """Create a test HTTP client.
+
+    Each FastAPI request gets its own *fresh* session from the pool.
+    This is the critical fix: sharing a single session across concurrent
+    route handlers triggers asyncpg's "another operation is in progress"
+    error.  By creating a new session per request we avoid that entirely
+    while still operating against the same (freshly created) schema.
+    """
     from app.db import get_db
+    from app.main import app
 
     async def override_get_db():
-        yield db_session
+        async with TestSessionLocal() as request_session:
+            yield request_session
 
     app.dependency_overrides[get_db] = override_get_db
 
@@ -66,6 +88,10 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides.clear()
 
+
+# ---------------------------------------------------------------------------
+# Standard fixtures
+# ---------------------------------------------------------------------------
 
 @pytest_asyncio.fixture(scope="function")
 async def club(db_session: AsyncSession):
@@ -88,8 +114,9 @@ async def club(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def admin_user(db_session: AsyncSession, club):
     """Create an admin user for the club."""
-    from app.models import User
     from passlib.hash import bcrypt
+
+    from app.models import User
 
     user = User(
         id=uuid.uuid4(),
@@ -109,8 +136,9 @@ async def admin_user(db_session: AsyncSession, club):
 @pytest_asyncio.fixture(scope="function")
 async def superadmin_user(db_session: AsyncSession):
     """Create a superadmin user."""
-    from app.models import User
     from passlib.hash import bcrypt
+
+    from app.models import User
 
     user = User(
         id=uuid.uuid4(),
