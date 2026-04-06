@@ -1,15 +1,25 @@
 from uuid import UUID
 from datetime import time, date
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel
 from sqlalchemy import select, func
-from app.schemas import CompetitieCreate, CompetitieUpdate, CompetitieResponse, PaginatedResponse
+from app.schemas import (
+    CompetitieCreate,
+    CompetitieUpdate,
+    CompetitieResponse,
+    PaginatedResponse,
+    SeizoensoverzichtResponse,
+    SeizoensoverzichtTeamRow,
+    SeizoensoverzichtEntry,
+    SpeelrondeNestedResponse
+)
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.db import get_db
-from app.models import Club, Competitie, Team, Baan, Speelronde
+from app.models import Club, Competitie, Team, Baan, Speelronde, BaanToewijzing, Wedstrijd
 from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
 from app.services import planning as planning_service
 
@@ -166,6 +176,172 @@ async def list_rondes(
             for r in rondes
         ]
     }
+
+
+@router.get("/{competitie_id}/seizoensoverzicht", response_model=SeizoensoverzichtResponse)
+async def get_seizoensoverzicht(
+    competitie_id: str,
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+):
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    # Fetch rounds
+    rondes_result = await db.execute(
+        select(Speelronde)
+        .where(
+            Speelronde.competitie_id == competitie_uuid,
+            Speelronde.club_id == club.id
+        )
+        .order_by(Speelronde.datum)
+    )
+    rondes = rondes_result.scalars().all()
+
+    # Fetch teams
+    teams_result = await db.execute(
+        select(Team)
+        .where(
+            Team.competitie_id == competitie_uuid,
+            Team.club_id == club.id
+        )
+        .order_by(Team.naam)
+    )
+    teams = teams_result.scalars().all()
+
+    # Fetch all assignments and matches for this competition
+    toewijzingen_result = await db.execute(
+        select(BaanToewijzing)
+        .join(Speelronde)
+        .where(Speelronde.competitie_id == competitie_uuid)
+        .options(joinedload(BaanToewijzing.baan))
+    )
+    toewijzingen = toewijzingen_result.scalars().all()
+
+    wedstrijden_result = await db.execute(
+        select(Wedstrijd)
+        .where(Wedstrijd.competitie_id == competitie_uuid)
+    )
+    wedstrijden = wedstrijden_result.scalars().all()
+
+    # Lookups
+    thuis_lookup = {}
+    for t in toewijzingen:
+        thuis_lookup[(t.ronde_id, t.team_id)] = t
+
+    uit_lookup = {}
+    for w in wedstrijden:
+        uit_lookup[(w.ronde_id, w.uitteam_id)] = w
+
+    rows = []
+    for team in teams:
+        planning = []
+        for ronde in rondes:
+            entry_type = "vrij"
+            label = "VRIJ"
+            details = None
+
+            if (ronde.id, team.id) in thuis_lookup:
+                t = thuis_lookup[(ronde.id, team.id)]
+                entry_type = "thuis"
+                label = f"B{t.baan.nummer}"
+                if t.tijdslot_start:
+                    label += f" ({t.tijdslot_start.strftime('%H:%M')})"
+            elif (ronde.id, team.id) in uit_lookup:
+                entry_type = "uit"
+                label = "UIT"
+
+            planning.append(SeizoensoverzichtEntry(
+                ronde_id=ronde.id,
+                type=entry_type,
+                label=label,
+                details=details,
+                status=ronde.status
+            ))
+
+        rows.append(SeizoensoverzichtTeamRow(
+            team_id=team.id,
+            team_naam=team.naam,
+            planning=planning
+        ))
+
+    return SeizoensoverzichtResponse(
+        rondes=[SpeelrondeNestedResponse.model_validate(r) for r in rondes],
+        rows=rows
+    )
+
+
+@router.get("/{competitie_id}/seizoensoverzicht/pdf")
+async def export_seizoensoverzicht_pdf(
+    competitie_id: str,
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+):
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid competition ID")
+
+    from app.services.pdf import PDFService
+    pdf_service = PDFService(db)
+    
+    try:
+        pdf_content = await pdf_service.generate_seizoensoverzicht_pdf(competitie_uuid)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=seizoensoverzicht_{competitie_id}.pdf"
+        },
+    )
+
+
+@router.get("/{competitie_id}/seizoensoverzicht/csv")
+async def export_seizoensoverzicht_csv(
+    competitie_id: str,
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+):
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid competition ID")
+
+    # Re-use the logic from get_seizoensoverzicht but format as CSV
+    data = await get_seizoensoverzicht(competitie_id, current, db)
+    
+    import io
+    import csv
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    header = ["Team"] + [r.datum.strftime("%d-%m-%Y") for r in data.rondes]
+    writer.writerow(header)
+    
+    # Rows
+    for row in data.rows:
+        writer.writerow([row.team_naam] + [p.label for p in row.planning])
+    
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=seizoensoverzicht_{competitie_id}.csv"
+        },
+    )
 
 
 class CompetitieSettingsUpdate(BaseModel):

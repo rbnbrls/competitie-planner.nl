@@ -148,13 +148,19 @@ export const tenantApi = {
   deleteCompetition: (id: string) => api.delete(`/tenant/competities/${id}`),
   listSpeelrondes: (competitieId: string, params?: { lazy?: boolean }) => 
     api.get(`/tenant/competities/${competitieId}/rondes`, { params }),
+  getSeizoensoverzicht: (competitieId: string) => 
+    api.get(`/tenant/competities/${competitieId}/seizoensoverzicht`),
+  exportSeizoenPdf: (competitieId: string) => 
+    api.get(`/tenant/competities/${competitieId}/seizoensoverzicht/pdf`, { responseType: "blob" }),
+  exportSeizoenCsv: (competitieId: string) => 
+    api.get(`/tenant/competities/${competitieId}/seizoensoverzicht/csv`, { responseType: "blob" }),
   updateSpeelronde: (rondeId: string, data: {
     datum?: string;
     status?: string;
     is_inhaalronde?: boolean;
   }) => api.patch(`/tenant/rondes/${rondeId}`, data),
   publishSpeelronde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/publish`),
-  listTeams: (competitieId: string, params?: { page?: number; size?: number }) => 
+  listTeams: (competitieId: string, params?: { page?: number; size?: number; search?: string }) => 
     api.get(`/tenant/competities/${competitieId}/teams`, { params }),
   createTeam: (competitieId: string, data: {
     naam: string;

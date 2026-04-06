@@ -26,6 +26,7 @@ import HistoriePage from "./pages/tenant/Historie";
 import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
 import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
+import SeizoensoverzichtPage from "./pages/tenant/Seizoensoverzicht";
 import OnboardingPage from "./pages/Onboarding";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -197,6 +198,7 @@ function AppRoutes() {
             <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
             <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />
             <Route path="/historie/:competitieId" element={<HistoriePage />} />
+            <Route path="/seizoensoverzicht/:competitieId" element={<SeizoensoverzichtPage />} />
             <Route path="/dagoverzicht" element={<DagoverzichtPage />} />
             <Route path="/dagoverzicht/:datum" element={<DagoverzichtPage />} />
           </Route>

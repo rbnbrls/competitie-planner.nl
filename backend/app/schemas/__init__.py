@@ -321,3 +321,22 @@ class SpeelrondeResponse(SpeelrondeBase):
     public_token: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class SeizoensoverzichtEntry(BaseModel):
+    ronde_id: UUID
+    type: str  # "thuis", "uit", "vrij"
+    label: str  # e.g. "B1", "UIT", "VRIJ"
+    details: str | None = None
+    status: str  # concept, gepubliceerd
+
+
+class SeizoensoverzichtTeamRow(BaseModel):
+    team_id: UUID
+    team_naam: str
+    planning: List[SeizoensoverzichtEntry]
+
+
+class SeizoensoverzichtResponse(BaseModel):
+    rondes: List[SpeelrondeNestedResponse]
+    rows: List[SeizoensoverzichtTeamRow]

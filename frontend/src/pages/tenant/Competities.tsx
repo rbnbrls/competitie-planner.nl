@@ -43,7 +43,6 @@ export default function CompetitiesPage() {
 
   const { 
     competities, 
-    total,
     totalPages,
     isLoading, 
     createCompetitie, 

@@ -5,9 +5,18 @@ export default function TenantLayout() {
   const { club, logout } = useAuth();
   const location = useLocation();
 
+  const parts = location.pathname.split("/");
+  let competitieId = null;
+  if (parts[1] === "ronde" && parts.length >= 4) {
+    competitieId = parts[3];
+  } else if (["teams", "rondes", "historie", "seizoensoverzicht"].includes(parts[1]) && parts.length >= 3) {
+    competitieId = parts[2];
+  }
+
   const navItems = [
     { path: "/dashboard", label: "Dashboard" },
     { path: "/competities", label: "Competities" },
+    ...(competitieId ? [{ path: `/seizoensoverzicht/${competitieId}`, label: "Seizoen" }] : []),
     { path: "/dagoverzicht", label: "Dagoverzicht" },
     { path: "/instellingen", label: "Instellingen" },
     { path: "/branding", label: "Huisstijl" },
