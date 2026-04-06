@@ -201,6 +201,56 @@ class Team(Base):
     )
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="teams")
+    wedstrijden_thuis: Mapped[list["Wedstrijd"]] = relationship(
+        "Wedstrijd", foreign_keys="Wedstrijd.thuisteam_id", back_populates="thuisteam"
+    )
+    wedstrijden_uit: Mapped[list["Wedstrijd"]] = relationship(
+        "Wedstrijd", foreign_keys="Wedstrijd.uitteam_id", back_populates="uitteam"
+    )
+
+
+class Wedstrijd(Base):
+    __tablename__ = "wedstrijden"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ronde_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("speelrondes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    thuisteam_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    uitteam_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(20), default="ingepland")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "ronde_id", "thuisteam_id", "uitteam_id", name="uq_wedstrijden_ronde_teams"
+        ),
+        Index("idx_wedstrijden_ronde", "ronde_id"),
+        Index("idx_wedstrijden_thuisteam", "thuisteam_id"),
+        Index("idx_wedstrijden_uitteam", "uitteam_id"),
+    )
+
+    ronde: Mapped["Speelronde"] = relationship("Speelronde")
+    thuisteam: Mapped["Team"] = relationship(
+        "Team", foreign_keys=[thuisteam_id], back_populates="wedstrijden_thuis"
+    )
+    uitteam: Mapped["Team"] = relationship(
+        "Team", foreign_keys=[uitteam_id], back_populates="wedstrijden_uit"
+    )
 
 
 class Speelronde(Base):
@@ -245,6 +295,7 @@ class Speelronde(Base):
     baantoewijzingen: Mapped[list["BaanToewijzing"]] = relationship(
         "BaanToewijzing", back_populates="ronde"
     )
+    wedstrijden: Mapped[list["Wedstrijd"]] = relationship("Wedstrijd", back_populates="ronde")
 
 
 class BaanToewijzing(Base):

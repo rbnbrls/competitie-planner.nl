@@ -1,0 +1,11 @@
+from app.routers.auth import router as auth
+from app.routers.competities import router as competities
+from app.routers.display import router as display
+from app.routers.onboarding import router as onboarding
+from app.routers.payments import router as payments
+from app.routers.planning import router as planning
+from app.routers.superadmin import router as superadmin
+from app.routers.teams import router as teams
+from app.routers.tenant import router as tenant
+from app.routers.tenant_settings import router as tenant_settings
+from app.routers.wedstrijden import router as wedstrijden

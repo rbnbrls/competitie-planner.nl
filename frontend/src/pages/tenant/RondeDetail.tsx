@@ -46,6 +46,16 @@ interface Toewijzing {
   baan?: Baan;
 }
 
+interface Wedstrijd {
+  id: string;
+  ronde_id: string;
+  thuisteam_id: string;
+  uitteam_id: string;
+  status: string;
+  thuisteam?: Team;
+  uitteam?: Team;
+}
+
 interface RondeDetail {
   id: string;
   competitie_id: string;
@@ -177,6 +187,7 @@ export default function RondeDetailPage() {
   const [ronde, setRonde] = useState<RondeDetail | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [banen, setBanen] = useState<Baan[]>([]);
+  const [wedstrijden, setWedstrijden] = useState<Wedstrijd[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -207,11 +218,13 @@ export default function RondeDetailPage() {
       tenantApi.getRondeDetail(rondeId),
       tenantApi.getTeamsForPlanning(competitieId),
       tenantApi.getBanenForPlanning(),
+      tenantApi.getWedstrijden(rondeId),
     ])
-      .then(([rondeRes, teamsRes, banenRes]) => {
+      .then(([rondeRes, teamsRes, banenRes, wedstrijdenRes]) => {
         setRonde(rondeRes.data);
         setTeams(teamsRes.data);
         setBanen(banenRes.data);
+        setWedstrijden(wedstrijdenRes.data.wedstrijden || []);
       })
       .finally(() => setIsLoading(false));
   };
@@ -347,8 +360,12 @@ export default function RondeDetailPage() {
   const isReadOnly = ronde?.status === "gepubliceerd";
   const toewijzingIds = ronde?.toewijzingen?.map((t) => t.id) || [];
 
+  const thuisteamIds = new Set(wedstrijden.map((w) => w.thuisteam_id));
+  const thuisteams = teams.filter((t) => thuisteamIds.has(t.id));
+  const teamsForDropdown = thuisteamIds.size > 0 ? thuisteams : teams;
+
   const assignedTeamIds = new Set(ronde?.toewijzingen?.map((t) => t.team_id) || []);
-  const unassignedTeams = teams.filter((t) => !assignedTeamIds.has(t.id));
+  const unassignedTeams = teamsForDropdown.filter((t) => !assignedTeamIds.has(t.id));
 
   if (isLoading) {
     return <div className="p-4">Laden...</div>;
@@ -447,6 +464,27 @@ export default function RondeDetailPage() {
         </div>
       )}
 
+      {wedstrijden.length > 0 && (
+        <div className="mb-6 bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-3">Wedstrijden</h2>
+          <div className="grid gap-2">
+            {wedstrijden.map((w) => (
+              <div key={w.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                  Thuis
+                </span>
+                <span className="font-medium">{w.thuisteam?.naam || "-"}</span>
+                <span className="text-gray-400">vs</span>
+                <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded">
+                  Uit
+                </span>
+                <span className="text-gray-600">{w.uitteam?.naam || "-"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -508,7 +546,7 @@ export default function RondeDetailPage() {
                     <SortableToewijzingRow
                       key={t.id}
                       toewijzing={t}
-                      teams={teams}
+                      teams={teamsForDropdown}
                       allBanen={banen}
                       isReadOnly={isReadOnly}
                       onUpdate={handleUpdateToewijzing}

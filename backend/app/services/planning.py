@@ -5,13 +5,22 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Baan, BaanToewijzing, Competitie, PlanningHistorie, Speelronde, Team
+from app.models import (
+    Baan,
+    BaanToewijzing,
+    Competitie,
+    PlanningHistorie,
+    Speelronde,
+    Team,
+    Wedstrijd,
+)
 
 
 async def genereer_indeling(ronde_id: uuid.UUID, db: AsyncSession) -> list[BaanToewijzing]:
     """
     Genereert een banenindeling voor een speelronde.
     Returnt een lijst van BaanToewijzing objecten (nog niet opgeslagen).
+    ALLEEN thuisteams krijgen een baan toegewezen.
     """
     result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_id))
     ronde = result.scalar_one_or_none()
@@ -32,10 +41,15 @@ async def genereer_indeling(ronde_id: uuid.UUID, db: AsyncSession) -> list[BaanT
     )
     banen = list(result.scalars().all())
 
+    result = await db.execute(select(Wedstrijd).where(Wedstrijd.ronde_id == ronde_id))
+    wedstrijden = list(result.scalars().all())
+    thuisteam_ids = {w.thuisteam_id for w in wedstrijden}
+
     result = await db.execute(
         select(Team).where(
             Team.competitie_id == competitie.id,
             Team.actief == True,
+            Team.id.in_(list(thuisteam_ids)) if thuisteam_ids else False,
         )
     )
     teams = list(result.scalars().all())

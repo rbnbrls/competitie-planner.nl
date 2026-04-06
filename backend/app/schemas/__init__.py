@@ -283,3 +283,41 @@ class PlanningHistorieResponse(PlanningHistorieBase):
     team_id: UUID
     baan_id: UUID
     updated_at: datetime
+
+
+class WedstrijdBase(BaseModel):
+    status: str = "ingepland"
+
+
+class WedstrijdCreate(WedstrijdBase):
+    ronde_id: UUID
+    thuisteam_id: UUID
+    uitteam_id: UUID
+
+
+class WedstrijdUpdate(BaseModel):
+    thuisteam_id: UUID | None = None
+    uitteam_id: UUID | None = None
+    status: str | None = None
+
+
+class TeamNestedResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    naam: str
+    captain_naam: str | None = None
+    speelklasse: str | None = None
+
+
+class WedstrijdResponse(WedstrijdBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    ronde_id: UUID
+    thuisteam_id: UUID
+    uitteam_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    thuisteam: TeamNestedResponse | None = None
+    uitteam: TeamNestedResponse | None = None

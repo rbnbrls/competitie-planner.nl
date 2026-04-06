@@ -185,6 +185,19 @@ export const tenantApi = {
   publishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/publish`),
   depublishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/depublish`),
   getCompetitieHistorie: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/historie`),
+  getWedstrijden: (rondeId: string) => api.get(`/tenant/wedstrijden/${rondeId}`),
+  createWedstrijd: (data: {
+    ronde_id: string;
+    thuisteam_id: string;
+    uitteam_id: string;
+    status?: string;
+  }) => api.post("/tenant/wedstrijden", data),
+  updateWedstrijd: (wedstrijdId: string, data: {
+    thuisteam_id?: string;
+    uitteam_id?: string;
+    status?: string;
+  }) => api.patch(`/tenant/wedstrijden/${wedstrijdId}`, data),
+  deleteWedstrijd: (wedstrijdId: string) => api.delete(`/tenant/wedstrijden/${wedstrijdId}`),
 };
 
 export const superadminApi = {

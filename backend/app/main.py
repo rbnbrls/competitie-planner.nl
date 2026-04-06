@@ -18,6 +18,7 @@ from app.routers import (
     teams,
     tenant,
     tenant_settings,
+    wedstrijden,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ app.include_router(competities.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
 app.include_router(payments.router, prefix="/api/v1")
+app.include_router(wedstrijden.router, prefix="/api/v1")
 
 
 @app.get("/health")
