@@ -1,13 +1,14 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User
+from app.limiter import limiter
 from app.schemas import UserResponse
 from app.services.auth import (
     TokenPayload,
@@ -60,14 +61,30 @@ async def get_current_superadmin(
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
 
+    if user:
+        if user.locked_until and user.locked_until > datetime.now(UTC):
+            retry_after = int((user.locked_until - datetime.now(UTC)).total_seconds())
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
+            )
+
     if not user or not verify_password(form_data.password, user.password_hash):
+        if user:
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 10:
+                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+            await db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -86,6 +103,11 @@ async def login(
             detail="Superadmin access required",
         )
 
+    # Reset failed attempts on success
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.last_login = datetime.now(UTC)
+
     access_token = create_access_token(
         data={
             "sub": str(user.id),
@@ -98,7 +120,6 @@ async def login(
     )
     refresh_token = create_refresh_token(user.id)
 
-    user.last_login = datetime.now(UTC)
     await db.commit()
 
     return {
@@ -168,7 +189,9 @@ async def admin_exists(db: AsyncSession = Depends(get_db)) -> dict:
 
 
 @router.post("/register-admin")
+@limiter.limit("3/hour")
 async def register_admin(
+    request: Request,
     email: str,
     password: str,
     full_name: str,

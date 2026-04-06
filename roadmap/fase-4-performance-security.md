@@ -2,49 +2,7 @@
 
 Database-optimalisaties, frontend performance, en security hardening.
 
----
 
-## 4.1 N+1 query probleem fixen
-**Prioriteit: HOOG** | **Geschatte omvang: Middel**
-
-In `update_planning_historie()` (`services/planning.py` regel 105-109) wordt voor elke toewijzing een aparte query gedaan om de baan op te halen. Bij 10 banen = 10 extra queries.
-
-**Taken:**
-- [ ] Batch-query alle banen in `update_planning_historie()` in plaats van per toewijzing
-- [ ] Gebruik `selectinload` of `joinedload` voor relaties bij toewijzingen ophalen
-- [ ] Audit alle routers op soortgelijke N+1 patronen
-- [ ] Voeg SQLAlchemy query logging toe in development om N+1 te detecteren
-
-**Bestanden:**
-- `backend/app/services/planning.py`
-- `backend/app/routers/planning.py`
-- `backend/app/routers/competities.py`
-- `backend/app/routers/teams.py`
-
----
-
-## 4.2 Frontend data-laag verbeteren
-**Prioriteit: HOOG** | **Geschatte omvang: Groot**
-
-In `RondeDetail.tsx` wordt `loadData()` aangeroepen na elke toewijzing-update. TanStack Query is al een dependency maar wordt nergens gebruikt.
-
-**Taken:**
-- [ ] Implementeer TanStack Query voor alle API calls
-- [ ] Optimistic updates voor toewijzing-wijzigingen
-- [ ] Cache invalidatie i.p.v. volledige herlaad
-- [ ] Error boundaries voor graceful error handling
-- [ ] Loading skeletons i.p.v. "Laden..." tekst
-- [ ] Debounce op notitie-updates (300-500ms)
-- [ ] Debounce op tijdslot-wijzigingen
-
-**Bestanden:**
-- `frontend/src/pages/tenant/RondeDetail.tsx`
-- `frontend/src/lib/api.ts`
-- Nieuw: `frontend/src/hooks/useRondeDetail.ts`
-- Nieuw: `frontend/src/hooks/useCompetities.ts`
-- Alle pagina's in `frontend/src/pages/tenant/`
-
----
 
 ## 4.3 Rate limiting
 **Prioriteit: HOOG** | **Geschatte omvang: Middel**

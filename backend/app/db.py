@@ -6,7 +6,10 @@ from app.config import settings
 Base = declarative_base()
 
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
+engine = create_async_engine(
+    settings.DATABASE_URL, 
+    echo=settings.ENVIRONMENT == "development"
+)
 
 async_session_maker = async_sessionmaker(
     engine,

@@ -2,9 +2,13 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from slowapi.errors import RateLimitExceeded
+
+from app.limiter import limiter
 from app.config import settings
 from app.db import engine
 from app.routers import (
@@ -43,11 +47,26 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Custom handler for RateLimitExceeded exceptions.
+    Returns 429 Too Many Requests with Retry-After header.
+    """
+    response = JSONResponse(
+        status_code=429,
+        content={"detail": f"Te veel aanvragen. Probeer het over {exc.retry_after} seconden opnieuw."},
+    )
+    response.headers["Retry-After"] = str(exc.retry_after)
+    return response
+
+
 app = FastAPI(
     title="Competitie-Planner API",
     version="0.1.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

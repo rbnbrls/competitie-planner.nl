@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { Clock, Calendar, Settings, Copy, Loader2 } from "lucide-react";
-import { showToast } from "../../components/Toast";
+import { useCompetities } from "../../hooks/useCompetities";
 
 interface Competitie {
   id: string;
@@ -36,10 +36,16 @@ const DAGEN = [
 ];
 
 export default function CompetitiesPage() {
-  const [competities, setCompetities] = useState<Competitie[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const { 
+    competities, 
+    isLoading, 
+    createCompetitie, 
+    duplicateCompetitie, 
+    updateTijdslotConfig,
+    isCreating,
+    isDuplicating
+  } = useCompetities();
+
   const [showModal, setShowModal] = useState(false);
   const [showTijdslotModal, setShowTijdslotModal] = useState(false);
   const [selectedCompetitie, setSelectedCompetitie] = useState<Competitie | null>(null);
@@ -66,16 +72,6 @@ export default function CompetitiesPage() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadCompetities();
-  }, []);
-
-  const loadCompetities = () => {
-    tenantApi.listCompetities().then((res: any) => {
-      setCompetities(res.data.competities || []);
-    }).finally(() => setIsLoading(false));
-  };
-
   const loadTijdslotConfig = async (competitieId: string) => {
     try {
       const res = await tenantApi.getTijdslotConfig(competitieId);
@@ -91,12 +87,8 @@ export default function CompetitiesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-
     try {
-      await tenantApi.createCompetition(formData);
-      showToast.success("Competitie aangemaakt");
-      loadCompetities();
+      await createCompetitie(formData);
       setShowModal(false);
       setFormData({
         naam: "",
@@ -104,11 +96,8 @@ export default function CompetitiesPage() {
         start_datum: "",
         eind_datum: "",
       });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij aanmaken");
-    } finally {
-      setIsSaving(false);
+    } catch (err) {
+      // Error is handled in the hook's onError handler
     }
   };
 
@@ -120,21 +109,18 @@ export default function CompetitiesPage() {
 
   const handleSaveTijdslotConfig = async () => {
     if (!selectedCompetitie) return;
-    setIsSaving(true);
     try {
-      await tenantApi.updateTijdslotConfig(selectedCompetitie.id, {
-        standaard_starttijden: tijdslotConfig.standaard_starttijden,
-        eerste_datum: tijdslotConfig.eerste_datum || undefined,
-        hergebruik_configuratie: tijdslotConfig.hergebruik_configuratie,
+      await updateTijdslotConfig({
+        id: selectedCompetitie.id,
+        data: {
+          standaard_starttijden: tijdslotConfig.standaard_starttijden,
+          eerste_datum: tijdslotConfig.eerste_datum || undefined,
+          hergebruik_configuratie: tijdslotConfig.hergebruik_configuratie,
+        }
       });
-      showToast.success("Tijdslotconfiguratie opgeslagen");
-      loadCompetities();
       setShowTijdslotModal(false);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij opslaan");
-    } finally {
-      setIsSaving(false);
+    } catch (err) {
+      // Error handled in hook
     }
   };
 
@@ -154,17 +140,16 @@ export default function CompetitiesPage() {
     if (!selectedCompetitie) return;
     
     setIsBulkOperationProgress({inProgress: true, text: "Competitie aan het kopiëren..."});
-    setIsSaving(true);
     
     try {
-      await tenantApi.duplicateCompetitie(selectedCompetitie.id, duplicateData);
-      showToast.success("Competitie is met succes gekopieerd.");
-      loadCompetities();
+      await duplicateCompetitie({
+        id: selectedCompetitie.id,
+        data: duplicateData
+      });
       setShowDuplicateModal(false);
     } catch {
-      showToast.error("Fout bij kopiëren van competitie.");
+      // Error handled in hook
     } finally {
-      setIsSaving(false);
       setIsBulkOperationProgress({inProgress: false, text: ""});
     }
   };
@@ -218,8 +203,6 @@ export default function CompetitiesPage() {
             Competitie aanmaken
           </button>
         )}
-      </div>
-
       </div>
 
       {isBulkOperationProgress.inProgress && (
@@ -303,7 +286,7 @@ export default function CompetitiesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {competities.map((comp) => (
+            {competities.map((comp: Competitie) => (
               <tr key={comp.id} className={!comp.actief ? "bg-gray-50" : ""}>
                 <td className="px-6 py-4 whitespace-nowrap">{comp.naam}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -451,10 +434,10 @@ export default function CompetitiesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isCreating}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSaving ? "Aanmaken..." : "Aanmaken"}
+                  {isCreating ? "Aanmaken..." : "Aanmaken"}
                 </button>
               </div>
             </form>
@@ -554,10 +537,10 @@ export default function CompetitiesPage() {
               <button
                 type="button"
                 onClick={handleSaveTijdslotConfig}
-                disabled={isSaving}
+                disabled={isCreating || isDuplicating}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
-                {isSaving ? "Opslaan..." : "Opslaan"}
+                {isCreating || isDuplicating ? "Opslaan..." : "Opslaan"}
               </button>
             </div>
           </div>
@@ -631,10 +614,10 @@ export default function CompetitiesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isDuplicating}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSaving ? "Bezig..." : "Kopiëren"}
+                  {isDuplicating ? "Bezig..." : "Kopiëren"}
                 </button>
               </div>
             </form>

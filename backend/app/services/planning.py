@@ -271,20 +271,33 @@ async def update_planning_historie(ronde_id: uuid.UUID, db: AsyncSession) -> Non
     result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_id))
     toewijzingen = list(result.scalars().all())
 
+    if not toewijzingen:
+        return
+
+    baan_ids = list({t.baan_id for t in toewijzingen})
+    team_ids = list({t.team_id for t in toewijzingen})
+
+    if not baan_ids or not team_ids:
+        return
+
+    result = await db.execute(select(Baan).where(Baan.id.in_(baan_ids)))
+    banen = {b.id: b for b in result.scalars().all()}
+
+    result = await db.execute(
+        select(PlanningHistorie).where(
+            PlanningHistorie.competitie_id == competitie.id,
+            PlanningHistorie.team_id.in_(team_ids),
+            PlanningHistorie.baan_id.in_(baan_ids),
+        )
+    )
+    bestaande_historie = {(h.team_id, h.baan_id): h for h in result.scalars().all()}
+
     for t in toewijzingen:
-        result = await db.execute(select(Baan).where(Baan.id == t.baan_id))
-        baan = result.scalar_one_or_none()
+        baan = banen.get(t.baan_id)
         if not baan:
             continue
 
-        result = await db.execute(
-            select(PlanningHistorie).where(
-                PlanningHistorie.competitie_id == competitie.id,
-                PlanningHistorie.team_id == t.team_id,
-                PlanningHistorie.baan_id == t.baan_id,
-            )
-        )
-        historie = result.scalar_one_or_none()
+        historie = bestaande_historie.get((t.team_id, t.baan_id))
 
         if not historie:
             historie = PlanningHistorie(
@@ -296,6 +309,7 @@ async def update_planning_historie(ronde_id: uuid.UUID, db: AsyncSession) -> Non
                 totaal_score=0,
             )
             db.add(historie)
+            bestaande_historie[(t.team_id, t.baan_id)] = historie
 
         historie.aantal_keer += 1
         historie.totaal_score += baan.prioriteit_score
@@ -336,12 +350,30 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
     beschikbare_banen = len(actieve_banen)
 
     result = await db.execute(
-        select(Speelronde).where(
+        select(Speelronde)
+        .options(
+            selectinload(Speelronde.competitie),
+            selectinload(Speelronde.wedstrijden),
+        )
+        .where(
             Speelronde.datum == datum,
             Speelronde.club_id == club_id,
         )
     )
     rondes = list(result.scalars().all())
+
+    alle_thuisteams = set()
+    for ronde in rondes:
+        for w in ronde.wedstrijden:
+            if w.thuisteam_id:
+                alle_thuisteams.add(w.thuisteam_id)
+
+    teams_map = {}
+    if alle_thuisteams:
+        result = await db.execute(
+            select(Team).where(Team.id.in_(list(alle_thuisteams)))
+        )
+        teams_map = {t.id: t for t in result.scalars().all()}
 
     competities_overzicht = []
     total_banen_nodig = 0
@@ -352,17 +384,11 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
     dag_van_week = weekdagen.get(datum.weekday(), "onbekend")
 
     for ronde in rondes:
-        result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
-        competitie = result.scalar_one_or_none()
+        competitie = ronde.competitie
         if not competitie:
             continue
 
-        result = await db.execute(
-            select(Wedstrijd).where(
-                Wedstrijd.ronde_id == ronde.id,
-            )
-        )
-        wedstrijden = list(result.scalars().all())
+        wedstrijden = ronde.wedstrijden
 
         thuisteams = set()
         for w in wedstrijden:
@@ -372,13 +398,9 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
         banen_nodig = len(thuisteams)
         total_banen_nodig += banen_nodig
 
-        result = await db.execute(
-            select(Team).where(
-                Team.id.in_(list(thuisteams)) if thuisteams else False,
-                Team.competitie_id == competitie.id,
-            )
-        )
-        teams = list(result.scalars().all())
+        ronde_teams = [
+            teams_map[tid] for tid in thuisteams if tid in teams_map and teams_map[tid].competitie_id == competitie.id
+        ]
 
         voorkeur_tijd = "19:00"
         if competitie.speeldag == dag_van_week:
@@ -388,11 +410,11 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
         elif competitie.speeldag == "za":
             voorkeur_tijd = "13:00"
 
-        if teams:
+        if ronde_teams:
             competities_overzicht.append(
                 {
                     "competitie_id": str(competitie.id),
-                    "team_naam": teams[0].naam if teams else "Onbekend",
+                    "team_naam": ronde_teams[0].naam if ronde_teams else "Onbekend",
                     "competitie_naam": competitie.naam,
                     "divisie": "",
                     "banen_nodig": banen_nodig,

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     SUPER_ADMIN_EMAIL: str  # Required env var - no default
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     ENCRYPTION_KEY: str
+    ENVIRONMENT: str = "development"
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

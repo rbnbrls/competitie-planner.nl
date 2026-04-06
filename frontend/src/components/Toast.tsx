@@ -12,7 +12,7 @@ export const ToastContainer = () => {
         },
         success: {
           duration: 5000,
-          theme: {
+          iconTheme: {
             primary: 'green',
             secondary: 'black',
           },

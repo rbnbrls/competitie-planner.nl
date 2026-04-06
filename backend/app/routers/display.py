@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel
 from sqlalchemy import select, and_, or_
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -60,7 +61,9 @@ async def get_display_by_token(
         )
 
     result = await db.execute(
-        select(Speelronde).where(
+        select(Speelronde)
+        .options(joinedload(Speelronde.competitie))
+        .where(
             and_(
                 Speelronde.club_id == club.id,
                 Speelronde.public_token == token,
@@ -75,21 +78,20 @@ async def get_display_by_token(
             detail="Ronde not found",
         )
 
-    result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde.id))
+    result = await db.execute(
+        select(BaanToewijzing)
+        .options(joinedload(BaanToewijzing.baan), joinedload(BaanToewijzing.team))
+        .where(BaanToewijzing.ronde_id == ronde.id)
+    )
     toewijzingen = list(result.scalars().all())
 
     toewijzingen_with_details = []
     for t in toewijzingen:
-        result = await db.execute(select(Baan).where(Baan.id == t.baan_id))
-        baan = result.scalar_one()
-        result = await db.execute(select(Team).where(Team.id == t.team_id))
-        team = result.scalar_one()
-
         toewijzingen_with_details.append(
             DisplayToewijzing(
-                baan_nummer=baan.nummer,
-                baan_naam=baan.naam,
-                team_naam=team.naam,
+                baan_nummer=t.baan.nummer,
+                baan_naam=t.baan.naam,
+                team_naam=t.team.naam,
                 tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
                 tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
                 notitie=t.notitie,
@@ -136,6 +138,7 @@ async def get_display_current(
 
     result = await db.execute(
         select(Speelronde)
+        .options(joinedload(Speelronde.competitie))
         .where(
             and_(
                 Speelronde.club_id == club.id,
@@ -151,6 +154,7 @@ async def get_display_current(
     if not ronde:
         result = await db.execute(
             select(Speelronde)
+            .options(joinedload(Speelronde.competitie))
             .where(
                 and_(
                     Speelronde.club_id == club.id,
@@ -175,21 +179,20 @@ async def get_display_current(
             ronde=None,
         )
 
-    result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde.id))
+    result = await db.execute(
+        select(BaanToewijzing)
+        .options(joinedload(BaanToewijzing.baan), joinedload(BaanToewijzing.team))
+        .where(BaanToewijzing.ronde_id == ronde.id)
+    )
     toewijzingen = list(result.scalars().all())
 
     toewijzingen_with_details = []
     for t in toewijzingen:
-        result = await db.execute(select(Baan).where(Baan.id == t.baan_id))
-        baan = result.scalar_one()
-        result = await db.execute(select(Team).where(Team.id == t.team_id))
-        team = result.scalar_one()
-
         toewijzingen_with_details.append(
             DisplayToewijzing(
-                baan_nummer=baan.nummer,
-                baan_naam=baan.naam,
-                team_naam=team.naam,
+                baan_nummer=t.baan.nummer,
+                baan_naam=t.baan.naam,
+                team_naam=t.team.naam,
                 tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
                 tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
                 notitie=t.notitie,

@@ -1,14 +1,15 @@
 from datetime import UTC, datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Club, User, InviteToken, PasswordResetToken
+from app.limiter import limiter
 from app.schemas import UserResponse
 from app.services.auth import (
     TokenPayload,
@@ -97,7 +98,9 @@ async def get_current_tenant_admin(
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     slug: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -125,7 +128,21 @@ async def login(
     )
     user = result.scalar_one_or_none()
 
+    if user:
+        if user.locked_until and user.locked_until > datetime.now(UTC):
+            retry_after = int((user.locked_until - datetime.now(UTC)).total_seconds())
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
+            )
+
     if not user or not verify_password(form_data.password, user.password_hash):
+        if user:
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 10:
+                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+            await db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -150,6 +167,9 @@ async def login(
     )
     refresh_token = create_refresh_token(user.id)
 
+    # Reset failed attempts on success
+    user.failed_login_attempts = 0
+    user.locked_until = None
     user.last_login = datetime.now(UTC)
     await db.commit()
 
@@ -378,6 +398,20 @@ async def forgot_password(
     user = result.scalar_one_or_none()
 
     if user:
+        # Rate limit: max 3 per hour per email
+        result = await db.execute(
+            select(func.count(PasswordResetToken.id)).where(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.created_at > datetime.now(UTC) - timedelta(hours=1),
+            )
+        )
+        reset_count = result.scalar()
+        if reset_count >= 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Te veel aanvragen voor wachtwoordherstel. Probeer het later opnieuw.",
+            )
+
         import secrets
         from app.models import PasswordResetToken
 
