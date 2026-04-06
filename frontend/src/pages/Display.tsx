@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -44,7 +44,7 @@ export default function DisplayPage() {
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(60);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const url = token
         ? `${API_BASE_URL}/display/${slug}/${token}`
@@ -52,12 +52,12 @@ export default function DisplayPage() {
       const res = await axios.get<DisplayResponse>(url);
       setData(res.data);
       setError(null);
-    } catch (err) {
+    } catch (_err) {
       setError("Geen actuele banenindeling beschikbaar");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [slug, token]);
 
   useEffect(() => {
     fetchData();
@@ -74,7 +74,7 @@ export default function DisplayPage() {
       clearInterval(interval);
       clearInterval(countdownInterval);
     };
-  }, [slug, token]);
+  }, [fetchData]);
 
   if (isLoading) {
     return (

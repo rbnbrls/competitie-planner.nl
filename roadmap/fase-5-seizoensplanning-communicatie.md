@@ -3,12 +3,6 @@
 Overzicht over het hele seizoen, slim planningsalgoritme, en betere communicatie met teamcaptains.
 
 
----
-
-
-
----
-
 ## 5.5 Afdrukbaar baanoverzicht
 **Prioriteit: MIDDEL** | **Geschatte omvang: Middel**
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { 
@@ -60,20 +60,20 @@ export default function CaptainPortaal() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'planning' | 'uitslagen'>('planning');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await axios.get<CaptainPortalData>(`${API_BASE_URL}/captain/${token}`);
       setData(res.data);
-    } catch (err) {
+    } catch (_err) {
       setError("Kon gegevens niet laden. Is de link correct?");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchData();
-  }, [token]);
+  }, [fetchData]);
 
   const handleToggleBeschikbaarheid = async (rondeId: string, current: boolean) => {
     try {
@@ -82,7 +82,7 @@ export default function CaptainPortaal() {
         is_beschikbaar: !current
       });
       fetchData(); // Refresh
-    } catch (err) {
+    } catch (_err) {
       alert("Fout bij het opslaan van beschikbaarheid");
     }
   };
@@ -95,7 +95,7 @@ export default function CaptainPortaal() {
         uitslag_uitteam: uit
       });
       fetchData();
-    } catch (err) {
+    } catch (_err) {
       alert("Fout bij het opslaan van uitslag");
     }
   };

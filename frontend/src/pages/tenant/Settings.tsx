@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { tenantApi, onboardingApi } from "../../lib/api";
-import { useAuth } from "../../contexts/AuthContext";
 import { Save, RefreshCw, Building2, MapPin, Globe, Phone, ShieldCheck, AlertCircle, Users, Activity } from "lucide-react";
 import { showToast } from "../../components/Toast";
 import { 
@@ -30,7 +29,6 @@ interface ClubSettings {
 }
 
 export default function SettingsPage() {
-  const { } = useAuth();
   const [settings, setSettings] = useState<ClubSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,7 +70,7 @@ export default function SettingsPage() {
     try {
       await tenantApi.updateSettings(formData);
       showToast.success("Instellingen succesvol opgeslagen");
-    } catch (err) {
+    } catch (_err) {
       showToast.error("Fout bij opslaan van instellingen");
     } finally {
       setIsSaving(false);
@@ -90,7 +88,7 @@ export default function SettingsPage() {
       setTimeout(() => {
         window.location.href = "/onboarding";
       }, 1500);
-    } catch (err) {
+    } catch (_err) {
       showToast.error("Fout bij resetten van onboarding");
       setIsResetting(false);
     }

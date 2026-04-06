@@ -31,7 +31,7 @@ interface CheckoutStatus {
 }
 
 export default function CheckoutPage() {
-  const { user: _user } = useAuth();
+  useAuth();
   const [status, setStatus] = useState<CheckoutStatus | null>(null);
   const [iban, setIban] = useState("");
   const [consumerName, setConsumerName] = useState("");

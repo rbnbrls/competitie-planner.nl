@@ -134,7 +134,7 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
       } else {
         setErrors({ algemeen: "Geen geldige teams gevonden in het bestand" });
       }
-    } catch (error) {
+    } catch (_error) {
       setErrors({ algemeen: "Kon het bestand niet lezen. Gebruik een geldige CSV." });
     } finally {
       setIsLoading(false);
