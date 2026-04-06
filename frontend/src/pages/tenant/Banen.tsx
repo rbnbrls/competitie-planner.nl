@@ -119,7 +119,7 @@ export default function BanenPage() {
             });
             setShowModal(true);
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           Baan toevoegen
         </button>
@@ -138,73 +138,129 @@ export default function BanenPage() {
       )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Nr.
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Naam
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Verlichting
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Overdekt
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Prioriteit
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Acties
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {banen.map((baan) => (
-              <tr key={baan.id} className={!baan.actief ? "bg-gray-50" : ""}>
-                <td className="px-6 py-4 whitespace-nowrap">{baan.nummer}</td>
-                <td className="px-6 py-4">{baan.naam || "-"}</td>
-                <td className="px-6 py-4">
-                  {VERLICHTING_TYPES.find((v) => v.value === baan.verlichting_type)?.label}
-                </td>
-                <td className="px-6 py-4">{baan.overdekt ? "Ja" : "Nee"}</td>
-                <td className="px-6 py-4">{baan.prioriteit_score}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs rounded ${
-                      baan.actief
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {baan.actief ? "Actief" : "Inactief"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => handleEdit(baan)}
-                    className="text-blue-600 hover:text-blue-800 mr-3"
-                  >
-                    Bewerken
-                  </button>
-                  {baan.actief && (
-                    <button
-                      onClick={() => handleDeactivate(baan)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Deactiveren
-                    </button>
-                  )}
-                </td>
+        <div className="hidden md:block">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Nr.
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Naam
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Verlichting
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Overdekt
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Prioriteit
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  Acties
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {banen.map((baan) => (
+                <tr key={baan.id} className={!baan.actief ? "bg-gray-50" : ""}>
+                  <td className="px-6 py-4 whitespace-nowrap">{baan.nummer}</td>
+                  <td className="px-6 py-4">{baan.naam || "-"}</td>
+                  <td className="px-6 py-4">
+                    {VERLICHTING_TYPES.find((v) => v.value === baan.verlichting_type)?.label}
+                  </td>
+                  <td className="px-6 py-4">{baan.overdekt ? "Ja" : "Nee"}</td>
+                  <td className="px-6 py-4">{baan.prioriteit_score}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${
+                        baan.actief
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {baan.actief ? "Actief" : "Inactief"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => handleEdit(baan)}
+                      className="text-blue-600 hover:text-blue-800 mr-4 min-h-[44px]"
+                    >
+                      Bewerken
+                    </button>
+                    {baan.actief && (
+                      <button
+                        onClick={() => handleDeactivate(baan)}
+                        className="text-red-600 hover:text-red-800 min-h-[44px]"
+                      >
+                        Deactiveren
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden divide-y divide-gray-200">
+          {banen.map((baan) => (
+            <div key={baan.id} className={`p-4 ${!baan.actief ? "bg-gray-50" : ""}`}>
+              <div className="flex justify-between items-start mb-2">
+                <div className="font-bold text-lg">Baan {baan.nummer}</div>
+                <span
+                  className={`px-2 py-1 text-xs rounded ${
+                    baan.actief
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {baan.actief ? "Actief" : "Inactief"}
+                </span>
+              </div>
+              {baan.naam && (
+                <div className="text-gray-700 mb-2">{baan.naam}</div>
+              )}
+              <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-4 bg-white p-3 rounded border">
+                <div>
+                  <span className="block text-gray-400 text-xs uppercase">Verlichting</span>
+                  {VERLICHTING_TYPES.find((v) => v.value === baan.verlichting_type)?.label}
+                </div>
+                <div>
+                  <span className="block text-gray-400 text-xs uppercase">Overdekt</span>
+                  {baan.overdekt ? "Ja" : "Nee"}
+                </div>
+                <div className="col-span-2">
+                  <span className="block text-gray-400 text-xs uppercase">Prioriteit Score</span>
+                  {baan.prioriteit_score}/10
+                </div>
+              </div>
+              
+              <div className="flex gap-3 border-t pt-3">
+                <button
+                  onClick={() => handleEdit(baan)}
+                  className="flex-1 text-center py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium active:bg-blue-100"
+                >
+                  Bewerken
+                </button>
+                {baan.actief && (
+                  <button
+                    onClick={() => handleDeactivate(baan)}
+                    className="flex-1 text-center py-2 bg-red-50 text-red-700 rounded-md text-sm font-medium active:bg-red-100"
+                  >
+                    Deactiveren
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
         {banen.length === 0 && (
           <div className="p-8 text-center text-gray-500">
             Nog geen banen toegevoegd
@@ -229,7 +285,7 @@ export default function BanenPage() {
                     type="number"
                     value={formData.nummer}
                     onChange={(e) => setFormData({ ...formData, nummer: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                     required
                     min="1"
                   />
@@ -243,7 +299,7 @@ export default function BanenPage() {
                     type="text"
                     value={formData.naam}
                     onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                     placeholder="Bijv. Baan 1 - Centre"
                   />
                 </div>
@@ -255,7 +311,7 @@ export default function BanenPage() {
                   <select
                     value={formData.verlichting_type}
                     onChange={(e) => setFormData({ ...formData, verlichting_type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                   >
                     {VERLICHTING_TYPES.map((type) => (
                       <option key={type.value} value={type.value}>
@@ -271,7 +327,7 @@ export default function BanenPage() {
                       type="checkbox"
                       checked={formData.overdekt}
                       onChange={(e) => setFormData({ ...formData, overdekt: e.target.checked })}
-                      className="mr-2"
+                      className="mr-3 w-5 h-5 rounded border-gray-300"
                     />
                     <span className="text-sm font-medium text-gray-700">Overdekt</span>
                   </label>
@@ -285,7 +341,7 @@ export default function BanenPage() {
                     type="range"
                     value={formData.prioriteit_score}
                     onChange={(e) => setFormData({ ...formData, prioriteit_score: parseInt(e.target.value) })}
-                    className="w-full"
+                    className="w-full h-8"
                     min="1"
                     max="10"
                   />
@@ -297,14 +353,14 @@ export default function BanenPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 min-h-[44px] text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 w-full sm:w-auto"
                 >
                   Annuleren
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isSaving ? "Opslaan..." : "Opslaan"}
                 </button>

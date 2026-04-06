@@ -24,8 +24,12 @@ services:
       - "traefik.http.routers.api.rule=Host(`api.competitie-planner.nl`)"
       - "traefik.http.routers.api.tls=true"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
-    env_file:
-      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://cpuser:${DB_PASSWORD}@db:5432/competitieplanner
+      - SECRET_KEY=${SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
+      - CORS_ORIGINS=["https://competitie-planner.nl", "https://www.competitie-planner.nl"]
 
   db:
     image: postgres:16-alpine

@@ -2,9 +2,6 @@
 
 De primaire gebruikers zijn vrijwilligers bij tennisverenigingen in de leeftijdscategorie 50+. De UX moet hier volledig op afgestemd zijn: groot, duidelijk, begeleidend, en foutbestendig.
 
-
-
-
 ---
 
 ## 3.4 Mobiele bruikbaarheid
@@ -13,12 +10,12 @@ De primaire gebruikers zijn vrijwilligers bij tennisverenigingen in de leeftijds
 Veel werk wordt op een telefoon of tablet gedaan (bijv. op de club zelf).
 
 **Taken:**
-- [ ] Responsive design audit van alle pagina's
-- [ ] Tabel-layouts vervangen door card-layouts op kleine schermen
-- [ ] Touch-friendly drag-and-drop (grotere touch targets, TouchSensor toevoegen aan dnd-kit)
-- [ ] Grotere knoppen en invoervelden (min 44px touch targets)
-- [ ] Bottom navigation op mobiel i.p.v. sidebar
-- [ ] Test op iPhone Safari en Android Chrome
+- [x] Responsive design audit van alle pagina's
+- [x] Tabel-layouts vervangen door card-layouts op kleine schermen
+- [x] Touch-friendly drag-and-drop (grotere touch targets, TouchSensor toevoegen aan dnd-kit)
+- [x] Grotere knoppen en invoervelden (min 44px touch targets)
+- [x] Bottom navigation op mobiel i.p.v. sidebar
+- [x] Test op iPhone Safari en Android Chrome
 
 **Bestanden:**
 - `frontend/src/pages/tenant/Layout.tsx`

@@ -251,7 +251,7 @@ export default function TeamsPage() {
         <div className="flex gap-3">
           <button
             onClick={() => setShowImportModal(true)}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            className="px-4 py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
           >
             CSV Import
           </button>
@@ -260,7 +260,7 @@ export default function TeamsPage() {
               resetForm();
               setShowModal(true);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Team toevoegen
           </button>
@@ -286,23 +286,23 @@ export default function TeamsPage() {
           placeholder="Zoeken op naam..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md w-full max-w-xs"
+          className="px-4 py-2 min-h-[44px] border border-gray-300 rounded-md w-full max-w-xs"
         />
         
         {selectedTeamIds.length > 0 && (
-          <div className="flex gap-2 items-center bg-blue-50 px-4 py-2 rounded-md">
+          <div className="flex flex-wrap gap-2 items-center bg-blue-50 px-4 py-2 rounded-md w-full sm:w-auto">
             <span className="text-sm font-medium mr-2">{selectedTeamIds.length} geselecteerd</span>
             <button
               onClick={() => handleBulkActivate(true)}
               disabled={isBulkOperationProgress.inProgress}
-              className="text-sm px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
+              className="text-sm px-3 py-2 min-h-[44px] bg-white border border-gray-300 rounded hover:bg-gray-50"
             >
               Activeer
             </button>
             <button
               onClick={() => handleBulkActivate(false)}
               disabled={isBulkOperationProgress.inProgress}
-              className="text-sm px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
+              className="text-sm px-3 py-2 min-h-[44px] bg-white border border-gray-300 rounded hover:bg-gray-50"
             >
               Deactiveer
             </button>
@@ -311,62 +311,126 @@ export default function TeamsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left w-12">
-                <input 
-                  type="checkbox" 
-                  className="rounded border-gray-300"
-                  checked={selectedTeamIds.length > 0 && selectedTeamIds.length === filteredTeams().length}
-                  onChange={handleSelectAll}
-                />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Teamnaam
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Captain
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Speelklasse
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Acties
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredTeams().map((team) => (
-              <tr key={team.id} className={!team.actief ? "bg-gray-50" : ""}>
-                <td className="px-6 py-4">
+        <div className="hidden md:block">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left w-12">
                   <input 
                     type="checkbox" 
-                    className="rounded border-gray-300"
-                    checked={selectedTeamIds.includes(team.id)}
-                    onChange={(e) => handleSelectTeam(e, team.id)}
+                    className="rounded border-gray-300 w-5 h-5"
+                    checked={selectedTeamIds.length > 0 && selectedTeamIds.length === filteredTeams().length}
+                    onChange={handleSelectAll}
                   />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">{team.naam}</td>
-                <td className="px-6 py-4">
-                  {team.captain_naam && (
-                    <div>
-                      <div>{team.captain_naam}</div>
-                      {team.captain_email && (
-                        <div className="text-sm text-gray-500">
-                          {team.captain_email}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {team.speelklasse || "-"}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Teamnaam
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Captain
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Speelklasse
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  Acties
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredTeams().map((team) => (
+                <tr key={team.id} className={!team.actief ? "bg-gray-50" : ""}>
+                  <td className="px-6 py-4">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-gray-300 w-5 h-5"
+                      checked={selectedTeamIds.includes(team.id)}
+                      onChange={(e) => handleSelectTeam(e, team.id)}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">{team.naam}</td>
+                  <td className="px-6 py-4">
+                    {team.captain_naam && (
+                      <div>
+                        <div>{team.captain_naam}</div>
+                        {team.captain_email && (
+                          <div className="text-sm text-gray-500">
+                            {team.captain_email}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {team.speelklasse || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${
+                        team.actief
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {team.actief ? "Actief" : "Inactief"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button
+                      onClick={() => handleEdit(team)}
+                      className="text-blue-600 hover:text-blue-800 mr-4 min-h-[44px]"
+                    >
+                      Bewerken
+                    </button>
+                    {team.actief ? (
+                      <button
+                        onClick={() => handleDeactivate(team)}
+                        className="text-red-600 hover:text-red-800 min-h-[44px]"
+                      >
+                        Deactiveren
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleActivate(team)}
+                        className="text-green-600 hover:text-green-800 min-h-[44px]"
+                      >
+                        Activeren
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden divide-y divide-gray-200">
+          <div className="p-4 bg-gray-50 flex items-center border-b">
+            <input 
+              type="checkbox" 
+              className="rounded border-gray-300 w-6 h-6 mr-3"
+              checked={selectedTeamIds.length > 0 && selectedTeamIds.length === filteredTeams().length}
+              onChange={handleSelectAll}
+            />
+            <span className="text-sm font-medium text-gray-700">Selecteer alle teams</span>
+          </div>
+          {filteredTeams().map((team) => (
+            <div key={team.id} className={`p-4 flex gap-3 ${!team.actief ? "bg-gray-50" : ""}`}>
+              <div className="pt-1">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-gray-300 w-6 h-6"
+                  checked={selectedTeamIds.includes(team.id)}
+                  onChange={(e) => handleSelectTeam(e, team.id)}
+                />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start mb-1">
+                  <div className="font-bold text-lg">{team.naam}</div>
                   <span
                     className={`px-2 py-1 text-xs rounded ${
                       team.actief
@@ -376,34 +440,45 @@ export default function TeamsPage() {
                   >
                     {team.actief ? "Actief" : "Inactief"}
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                </div>
+                {team.speelklasse && (
+                  <div className="text-sm text-gray-600 mb-2">Klasse: {team.speelklasse}</div>
+                )}
+                {team.captain_naam && (
+                  <div className="text-sm bg-gray-100 p-2 rounded mb-3">
+                    <span className="font-medium text-gray-700">👤 {team.captain_naam}</span>
+                    {team.captain_email && (
+                      <div className="text-gray-500 mt-1">✉️ {team.captain_email}</div>
+                    )}
+                  </div>
+                )}
+                <div className="flex gap-3 mt-2 border-t pt-3">
                   <button
                     onClick={() => handleEdit(team)}
-                    className="text-blue-600 hover:text-blue-800 mr-3"
+                    className="flex-1 text-center py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium active:bg-blue-100"
                   >
                     Bewerken
                   </button>
                   {team.actief ? (
                     <button
                       onClick={() => handleDeactivate(team)}
-                      className="text-red-600 hover:text-red-800"
+                      className="flex-1 text-center py-2 bg-red-50 text-red-700 rounded-md text-sm font-medium active:bg-red-100"
                     >
                       Deactiveren
                     </button>
-                  ) : (
+                   ) : (
                     <button
                       onClick={() => handleActivate(team)}
-                      className="text-green-600 hover:text-green-800"
+                      className="flex-1 text-center py-2 bg-green-50 text-green-700 rounded-md text-sm font-medium active:bg-green-100"
                     >
                       Activeren
                     </button>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
         {teams.length === 0 && (
           <div className="p-8 text-center text-gray-500">
             Nog geen teams toegevoegd. Voeg teams toe of importeer ze via CSV.
@@ -430,7 +505,7 @@ export default function TeamsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, naam: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                     required
                   />
                 </div>
@@ -445,7 +520,7 @@ export default function TeamsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, captain_naam: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                   />
                 </div>
 
@@ -459,7 +534,7 @@ export default function TeamsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, captain_email: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                   />
                 </div>
 
@@ -473,7 +548,7 @@ export default function TeamsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, speelklasse: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
                     placeholder="Bijv. 3e klasse heren"
                   />
                 </div>
@@ -486,14 +561,14 @@ export default function TeamsPage() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 min-h-[44px] text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 w-full sm:w-auto"
                 >
                   Annuleren
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isSaving ? "Opslaan..." : "Opslaan"}
                 </button>

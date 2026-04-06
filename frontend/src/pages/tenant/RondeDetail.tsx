@@ -7,6 +7,7 @@ import {
   DragStartEvent,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -132,7 +133,7 @@ function SortableToewijzingRow({
           <select
             value={toewijzing.team_id}
             onChange={(e) => onUpdate(toewijzing.id, { team_id: e.target.value })}
-            className="border rounded px-2 py-1 w-full"
+            className="border rounded px-2 py-2 min-h-[44px] w-full"
           >
             <option value="">Geen team</option>
             {teams.map((t) => (
@@ -155,7 +156,7 @@ function SortableToewijzingRow({
             value={toewijzing.tijdslot_start?.slice(0, 5) || ""}
             onChange={(e) => onTimeSlotChange(toewijzing.id, "start", e.target.value)}
             disabled={isReadOnly}
-            className="border rounded px-2 py-1 w-24"
+            className="border rounded px-2 py-2 min-h-[44px] w-24"
           />
           <span className="self-center">-</span>
           <input
@@ -163,7 +164,7 @@ function SortableToewijzingRow({
             value={toewijzing.tijdslot_eind?.slice(0, 5) || ""}
             onChange={(e) => onTimeSlotChange(toewijzing.id, "end", e.target.value)}
             disabled={isReadOnly}
-            className="border rounded px-2 py-1 w-24"
+            className="border rounded px-2 py-2 min-h-[44px] w-24"
           />
         </div>
       </td>
@@ -175,7 +176,7 @@ function SortableToewijzingRow({
           disabled={isReadOnly}
           placeholder="Notitie..."
           maxLength={200}
-          className="border rounded px-2 py-1 w-full"
+          className="border rounded px-2 py-2 min-h-[44px] w-full"
         />
       </td>
     </tr>
@@ -201,6 +202,12 @@ export default function RondeDetailPage() {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     })
   );
@@ -432,7 +439,7 @@ export default function RondeDetailPage() {
           <code className="text-sm text-blue-600 bg-white px-2 py-1 rounded">{window.location.origin}{publicUrl}</code>
           <button
             onClick={handleCopyUrl}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+            className="px-3 py-2 min-h-[44px] flex items-center justify-center bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
           >
             {copied ? "Gekopieerd!" : "Kopieer"}
           </button>
@@ -440,7 +447,7 @@ export default function RondeDetailPage() {
             href={window.location.origin + publicUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+            className="px-3 py-2 min-h-[44px] flex items-center justify-center bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
           >
             Open display
           </a>
@@ -448,11 +455,11 @@ export default function RondeDetailPage() {
       )}
 
       {!isReadOnly && (
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {isGenerating ? "Genereren..." : "Genereer indeling"}
           </button>
@@ -460,7 +467,7 @@ export default function RondeDetailPage() {
             <button
               onClick={handlePublish}
               disabled={isPublishing}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              className="px-4 py-2 min-h-[44px] bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
             >
               {isPublishing ? "Publiceren..." : "Publiceer indeling"}
             </button>
@@ -473,7 +480,7 @@ export default function RondeDetailPage() {
           <button
             onClick={handleDepublish}
             disabled={isDepublishing}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+            className="px-4 py-2 min-h-[44px] bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
           >
             {isDepublishing ? "Depubliceren..." : "Depubliceren"}
           </button>
@@ -559,117 +566,179 @@ export default function RondeDetailPage() {
       )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
-                #
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Baan
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Team
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Tijd
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Notitie
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {isReadOnly ? (
-              Object.entries(
-                (ronde.toewijzingen || []).reduce(
-                  (acc: Record<string, Toewijzing[]>, t) => {
-                    const key = `${t.baan_id}-${t.tijdslot_start || "default"}`;
-                    if (!acc[key]) {
-                      acc[key] = [];
-                    }
-                    acc[key].push(t);
-                    return acc;
-                  },
-                  {}
-                )
-              ).map(([key, toewijzingen]) => {
-                const first = toewijzingen[0];
-                const baan = banen.find((b) => b.id === first.baan_id);
-                const startTime = first.tijdslot_start?.slice(0, 5) || "19:00";
-                const endTime = first.tijdslot_eind?.slice(0, 5) || "";
-                return (
-                  <tr key={key} className="border-b">
-                    <td className="px-4 py-3">
-                      <span className="text-lg">{baan?.nummer}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {baan?.naam && <span>{baan.naam}</span>}
-                        {baan?.overdekt && (
-                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                            Overdekt
-                          </span>
-                        )}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="hidden md:block">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Baan
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Team
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Tijd
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Notitie
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {isReadOnly ? (
+                Object.entries(
+                  (ronde.toewijzingen || []).reduce(
+                    (acc: Record<string, Toewijzing[]>, t) => {
+                      const key = `${t.baan_id}-${t.tijdslot_start || "default"}`;
+                      if (!acc[key]) {
+                        acc[key] = [];
+                      }
+                      acc[key].push(t);
+                      return acc;
+                    },
+                    {}
+                  )
+                ).map(([key, toewijzingen]) => {
+                  const first = toewijzingen[0];
+                  const baan = banen.find((b) => b.id === first.baan_id);
+                  const startTime = first.tijdslot_start?.slice(0, 5) || "19:00";
+                  const endTime = first.tijdslot_eind?.slice(0, 5) || "";
+                  return (
+                    <tr key={key} className="border-b">
+                      <td className="px-4 py-3">
+                        <span className="text-lg">{baan?.nummer}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {baan?.naam && <span>{baan.naam}</span>}
+                          {baan?.overdekt && (
+                            <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                              Overdekt
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          {toewijzingen.map((t) => {
+                            const team = teams.find((team) => team.id === t.team_id);
+                            return (
+                              <div key={t.id} className="flex items-center gap-2">
+                                <span className="font-medium">{team?.naam || "-"}</span>
+                                {t.notitie && (
+                                  <span className="text-xs text-gray-500">({t.notitie})</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {startTime}
+                        {endTime && ` - ${endTime}`}
+                      </td>
+                      <td className="px-4 py-3">
+                        {toewijzingen.length > 1 ? "Meerdere teams" : toewijzingen[0].notitie}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={toewijzingIds} strategy={verticalListSortingStrategy}>
+                    {(ronde.toewijzingen || []).map((t) => (
+                      <SortableToewijzingRow
+                        key={t.id}
+                        toewijzing={t}
+                        teams={teamsForDropdown}
+                        allBanen={banen}
+                        isReadOnly={isReadOnly}
+                        onUpdate={handleUpdateToewijzing}
+                        onTimeSlotChange={handleTimeSlotChange}
+                        onNotitieChange={handleNotitieChange}
+                      />
+                    ))}
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeId ? (
+                      <div className="bg-blue-100 p-3 rounded border-2 border-blue-400">
+                        Team wisselen
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        {toewijzingen.map((t) => {
-                          const team = teams.find((team) => team.id === t.team_id);
-                          return (
-                            <div key={t.id} className="flex items-center gap-2">
-                              <span className="font-medium">{team?.naam || "-"}</span>
-                              {t.notitie && (
-                                <span className="text-xs text-gray-500">({t.notitie})</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {startTime}
-                      {endTime && ` - ${endTime}`}
-                    </td>
-                    <td className="px-4 py-3">
-                      {toewijzingen.length > 1 ? "Meerdere teams" : toewijzingen[0].notitie}
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext items={toewijzingIds} strategy={verticalListSortingStrategy}>
-                  {(ronde.toewijzingen || []).map((t) => (
-                    <SortableToewijzingRow
-                      key={t.id}
-                      toewijzing={t}
-                      teams={teamsForDropdown}
-                      allBanen={banen}
-                      isReadOnly={isReadOnly}
-                      onUpdate={handleUpdateToewijzing}
-                      onTimeSlotChange={handleTimeSlotChange}
-                      onNotitieChange={handleNotitieChange}
-                    />
-                  ))}
-                </SortableContext>
-                <DragOverlay>
-                  {activeId ? (
-                    <div className="bg-blue-100 p-3 rounded border-2 border-blue-400">
-                      Team wisselen
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden divide-y divide-gray-200">
+          {isReadOnly ? (
+            Object.entries(
+              (ronde.toewijzingen || []).reduce(
+                (acc: Record<string, Toewijzing[]>, t) => {
+                  const key = `${t.baan_id}-${t.tijdslot_start || "default"}`;
+                  if (!acc[key]) {
+                    acc[key] = [];
+                  }
+                  acc[key].push(t);
+                  return acc;
+                },
+                {}
+              )
+            ).map(([key, toewijzingen]) => {
+              const first = toewijzingen[0];
+              const baan = banen.find((b) => b.id === first.baan_id);
+              const startTime = first.tijdslot_start?.slice(0, 5) || "19:00";
+              const endTime = first.tijdslot_eind?.slice(0, 5) || "";
+              return (
+                <div key={key} className="p-4 bg-white flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <div className="font-bold text-lg">Baan {baan?.nummer}</div>
+                    <div className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">
+                      {startTime}{endTime && ` - ${endTime}`}
                     </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            )}
-          </tbody>
-        </table>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {baan?.naam && <span className="text-sm text-gray-600">{baan.naam}</span>}
+                    {baan?.overdekt && (
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                        Overdekt
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {toewijzingen.map((t) => {
+                      const team = teams.find((team) => team.id === t.team_id);
+                      return (
+                        <div key={t.id} className="bg-gray-50 p-2 rounded">
+                          <span className="font-medium block">{team?.naam || "-"}</span>
+                          {t.notitie && (
+                            <span className="text-sm text-gray-500 block mt-1">{t.notitie}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-4 bg-yellow-50 text-yellow-800 text-sm">
+              Bewerkmodus is op dit moment niet geoptimaliseerd voor mobiel. Gebruik een computer of tablet in landscape modus voor drag & drop.
+            </div>
+          )}
+        </div>
 
         {unassignedTeams.length > 0 && (
           <div className="p-4 bg-orange-50 border-t border-orange-200">
