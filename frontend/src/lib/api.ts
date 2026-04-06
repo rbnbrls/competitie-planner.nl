@@ -230,6 +230,12 @@ export const tenantApi = {
   getDagoverzichtConflicten: (datum: string) => api.get("/dagoverzicht/conflicten", { params: { datum } }),
   planDagoverzichtBanen: (datum: string) => api.post("/dagoverzicht/plan", null, { params: { datum } }),
   validateMaxThuisteams: (datum: string) => api.get("/dagoverzicht/validate/max-thuisteams", { params: { datum } }),
+  getTijdslotConfig: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/tijdslot-config`),
+  updateTijdslotConfig: (competitieId: string, data: {
+    standaard_starttijden?: string[];
+    eerste_datum?: string;
+    hergebruik_configuratie?: boolean;
+  }) => api.put(`/tenant/competities/${competitieId}/tijdslot-config`, data),
 };
 
 export const superadminApi = {

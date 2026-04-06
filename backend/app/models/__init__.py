@@ -152,6 +152,9 @@ class Competitie(Base):
     inhaal_datums: Mapped[list[date]] = mapped_column(ARRAY(Date), default=[])
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
     email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    standaard_starttijden: Mapped[list[time]] = mapped_column(ARRAY(Time), default=[])
+    eerste_datum: Mapped[date | None] = mapped_column(Date, default=None)
+    hergebruik_configuratie: Mapped[bool] = mapped_column(Boolean, default=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(

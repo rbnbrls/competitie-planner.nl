@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, time
+from datetime import date, time, timedelta
 from typing import Optional
 
 from sqlalchemy import select, and_, func
@@ -16,6 +16,153 @@ from app.models import (
     Team,
     Wedstrijd,
 )
+
+
+async def get_standaard_tijdslot_config(competitie_id: uuid.UUID, db: AsyncSession) -> dict:
+    """
+    Haalt de standaard tijdslot configuratie op voor een competitie.
+    """
+    result = await db.execute(select(Competitie).where(Competitie.id == competitie_id))
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise ValueError(f"Competitie {competitie_id} not found")
+
+    return {
+        "standaard_starttijden": [t.isoformat() for t in (competitie.standaard_starttijden or [])],
+        "eerste_datum": competitie.eerste_datum.isoformat() if competitie.eerste_datum else None,
+        "hergebruik_configuratie": competitie.hergebruik_configuratie,
+    }
+
+
+async def pas_tijdslots_toe(ronde_id: uuid.UUID, db: AsyncSession) -> list[BaanToewijzing]:
+    """
+    Wijst automatisch tijdslots toe aan baantoewijzingen op basis van standaard tijden.
+    """
+    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_id))
+    ronde = result.scalar_one_or_none()
+    if not ronde:
+        raise ValueError(f"Speelronde {ronde_id} not found")
+
+    competitie = ronde.competitie
+    if not competitie:
+        raise ValueError("Competitie not found")
+
+    standaard_tijden = competitie.standaard_starttijden or []
+    if not standaard_tijden:
+        standaard_tijden = [time(19, 0)]
+
+    result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_id))
+    toewijzingen = list(result.scalars().all())
+
+    for idx, toewijzing in enumerate(toewijzingen):
+        tijd_index = idx % len(standaard_tijden)
+        toewijzing.tijdslot_start = standaard_tijden[tijd_index]
+        start_tijd = standaard_tijden[tijd_index]
+        toewijzing.tijdslot_eind = time(start_tijd.hour + 1, start_tijd.minute)
+
+    await db.commit()
+    for t in toewijzingen:
+        await db.refresh(t)
+
+    return toewijzingen
+
+
+async def detecteer_tijdslot_conflicten(
+    baan_id: uuid.UUID,
+    tijdslot_start: time,
+    tijdslot_eind: time | None,
+    ronde_id: uuid.UUID | None = None,
+    db: AsyncSession = None,
+) -> list[dict]:
+    """
+    Detecteert conflicterende tijdslots op dezelfde baan.
+    Als ronde_id wordt meegegeven, wordt deze uitgesloten van controle.
+    """
+    if not db:
+        return []
+
+    result = await db.execute(
+        select(BaanToewijzing).where(
+            BaanToewijzing.baan_id == baan_id,
+        )
+    )
+    all_toewijzingen = list(result.scalars().all())
+
+    if ronde_id:
+        all_toewijzingen = [t for t in all_toewijzingen if t.ronde_id != ronde_id]
+
+    conflicten = []
+    for bestaande in all_toewijzingen:
+        if bestaande.tijdslot_eind is None:
+            bestaande_eind = (bestaande.tijdslot_start.hour + 1, bestaande.tijdslot_start.minute)
+        else:
+            bestaande_eind = (bestaande.tijdslot_eind.hour, bestaande.tijdslot_eind.minute)
+
+        new_eind = (
+            (tijdslot_eind.hour, tijdslot_eind.minute)
+            if tijdslot_eind
+            else (tijdslot_start.hour + 1, tijdslot_start.minute)
+        )
+
+        if not (
+            tijdslot_start >= bestaande.tijdslot_start
+            and time(new_eind[0], new_eind[1]) <= time(bestaande_eind[0], bestaande_eind[1])
+        ):
+            if not (
+                time(new_eind[0], new_eind[1]) <= bestaande.tijdslot_start
+                or tijdslot_start >= time(bestaande_eind[0], bestaande_eind[1])
+            ):
+                conflicten.append(
+                    {
+                        "type": "overlap",
+                        "bestaand_tijdslot": bestaande.tijdslot_start.isoformat(),
+                        "message": f"Overlap met bestaand tijdslot {bestaande.tijdslot_start.isoformat()}",
+                    }
+                )
+
+    return conflicten
+
+
+async def vind_beschikbare_combinatie(
+    baan_id: uuid.UUID,
+    tijdslot_start: time,
+    db: AsyncSession,
+    exclude_ronde_id: uuid.UUID | None = None,
+) -> dict:
+    """
+    Vindt de eerstvolgende beschikbare combinatie van baan en tijdslot.
+    """
+    result = await db.execute(select(Baan).where(Baan.id == baan_id))
+    baan = result.scalar_one_or_none()
+    if not baan:
+        return {"beschikbaar": False, "message": "Baan niet gevonden"}
+
+    result = await db.execute(
+        select(BaanToewijzing).where(
+            BaanToewijzing.baan_id == baan_id,
+        )
+    )
+    existing = list(result.scalars().all())
+    if exclude_ronde_id:
+        existing = [e for e in existing if e.ronde_id != exclude_ronde_id]
+
+    existing_times = [(e.tijdslot_start, e.tijdslot_eind) for e in existing]
+
+    new_eind = time(tijdslot_start.hour + 1, tijdslot_start.minute)
+    has_conflict = any(
+        not (tijdslot_start >= e[0] and new_eind <= (e[1] or time(e[0].hour + 1, e[0].minute)))
+        and not (new_eind <= e[0] or tijdslot_start >= (e[1] or time(e[0].hour + 1, e[0].minute)))
+        for e in existing_times
+    )
+
+    if not has_conflict:
+        return {
+            "beschikbaar": True,
+            "baan_id": str(baan_id),
+            "tijdslot_start": tijdslot_start.isoformat(),
+        }
+
+    return {"beschikbaar": False, "message": "Geen directe beschikbaarheid"}
 
 
 async def genereer_indeling(ronde_id: uuid.UUID, db: AsyncSession) -> list[BaanToewijzing]:
@@ -90,6 +237,12 @@ async def genereer_indeling(ronde_id: uuid.UUID, db: AsyncSession) -> list[BaanT
             team_id=gekozen_team.id,
             baan_id=baan.id,
         )
+        standaard_tijden = competitie.standaard_starttijden or []
+        if standaard_tijden:
+            tijd_index = len(toegewezen_team_ids) % len(standaard_tijden)
+            toewijzing.tijdslot_start = standaard_tijden[tijd_index]
+            start_tijd = standaard_tijden[tijd_index]
+            toewijzing.tijdslot_eind = time(start_tijd.hour + 1, start_tijd.minute)
         db.add(toewijzing)
         toewijzingen.append(toewijzing)
         toegewezen_team_ids.add(gekozen_team.id)

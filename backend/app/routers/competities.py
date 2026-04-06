@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import time
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from app.db import get_db
 from app.models import Club, Competitie, Team
 from app.schemas import CompetitieCreate, CompetitieUpdate, CompetitieResponse
 from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
+from app.services import planning as planning_service
 
 router = APIRouter(prefix="/tenant/competities", tags=["competities"])
 
@@ -38,6 +40,9 @@ async def list_competities(
                 "eind_datum": c.eind_datum.isoformat(),
                 "actief": c.actief,
                 "email_notifications_enabled": c.email_notifications_enabled,
+                "standaard_starttijden": [t.isoformat() for t in (c.standaard_starttijden or [])],
+                "eerste_datum": c.eerste_datum.isoformat() if c.eerste_datum else None,
+                "hergebruik_configuratie": c.hergebruik_configuratie,
             }
             for c in competities
         ]
@@ -82,6 +87,9 @@ async def get_competitie(
         "inhaal_datums": competitie.inhaal_datums,
         "actief": competitie.actief,
         "email_notifications_enabled": competitie.email_notifications_enabled,
+        "standaard_starttijden": [t.isoformat() for t in (competitie.standaard_starttijden or [])],
+        "eerste_datum": competitie.eerste_datum.isoformat() if competitie.eerste_datum else None,
+        "hergebruik_configuratie": competitie.hergebruik_configuratie,
     }
 
 
@@ -246,3 +254,93 @@ async def delete_competitie(
     await db.commit()
 
     return {"message": "Competitie deactivated successfully"}
+
+
+class TijdslotConfig(BaseModel):
+    standaard_starttijden: list[str] | None = None
+    eerste_datum: str | None = None
+    hergebruik_configuratie: bool | None = None
+
+
+@router.get("/{competitie_id}/tijdslot-config")
+async def get_tijdslot_config(
+    competitie_id: str,
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    result = await db.execute(
+        select(Competitie).where(
+            Competitie.id == competitie_uuid,
+            Competitie.club_id == club.id,
+        )
+    )
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)
+
+
+@router.put("/{competitie_id}/tijdslot-config")
+async def update_tijdslot_config(
+    competitie_id: str,
+    data: TijdslotConfig,
+    current: tuple = CURRENT_ADMIN_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    result = await db.execute(
+        select(Competitie).where(
+            Competitie.id == competitie_uuid,
+            Competitie.club_id == club.id,
+        )
+    )
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    if data.standaard_starttijden is not None:
+        parsed_times = []
+        for t in data.standaard_starttijden:
+            parts = t.split(":")
+            if len(parts) >= 2:
+                parsed_times.append(time(int(parts[0]), int(parts[1])))
+        competitie.standaard_starttijden = parsed_times
+
+    if data.eerste_datum is not None:
+        from datetime import date as date_lib
+
+        parts = data.eerste_datum.split("-")
+        if len(parts) == 3:
+            competitie.eerste_datum = date_lib(int(parts[0]), int(parts[1]), int(parts[2]))
+
+    if data.hergebruik_configuratie is not None:
+        competitie.hergebruik_configuratie = data.hergebruik_configuratie
+
+    await db.commit()
+    await db.refresh(competitie)
+
+    return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { Clock, Calendar, Settings } from "lucide-react";
 
 interface Competitie {
   id: string;
@@ -11,7 +12,16 @@ interface Competitie {
   actief: boolean;
   feestdagen: string[];
   inhaal_datums: string[];
+  standaard_starttijden?: string[];
+  eerste_datum?: string;
+  hergebruik_configuratie?: boolean;
   created_at: string;
+}
+
+interface TijdslotConfig {
+  standaard_starttijden: string[];
+  eerste_datum: string | null;
+  hergebruik_configuratie: boolean;
 }
 
 const DAGEN = [
@@ -30,6 +40,13 @@ export default function CompetitiesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showTijdslotModal, setShowTijdslotModal] = useState(false);
+  const [selectedCompetitie, setSelectedCompetitie] = useState<Competitie | null>(null);
+  const [tijdslotConfig, setTijdslotConfig] = useState<TijdslotConfig>({
+    standaard_starttijden: [],
+    eerste_datum: null,
+    hergebruik_configuratie: true,
+  });
   const [formData, setFormData] = useState({
     naam: "",
     speeldag: "maandag",
@@ -46,6 +63,19 @@ export default function CompetitiesPage() {
     tenantApi.listCompetities().then((res: any) => {
       setCompetities(res.data.competities || []);
     }).finally(() => setIsLoading(false));
+  };
+
+  const loadTijdslotConfig = async (competitieId: string) => {
+    try {
+      const res = await tenantApi.getTijdslotConfig(competitieId);
+      setTijdslotConfig(res.data);
+    } catch (err) {
+      setTijdslotConfig({
+        standaard_starttijden: [],
+        eerste_datum: null,
+        hergebruik_configuratie: true,
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,6 +100,51 @@ export default function CompetitiesPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleOpenTijdslotConfig = (comp: Competitie) => {
+    setSelectedCompetitie(comp);
+    loadTijdslotConfig(comp.id);
+    setShowTijdslotModal(true);
+  };
+
+  const handleSaveTijdslotConfig = async () => {
+    if (!selectedCompetitie) return;
+    setIsSaving(true);
+    try {
+      await tenantApi.updateTijdslotConfig(selectedCompetitie.id, {
+        standaard_starttijden: tijdslotConfig.standaard_starttijden,
+        eerste_datum: tijdslotConfig.eerste_datum || undefined,
+        hergebruik_configuratie: tijdslotConfig.hergebruik_configuratie,
+      });
+      setMessage("Tijdslotconfiguratie opgeslagen");
+      loadCompetities();
+      setShowTijdslotModal(false);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setMessage(error.response?.data?.detail || "Fout bij opslaan");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addTijdslot = () => {
+    setTijdslotConfig({
+      ...tijdslotConfig,
+      standaard_starttijden: [...tijdslotConfig.standaard_starttijden, "19:00"],
+    });
+  };
+
+  const removeTijdslot = (index: number) => {
+    const newTimes = [...tijdslotConfig.standaard_starttijden];
+    newTimes.splice(index, 1);
+    setTijdslotConfig({ ...tijdslotConfig, standaard_starttijden: newTimes });
+  };
+
+  const updateTijdslot = (index: number, value: string) => {
+    const newTimes = [...tijdslotConfig.standaard_starttijden];
+    newTimes[index] = value;
+    setTijdslotConfig({ ...tijdslotConfig, standaard_starttijden: newTimes });
   };
 
   const handleViewTeams = (competitieId: string) => {
@@ -127,8 +202,21 @@ export default function CompetitiesPage() {
                 {new Date(activeComp.start_datum).toLocaleDateString("nl-NL")} t/m{" "}
                 {new Date(activeComp.eind_datum).toLocaleDateString("nl-NL")}
               </div>
+              {activeComp.standaard_starttijden && activeComp.standaard_starttijden.length > 0 && (
+                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <Clock size={12} />
+                  Standaardtijden: {activeComp.standaard_starttijden.join(", ")}
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
+              <button
+                onClick={() => handleOpenTijdslotConfig(activeComp)}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Settings size={16} />
+                Tijdslotconfig
+              </button>
               <button
                 onClick={() => navigate(`/historie/${activeComp.id}`)}
                 className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
@@ -166,6 +254,9 @@ export default function CompetitiesPage() {
                 Start - Eind
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Standaardtijden
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Status
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
@@ -185,6 +276,15 @@ export default function CompetitiesPage() {
                   {new Date(comp.eind_datum).toLocaleDateString("nl-NL")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  {comp.standaard_starttijden && comp.standaard_starttijden.length > 0 ? (
+                    <span className="text-sm text-gray-600">
+                      {comp.standaard_starttijden.join(", ")}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-gray-400">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
                   <span
                     className={`px-2 py-1 text-xs rounded ${
                       comp.actief
@@ -196,6 +296,13 @@ export default function CompetitiesPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <button
+                    onClick={() => handleOpenTijdslotConfig(comp)}
+                    className="text-gray-600 hover:text-gray-800 mr-3"
+                    title="Tijdslotconfiguratie"
+                  >
+                    <Clock size={16} />
+                  </button>
                   <button
                     onClick={() => handleViewRondes(comp.id)}
                     className="text-blue-600 hover:text-blue-800 mr-3"
@@ -306,6 +413,108 @@ export default function CompetitiesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showTijdslotModal && selectedCompetitie && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">
+              Tijdslotconfiguratie - {selectedCompetitie.naam}
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Standaard aanvangstijden
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Definieer de standaardtijden die automatisch worden toegepast bij nieuwe rondes.
+                </p>
+                <div className="space-y-2">
+                  {tijdslotConfig.standaard_starttijden.map((tijd, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="time"
+                        value={tijd}
+                        onChange={(e) => updateTijdslot(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeTijdslot(index)}
+                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+                      >
+                        Verwijder
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addTijdslot}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  + Tijd toevoegen
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar size={14} className="inline mr-1" />
+                  Eerste speeldatum (optioneel)
+                </label>
+                <input
+                  type="date"
+                  value={tijdslotConfig.eerste_datum || ""}
+                  onChange={(e) =>
+                    setTijdslotConfig({
+                      ...tijdslotConfig,
+                      eerste_datum: e.target.value || null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tijdslotConfig.hergebruik_configuratie}
+                    onChange={(e) =>
+                      setTijdslotConfig({
+                        ...tijdslotConfig,
+                        hergebruik_configuratie: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Configuratie hergebruiken bij nieuwe seizoensplanning
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowTijdslotModal(false)}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Annuleren
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTijdslotConfig}
+                disabled={isSaving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSaving ? "Opslaan..." : "Opslaan"}
+              </button>
+            </div>
           </div>
         </div>
       )}
