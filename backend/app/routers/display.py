@@ -221,6 +221,59 @@ async def get_display_current(
     )
 
 
+class CalendarRonde(BaseModel):
+    id: str
+    datum: str
+    competitie_naam: str
+    is_inhaalronde: bool
+    public_token: str | None
+
+
+class ClubCalendarResponse(BaseModel):
+    club: DisplayClubInfo
+    rondes: list[CalendarRonde]
+
+
+@router.get("/display/{slug}/kalender")
+async def get_club_calendar(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> ClubCalendarResponse:
+    result = await db.execute(select(Club).where(Club.slug == slug))
+    club = result.scalar_one_or_none()
+    if not club:
+        raise HTTPException(status_code=404, detail="Club not found")
+
+    result = await db.execute(
+        select(Speelronde)
+        .options(joinedload(Speelronde.competitie))
+        .where(and_(Speelronde.club_id == club.id, Speelronde.status == "gepubliceerd"))
+        .order_by(Speelronde.datum)
+    )
+    rondes = result.scalars().all()
+
+    return ClubCalendarResponse(
+        club=DisplayClubInfo(
+            naam=club.naam,
+            slug=club.slug,
+            primary_color=club.primary_color,
+            secondary_color=club.secondary_color,
+            accent_color=club.accent_color,
+            logo_url=club.logo_url,
+        ),
+        rondes=[
+            CalendarRonde(
+                id=str(r.id),
+                datum=r.datum.isoformat(),
+                competitie_naam=r.competitie.naam,
+                is_inhaalronde=r.is_inhaalronde,
+                public_token=r.public_token,
+            )
+            for r in rondes
+        ],
+    )
+
+
 @router.get("/captain/{token}", response_model=CaptainPortalResponse)
 async def get_captain_portal(
     token: str,

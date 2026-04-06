@@ -151,6 +151,13 @@ class EmailService:
                         {"".join(rows)}
                     </tbody>
                 </table>
+                <div style='margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;'>
+                    <p style="margin-top: 0;"><strong>📅 Kalender-integratie</strong></p>
+                    <p>Je kunt al je wedstrijden automatisch in je eigen agenda (Outlook, Google, Apple) laten verschijnen via je persoonlijke kalender-link:</p>
+                    <div style="text-align: center; margin: 15px 0;">
+                        {f'<a href="{self.frontend_url.replace("https://", "webcal://")}/api/v1/calendar/team/{list(portal_links.values())[0].split("/")[-1]}.ics" style="background-color: {club.accent_color}; color: #000; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Toevoegen aan agenda</a>' if portal_links and len(portal_links) > 0 else ""}
+                    </div>
+                </div>
                 {"<div style='margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;'><p><strong>Tip:</strong> Gebruik je persoonlijke link om je planning te bekijken, de uitslag door te geven of je beschikbaarheid voor de volgende ronde te melden.</p></div>" if portal_links else ""}
             </div>
             <div class="footer">

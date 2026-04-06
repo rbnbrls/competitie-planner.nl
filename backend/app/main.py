@@ -4,17 +4,20 @@ import sys
 import structlog
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from slowapi.errors import RateLimitExceeded
 
 from app.limiter import limiter
 from app.config import settings
-from app.db import engine
+from app.db import engine, get_db
 from app.routers import (
     auth,
+    calendar,
     competities,
     dagoverzicht,
     display,
@@ -98,7 +101,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Competitie-Planner API",
-    version="0.1.0",
+    version=settings.VERSION,
     lifespan=lifespan,
 )
 app.state.limiter = limiter
@@ -144,6 +147,7 @@ app.add_middleware(
 app.add_middleware(LoggingMiddleware)
 
 app.include_router(auth, prefix="/api/v1")
+app.include_router(calendar, prefix="/api/v1")
 app.include_router(superadmin, prefix="/api/v1")
 app.include_router(tenant, prefix="/api/v1")
 app.include_router(tenant_dashboard, prefix="/api/v1")
@@ -159,10 +163,48 @@ app.include_router(dagoverzicht, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+async def health_check(db: AsyncSession = Depends(get_db)):
+    """
+    Health check including database connectivity.
+    Returns 503 if database is unreachable.
+    """
+    try:
+        # Check database connectivity
+        await db.execute(text("SELECT 1"))
+        return {
+            "status": "healthy",
+            "database": "ok",
+            "version": settings.VERSION
+        }
+    except Exception as e:
+        logger.error("Health check failed", error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "status": "unhealthy",
+                "database": "down",
+                "version": settings.VERSION
+            }
+        )
+
+
+@app.get("/ready")
+async def readiness_check(db: AsyncSession = Depends(get_db)):
+    """
+    Readiness probe for deployment (e.g., Coolify, Kubernetes).
+    Ensures the application is ready to accept traffic.
+    """
+    try:
+        await db.execute(text("SELECT 1"))
+        return {"status": "ready"}
+    except Exception as e:
+        logger.error("Readiness check failed", error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection failure"
+        )
 
 
 @app.get("/")
 async def root():
-    return {"message": "Competitie-Planner API", "version": "0.1.0"}
+    return {"message": "Competitie-Planner API", "version": settings.VERSION}

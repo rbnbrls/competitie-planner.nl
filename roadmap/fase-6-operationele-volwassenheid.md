@@ -3,57 +3,6 @@
 CI pipeline verbeteren, monitoring, en code-kwaliteit standaarden.
 
 
-## 6.2 Structured logging
-**Prioriteit: MIDDEL** | **Geschatte omvang: Middel**
-
-Geen gestructureerde logging. Moeilijk om problemen te debuggen in productie.
-
-**Taken:**
-- [ ] Voeg `structlog` toe als dependency
-- [ ] Configureer JSON-formatted logging voor productie
-- [ ] Voeg request-id toe aan elke log entry (middleware)
-- [ ] Log alle belangrijke events: login, publicatie, payment, errors
-- [ ] Correleer logs met tenant (club_id) voor multi-tenant debugging
-- [ ] Development: behoud human-readable format
-
-**Bestanden:**
-- `backend/app/main.py`
-- `backend/pyproject.toml`
-- Nieuw: `backend/app/middleware/logging.py`
-
----
-
-## 6.3 Health check uitbreiden
-**Prioriteit: MIDDEL** | **Geschatte omvang: Klein**
-
-Het huidige `/health` endpoint controleert alleen of de server draait, niet of de database bereikbaar is.
-
-**Taken:**
-- [ ] Health check uitbreiden met database connectivity check
-- [ ] Response format: `{"status": "healthy", "database": "ok", "version": "x.y.z"}`
-- [ ] Voeg `/ready` endpoint toe (voor Coolify readiness probe)
-- [ ] Return HTTP 503 als database niet bereikbaar is
-
-**Bestanden:**
-- `backend/app/main.py` (of dedicated health router)
-
----
-
-## 6.4 Kalender-integratie
-**Prioriteit: LAAG** | **Geschatte omvang: Middel**
-
-**Taken:**
-- [ ] iCal (.ics) export endpoint per competitie
-- [ ] iCal export per team (alleen eigen wedstrijden)
-- [ ] "Toevoegen aan agenda" link in publicatie-email
-- [ ] Publieke club-kalender pagina met alle speeldagen
-
-**Bestanden:**
-- Nieuw: `backend/app/routers/calendar.py`
-- `backend/app/services/email.py`
-- `frontend/src/pages/Display.tsx`
-
----
 
 ## 6.5 Database indexen optimaliseren
 **Prioriteit: LAAG** | **Geschatte omvang: Klein**

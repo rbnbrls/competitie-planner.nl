@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     ENCRYPTION_KEY: str
     ENVIRONMENT: str = "development"
+    VERSION: str = "0.1.0"
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

@@ -132,6 +132,7 @@ class Baan(Base):
     __table_args__ = (
         UniqueConstraint("club_id", "nummer", name="uq_banen_club_nummer"),
         Index("idx_banen_club", "club_id"),
+        Index("idx_banen_club_actief", "club_id", "actief"),
     )
 
     club: Mapped["Club"] = relationship("Club", back_populates="banen")
@@ -208,6 +209,7 @@ class Team(Base):
     __table_args__ = (
         Index("idx_teams_competitie", "competitie_id"),
         Index("idx_teams_club", "club_id"),
+        Index("idx_teams_club_actief", "club_id", "actief"),
     )
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="teams")
@@ -319,6 +321,7 @@ class Speelronde(Base):
         Index("idx_rondes_competitie", "competitie_id"),
         Index("idx_rondes_datum", "datum"),
         Index("idx_rondes_token", "public_token"),
+        Index("idx_rondes_competitie_datum", "competitie_id", "datum"),
     )
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="speelrondes")

@@ -26,6 +26,7 @@ import PrintView from "./pages/tenant/PrintView";
 import HistoriePage from "./pages/tenant/Historie";
 import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
+import ClubCalendarPage from "./pages/ClubCalendar";
 import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
 import SeizoensoverzichtPage from "./pages/tenant/Seizoensoverzicht";
 import OnboardingPage from "./pages/Onboarding";
@@ -172,6 +173,7 @@ function AppRoutes() {
   if (isDisplayPanel) {
     return (
       <Routes>
+        <Route path="/:slug/kalender" element={<ClubCalendarPage />} />
         <Route path="/:slug" element={<DisplayPage />} />
         <Route path="/:slug/:token" element={<DisplayPage />} />
         <Route path="*" element={<DisplayPage />} />

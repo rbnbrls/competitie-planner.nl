@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
@@ -130,6 +130,14 @@ export default function DisplayPage() {
             {ronde.competitie_naam} - Speelronde {ronde.week_nummer}
           </p>
         </div>
+        <div className="ml-auto flex gap-4">
+           <Link 
+             to={`/${club.slug}/kalender`} 
+             className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl text-lg font-bold backdrop-blur-md transition-all border border-white/30 shadow-lg"
+           >
+             📅 Bekijk volledige kalender
+           </Link>
+        </div>
       </header>
 
       <main className="p-8">
@@ -205,8 +213,13 @@ export default function DisplayPage() {
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-gray-100 py-2 px-4 text-center text-gray-500">
-        <p>Ververst over {countdown} seconden</p>
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t flex justify-between items-center py-4 px-8 text-gray-500 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center gap-4">
+          <p className="font-bold text-gray-800">competitie-planner.nl</p>
+          <span className="text-gray-300">|</span>
+          <Link to={`/${club.slug}/kalender`} className="hover:text-blue-600 font-medium">📅 Bekijk volledige club-planning</Link>
+        </div>
+        <p className="font-medium">Indeling ververst over {countdown} seconden...</p>
       </footer>
     </div>
   );
