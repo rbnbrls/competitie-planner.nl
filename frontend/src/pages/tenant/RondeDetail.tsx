@@ -49,7 +49,8 @@ import {
   Users,
   Layout,
   Activity,
-  Trophy
+  Trophy,
+  Printer
 } from "lucide-react";
 
 interface Team {
@@ -427,6 +428,14 @@ export default function RondeDetailPage() {
                   Publiceren
                 </Button>
               )}
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/ronde/${rondeId}/${competitieId}/print`)}
+                className="gap-2 h-12"
+              >
+                <Printer size={18} />
+                Afdrukoverszicht
+              </Button>
             </>
           ) : (
             <>
@@ -446,6 +455,14 @@ export default function RondeDetailPage() {
               >
                 <ExternalLink size={18} />
                 Live Display
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/ronde/${rondeId}/${competitieId}/print`)}
+                className="gap-2 h-12 border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <Printer size={18} />
+                Afdrukoverszicht
               </Button>
             </>
           )}

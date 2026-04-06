@@ -40,15 +40,6 @@ class DisplayRonde(BaseModel):
     toewijzingen: list[DisplayToewijzing]
 
 
-class DisplayClubInfo(BaseModel):
-    naam: str
-    slug: str
-    primary_color: str
-    secondary_color: str
-    accent_color: str
-    logo_url: str | None
-
-
 class DisplayResponse(BaseModel):
     club: DisplayClubInfo
     ronde: DisplayRonde | None

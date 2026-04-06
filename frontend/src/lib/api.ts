@@ -185,6 +185,7 @@ export const tenantApi = {
   },
   generateIndeling: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/genereer`),
   getRondeDetail: (rondeId: string) => api.get(`/tenant/rondes/${rondeId}`),
+  exportRondePdf: (rondeId: string) => api.get(`/tenant/rondes/${rondeId}/pdf`, { responseType: "blob" }),
   getTeamsForPlanning: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/teams`),
   getBanenForPlanning: () => api.get("/tenant/banen"),
   updateToewijzing: (toewijzingId: string, data: {

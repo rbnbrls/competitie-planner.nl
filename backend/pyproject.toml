@@ -18,6 +18,9 @@ dependencies = [
     "pydantic[email]",
     "cryptography>=43.0.0",
     "slowapi>=0.1.9",
+    "reportlab>=4.4.10",
+    "qrcode>=8.2",
+    "pillow>=12.2.0",
 ]
 
 [dependency-groups]

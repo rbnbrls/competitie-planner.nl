@@ -69,6 +69,14 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+app = FastAPI(
+    title="Competitie-Planner API",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+app.state.limiter = limiter
+
+
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """
     Custom handler for RateLimitExceeded exceptions.
@@ -80,6 +88,9 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     )
     response.headers["Retry-After"] = str(exc.retry_after)
     return response
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
 @app.middleware("http")
@@ -94,14 +105,6 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
-
-app = FastAPI(
-    title="Competitie-Planner API",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

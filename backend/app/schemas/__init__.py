@@ -379,6 +379,15 @@ class CaptainWedstrijdResponse(BaseModel):
     uitslag_thuisteam: int | None = None
     uitslag_uitteam: int | None = None
 
+class DisplayClubInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    naam: str
+    slug: str
+    primary_color: str
+    secondary_color: str
+    accent_color: str
+    logo_url: str | None = None
+
 
 class CaptainPortalResponse(BaseModel):
     team_naam: str

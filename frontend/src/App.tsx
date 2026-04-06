@@ -22,6 +22,7 @@ import CompetitiesPage from "./pages/tenant/Competities";
 import TeamsPage from "./pages/tenant/Teams";
 import SpeelrondesPage from "./pages/tenant/Speelrondes";
 import RondeDetailPage from "./pages/tenant/RondeDetail";
+import PrintView from "./pages/tenant/PrintView";
 import HistoriePage from "./pages/tenant/Historie";
 import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
@@ -199,6 +200,8 @@ function AppRoutes() {
             <Route path="/teams/:competitieId" element={<TeamsPage />} />
             <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
             <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />
+            <Route path="/ronde/:rondeId/:competitieId/print" element={<PrintView />} />
+
             <Route path="/historie/:competitieId" element={<HistoriePage />} />
             <Route path="/seizoensoverzicht/:competitieId" element={<SeizoensoverzichtPage />} />
             <Route path="/dagoverzicht" element={<DagoverzichtPage />} />
