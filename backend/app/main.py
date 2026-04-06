@@ -18,6 +18,7 @@ from app.routers import (
     superadmin,
     teams,
     tenant,
+    tenant_dashboard,
     tenant_settings,
     wedstrijden,
 )
@@ -59,6 +60,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(superadmin.router, prefix="/api/v1")
 app.include_router(tenant.router, prefix="/api/v1")
+app.include_router(tenant_dashboard.router, prefix="/api/v1")
 app.include_router(tenant_settings.router, prefix="/api/v1")
 app.include_router(planning.router, prefix="/api/v1")
 app.include_router(display.router, prefix="/api/v1")

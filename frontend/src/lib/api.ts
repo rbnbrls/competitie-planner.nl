@@ -67,6 +67,7 @@ export const tenantApi = {
     api.post("/tenant/refresh"),
   me: () => api.get("/tenant/me"),
   getClub: () => api.get("/tenant/club"),
+  getDashboard: () => api.get("/tenant/dashboard"),
   getSettings: () => api.get("/tenant/settings"),
   updateSettings: (data: {
     naam?: string;
