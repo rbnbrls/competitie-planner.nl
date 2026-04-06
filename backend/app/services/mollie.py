@@ -296,3 +296,31 @@ class MollieService:
             .order_by(SepaMandate.created_at.desc())
         )
         return result.scalars().first()
+
+    async def is_competitie_paid(self, club_id: uuid.UUID, competitie_naam: str) -> bool:
+        result = await self.db.execute(
+            select(Payment).where(
+                Payment.club_id == club_id,
+                Payment.competitie_naam == competitie_naam,
+                Payment.status == "paid",
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def get_payment_status_for_competitie(
+        self, club_id: uuid.UUID, competitie_naam: str
+    ) -> dict:
+        result = await self.db.execute(
+            select(Payment).where(
+                Payment.club_id == club_id,
+                Payment.competitie_naam == competitie_naam,
+            )
+        )
+        payment = result.scalar_one_or_none()
+        if not payment:
+            return {"status": "unpaid", "paid_at": None}
+        return {
+            "status": payment.status,
+            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
+            "amount": payment.amount,
+        }

@@ -17,6 +17,7 @@ from app.services.planning import (
 )
 from app.services.auth import get_password_hash
 from app.services.email import EmailService
+from app.services.mollie import MollieService
 from app.services.pdf import PDFService
 
 router = APIRouter(prefix="/tenant", tags=["planning"])
@@ -88,6 +89,22 @@ async def generate_indeling(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
+        )
+
+    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
         )
 
     if ronde.status == "gepubliceerd":
@@ -199,6 +216,22 @@ async def update_toewijzing(
             detail="Access denied",
         )
 
+    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
     if data.team_id is not None:
         try:
             team_uuid = UUID(data.team_id)
@@ -284,6 +317,22 @@ async def publish_ronde(
             detail="Access denied",
         )
 
+    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
     if ronde.status == "gepubliceerd":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -351,6 +400,22 @@ async def depublish_ronde(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
+        )
+
+    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
+    competitie = result.scalar_one_or_none()
+    if not competitie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
         )
 
     if ronde.status != "gepubliceerd":

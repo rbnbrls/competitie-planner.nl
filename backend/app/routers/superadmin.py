@@ -134,7 +134,7 @@ async def create_club(
         telefoon=club_data.telefoon,
         website=club_data.website,
         status="trial",
-        trial_ends_at=datetime.utcnow() + timedelta(days=14),
+        trial_ends_at=datetime.utcnow() + timedelta(days=7),
     )
     db.add(club)
     await db.commit()

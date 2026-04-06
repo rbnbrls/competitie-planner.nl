@@ -118,6 +118,16 @@ async def update_competitie(
             detail="Competitie not found",
         )
 
+    from app.services.mollie import MollieService
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
     if data.naam is not None:
         competitie.naam = data.naam
     if data.speeldag is not None:
@@ -172,6 +182,16 @@ async def update_competitie_settings(
             detail="Competitie not found",
         )
 
+    from app.services.mollie import MollieService
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
     if data.email_notifications_enabled is not None:
         competitie.email_notifications_enabled = data.email_notifications_enabled
 
@@ -210,6 +230,16 @@ async def delete_competitie(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Competitie not found",
+        )
+
+    from app.services.mollie import MollieService
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
         )
 
     competitie.actief = False

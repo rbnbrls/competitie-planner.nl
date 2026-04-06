@@ -297,3 +297,56 @@ async def get_checkout_status(
         "paid_competitions": list(paid_competitions),
         "mandate_status": mandate.status if mandate else None,
     }
+
+
+class PaymentStatusResponse(BaseModel):
+    competitie_naam: str
+    status: str
+    paid_at: str | None
+    amount: int | None
+
+
+@router.get("/payment-status", response_model=list[PaymentStatusResponse])
+async def get_payment_status(
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    user, club = current
+
+    from sqlalchemy import select
+
+    from app.models import Competitie
+
+    result = await db.execute(
+        select(Competitie).where(Competitie.club_id == club.id, Competitie.actief == True)  # type: ignore[comparison-to-true]
+    )
+    competities = result.scalars().all()
+
+    service = MollieService(db)
+    payments = await service.get_club_payments(club.id)
+
+    payment_by_competitie = {p.competitie_naam: p for p in payments}
+
+    result_list = []
+    for c in competities:
+        payment = payment_by_competitie.get(c.naam)
+        if payment:
+            result_list.append(
+                PaymentStatusResponse(
+                    competitie_naam=c.naam,
+                    status=payment.status,
+                    paid_at=payment.paid_at.isoformat() if payment.paid_at else None,
+                    amount=payment.amount,
+                )
+            )
+        else:
+            result_list.append(
+                PaymentStatusResponse(
+                    competitie_naam=c.naam,
+                    status="unpaid",
+                    paid_at=None,
+                    amount=None,
+                )
+            )
+
+    return result_list
