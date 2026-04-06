@@ -45,7 +45,6 @@ class Club(Base):
     max_competities: Mapped[int] = mapped_column(SmallInteger, default=5)
     billing_info: Mapped[str | None] = mapped_column(Text, default=None)
     payment_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    max_banen: Mapped[int] = mapped_column(SmallInteger, default=8)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
