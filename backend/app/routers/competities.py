@@ -1,5 +1,5 @@
 from uuid import UUID
-from datetime import time
+from datetime import time, date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Club, Competitie, Team
+from app.models import Club, Competitie, Team, Baan
 from app.schemas import CompetitieCreate, CompetitieUpdate, CompetitieResponse
 from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
 from app.services import planning as planning_service
@@ -344,3 +344,99 @@ async def update_tijdslot_config(
     await db.refresh(competitie)
 
     return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)
+
+
+class DuplicateCompetitieRequest(BaseModel):
+    new_naam: str
+    nieuwe_start_datum: str
+    nieuwe_eind_datum: str
+    copy_teams: bool = True
+
+
+@router.post("/{competitie_id}/duplicate")
+async def duplicate_competitie(
+    competitie_id: str,
+    data: DuplicateCompetitieRequest,
+    current: tuple = CURRENT_ADMIN_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    result = await db.execute(
+        select(Competitie).where(
+            Competitie.id == competitie_uuid,
+            Competitie.club_id == club.id,
+        )
+    )
+    original = result.scalar_one_or_none()
+    if not original:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    parts_start = data.nieuwe_start_datum.split("-")
+    parts_end = data.nieuwe_eind_datum.split("-")
+    if len(parts_start) != 3 or len(parts_end) != 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD",
+        )
+
+    new_start = date(int(parts_start[0]), int(parts_start[1]), int(parts_start[2]))
+    new_end = date(int(parts_end[0]), int(parts_end[1]), int(parts_end[2]))
+
+    new_competitie = Competitie(
+        club_id=club.id,
+        naam=data.new_naam,
+        speeldag=original.speeldag,
+        start_datum=new_start,
+        eind_datum=new_end,
+        feestdagen=original.feestdagen,
+        inhaal_datums=original.inhaal_datums,
+        standaard_starttijden=original.standaard_starttijden,
+        hergebruik_configuratie=original.hergebruik_configuratie,
+    )
+    db.add(new_competitie)
+    await db.commit()
+    await db.refresh(new_competitie)
+
+    new_teams_count = 0
+    if data.copy_teams:
+        result = await db.execute(
+            select(Team).where(
+                Team.competitie_id == competitie_uuid,
+            )
+        )
+        original_teams = list(result.scalars().all())
+
+        for team in original_teams:
+            new_team = Team(
+                club_id=club.id,
+                competitie_id=new_competitie.id,
+                naam=team.naam,
+                captain_naam=team.captain_naam,
+                captain_email=team.captain_email,
+                speelklasse=team.speelklasse,
+                knltb_team_id=team.knltb_team_id,
+                actief=team.actief,
+            )
+            db.add(new_team)
+            new_teams_count += 1
+
+        await db.commit()
+
+    return {
+        "id": str(new_competitie.id),
+        "naam": new_competitie.naam,
+        "start_datum": new_competitie.start_datum.isoformat(),
+        "eind_datum": new_competitie.eind_datum.isoformat(),
+        "teams_copied": new_teams_count,
+    }

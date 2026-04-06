@@ -11,11 +11,17 @@ from app.db import get_db
 from app.models import Club, Team
 from app.schemas import TeamCreate, TeamUpdate, TeamResponse
 from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/tenant/teams", tags=["teams"])
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
+
+
+class BulkActivateRequest(BaseModel):
+    team_ids: list[str]
+    activate: bool
 
 
 @router.get("")
@@ -218,6 +224,47 @@ async def delete_team(
     await db.commit()
 
     return {"message": "Team deactivated successfully"}
+
+
+@router.post("/bulk-activate")
+async def bulk_activate_teams(
+    data: BulkActivateRequest,
+    current: tuple = CURRENT_ADMIN_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+
+    results = []
+    errors = []
+
+    for team_id in data.team_ids:
+        try:
+            team_uuid = UUID(team_id)
+        except ValueError:
+            errors.append({"team_id": team_id, "error": "Invalid ID"})
+            continue
+
+        result = await db.execute(
+            select(Team).where(
+                Team.id == team_uuid,
+                Team.club_id == club.id,
+            )
+        )
+        team = result.scalar_one_or_none()
+        if not team:
+            errors.append({"team_id": team_id, "error": "Not found"})
+            continue
+
+        team.actief = data.activate
+        results.append({"team_id": str(team.id), "naam": team.naam, "actief": team.actief})
+
+    await db.commit()
+
+    return {
+        "success": len(results),
+        "errors": errors,
+        "results": results,
+    }
 
 
 class CSVImportRequest(BaseModel):

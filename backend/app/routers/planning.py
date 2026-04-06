@@ -630,3 +630,173 @@ async def download_ronde_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+class BulkGenerateRequest(BaseModel):
+    ronde_ids: list[str]
+
+
+class BulkPublishRequest(BaseModel):
+    ronde_ids: list[str]
+
+
+@router.post("/rondes/bulk-generate")
+async def bulk_generate_rondes(
+    competitie_id: str,
+    data: BulkGenerateRequest,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
+    competitie = result.scalar_one_or_none()
+    if not competitie or competitie.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
+    results = []
+    errors = []
+
+    for ronde_id in data.ronde_ids:
+        try:
+            ronde_uuid = UUID(ronde_id)
+        except ValueError:
+            errors.append({"ronde_id": ronde_id, "error": "Invalid ID"})
+            continue
+
+        result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+        ronde = result.scalar_one_or_none()
+        if not ronde:
+            errors.append({"ronde_id": ronde_id, "error": "Not found"})
+            continue
+
+        if ronde.status == "gepubliceerd":
+            errors.append({"ronde_id": ronde_id, "error": "Already published"})
+            continue
+
+        try:
+            toewijzingen = await genereer_indeling(ronde_uuid, db)
+            results.append(
+                {
+                    "ronde_id": str(ronde.id),
+                    "datum": ronde.datum.isoformat(),
+                    "toewijzingen_count": len(toewijzingen),
+                }
+            )
+        except Exception as e:
+            errors.append({"ronde_id": str(ronde.id), "error": str(e)})
+
+    return {
+        "success": len(results),
+        "errors": errors,
+        "results": results,
+    }
+
+
+@router.post("/rondes/bulk-publish")
+async def bulk_publish_rondes(
+    competitie_id: str,
+    data: BulkPublishRequest,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    import secrets
+
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
+    competitie = result.scalar_one_or_none()
+    if not competitie or competitie.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
+    results = []
+    errors = []
+    email_notifications_sent = 0
+
+    for ronde_id in data.ronde_ids:
+        try:
+            ronde_uuid = UUID(ronde_id)
+        except ValueError:
+            errors.append({"ronde_id": ronde_id, "error": "Invalid ID"})
+            continue
+
+        result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+        ronde = result.scalar_one_or_none()
+        if not ronde:
+            errors.append({"ronde_id": ronde_id, "error": "Not found"})
+            continue
+
+        if ronde.status == "gepubliceerd":
+            errors.append({"ronde_id": str(ronde.id), "error": "Already published"})
+            continue
+
+        try:
+            if not ronde.public_token:
+                ronde.public_token = secrets.token_urlsafe(32)
+
+            ronde.status = "gepubliceerd"
+            ronde.published_at = datetime.now(UTC)
+            ronde.published_by = user.id
+            await db.commit()
+            await db.refresh(ronde)
+
+            await update_planning_historie(ronde_uuid, db)
+
+            if competitie.email_notifications_enabled:
+                email_service = EmailService(db)
+                email_result = await email_service.send_publication_notification(ronde_uuid)
+                if email_result.get("sent", 0) > 0:
+                    email_notifications_sent += 1
+
+            results.append(
+                {
+                    "ronde_id": str(ronde.id),
+                    "datum": ronde.datum.isoformat(),
+                    "public_token": ronde.public_token,
+                }
+            )
+        except Exception as e:
+            errors.append({"ronde_id": str(ronde.id), "error": str(e)})
+
+    return {
+        "success": len(results),
+        "errors": errors,
+        "results": results,
+        "email_notifications_sent": email_notifications_sent,
+    }

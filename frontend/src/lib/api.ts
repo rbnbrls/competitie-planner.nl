@@ -237,6 +237,18 @@ export const tenantApi = {
     eerste_datum?: string;
     hergebruik_configuratie?: boolean;
   }) => api.put(`/tenant/competities/${competitieId}/tijdslot-config`, data),
+  bulkGenerateRondes: (competitieId: string, rondeIds: string[]) =>
+    api.post(`/tenant/rondes/bulk-generate`, { ronde_ids: rondeIds }, { params: { competitie_id: competitieId } }),
+  bulkPublishRondes: (competitieId: string, rondeIds: string[]) =>
+    api.post(`/tenant/rondes/bulk-publish`, { ronde_ids: rondeIds }, { params: { competitie_id: competitieId } }),
+  bulkActivateTeams: (teamIds: string[], activate: boolean) =>
+    api.post("/tenant/teams/bulk-activate", { team_ids: teamIds, activate }),
+  duplicateCompetitie: (competitieId: string, data: {
+    new_naam: string;
+    nieuwe_start_datum: string;
+    nieuwe_eind_datum: string;
+    copy_teams: boolean;
+  }) => api.post(`/tenant/competities/${competitieId}/duplicate`, data),
 };
 
 export const superadminApi = {
