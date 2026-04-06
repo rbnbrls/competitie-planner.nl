@@ -158,6 +158,7 @@ class Competitie(Base):
     standaard_starttijden: Mapped[list[time]] = mapped_column(ARRAY(Time), default=[])
     eerste_datum: Mapped[date | None] = mapped_column(Date, default=None)
     hergebruik_configuratie: Mapped[bool] = mapped_column(Boolean, default=True)
+    reminder_days_before: Mapped[int] = mapped_column(SmallInteger, default=3)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
@@ -167,7 +168,7 @@ class Competitie(Base):
     __table_args__ = (Index("idx_competities_club", "club_id"),)
 
     club: Mapped["Club"] = relationship("Club", back_populates="competities")
-    teams: Mapped[list["Team"]] = relationship("Team", back_populates="competitie")
+    teams: Mapped[list["Team"]] = relationship("Team", back_populates="competitie", cascade="all, delete-orphan")
     speelrondes: Mapped[list["Speelronde"]] = relationship(
         "Speelronde", back_populates="competitie"
     )
@@ -197,6 +198,7 @@ class Team(Base):
     speelklasse: Mapped[str | None] = mapped_column(String(50), default=None)
     knltb_team_id: Mapped[str | None] = mapped_column(String(50), default=None)
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
+    public_token: Mapped[str] = mapped_column(String(64), unique=True, default=lambda: uuid.uuid4().hex)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
@@ -214,6 +216,9 @@ class Team(Base):
     )
     wedstrijden_uit: Mapped[list["Wedstrijd"]] = relationship(
         "Wedstrijd", foreign_keys="Wedstrijd.uitteam_id", back_populates="uitteam"
+    )
+    beschikbaarheden: Mapped[list["Beschikbaarheid"]] = relationship(
+        "Beschikbaarheid", back_populates="team", cascade="all, delete-orphan"
     )
 
 
@@ -444,9 +449,37 @@ class PasswordResetToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
 
     __table_args__ = (Index("idx_password_reset_tokens_user", "user_id"),)
-
     club: Mapped["Club"] = relationship("Club")
     user: Mapped["User"] = relationship("User")
+
+
+class Beschikbaarheid(Base):
+    __tablename__ = "beschikbaarheid"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
+    )
+    ronde_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("speelrondes.id", ondelete="CASCADE"), nullable=False
+    )
+
+    is_beschikbaar: Mapped[bool] = mapped_column(Boolean, default=True)
+    notitie: Mapped[str | None] = mapped_column(Text, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+    )
+
+    __table_args__ = (
+        UniqueConstraint("team_id", "ronde_id", name="uq_beschikbaarheid_team_ronde"),
+        Index("idx_beschikbaarheid_team", "team_id"),
+        Index("idx_beschikbaarheid_ronde", "ronde_id"),
+    )
+
+    team: Mapped["Team"] = relationship("Team", back_populates="beschikbaarheden")
+    ronde: Mapped["Speelronde"] = relationship("Speelronde")
 
 
 class MollieConfig(Base):

@@ -13,6 +13,7 @@ class EmailService:
         self.db = db
         self.resend_api_key = os.getenv("RESEND_API_KEY", "")
         self.from_email = os.getenv("FROM_EMAIL", "noreply@competitie-planner.nl")
+        self.frontend_url = os.getenv("FRONTEND_URL", "https://competitie-planner.nl")
 
     async def send_publication_notification(
         self,
@@ -70,6 +71,7 @@ class EmailService:
             toewijzingen=toewijzingen,
             banen_dict=banen_dict,
             teams_dict=teams_dict,
+            portal_links={t.team_id: f"{self.frontend_url}/captain/{teams_dict[t.team_id].public_token}" for t in toewijzingen if t.team_id in teams_dict}
         )
 
         success = await self._send_email(
@@ -90,6 +92,7 @@ class EmailService:
         toewijzingen: list[BaanToewijzing],
         banen_dict: dict[UUID, Baan],
         teams_dict: dict[UUID, Team],
+        portal_links: dict[UUID, str] | None = None,
     ) -> str:
         rows = []
         for t in toewijzingen:
@@ -148,6 +151,7 @@ class EmailService:
                         {"".join(rows)}
                     </tbody>
                 </table>
+                {"<div style='margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;'><p><strong>Tip:</strong> Gebruik je persoonlijke link om je planning te bekijken, de uitslag door te geven of je beschikbaarheid voor de volgende ronde te melden.</p></div>" if portal_links else ""}
             </div>
             <div class="footer">
                 <p>Dit is een automatisch gegenereerde email van competitie-planner.nl</p>
@@ -156,6 +160,29 @@ class EmailService:
         </body>
         </html>
         """
+
+    async def send_reminder_emails(self, days_before: int = 3) -> dict:
+        # Dit zou door een cronjob aangeroepen moeten worden
+        today = datetime.now().date()
+        # Vind rondes die over X dagen zijn
+        from datetime import timedelta
+        target_date = today + timedelta(days=days_before)
+        
+        # ... logic to find rounds and teams ...
+        # Voor nu implementeren we de methode maar de cronjob ontbreekt nog
+        return {"status": "not_fully_implemented_yet"}
+
+    async def send_matchday_summary_to_tc(self, club_id: UUID, date: datetime.date) -> dict:
+        # Haal club op
+        result = await self.db.execute(select(Club).where(Club.id == club_id))
+        club = result.scalar_one_or_none()
+        if not club:
+            return {"error": "Club not found"}
+
+        # Haal alle wedstrijden van die dag voor die club op
+        # (Dit vereist een koppeling tussen Wedstrijd en Club via Competitie)
+        # ... logic ...
+        return {"status": "summary_sent"}
 
     async def _send_email(
         self,

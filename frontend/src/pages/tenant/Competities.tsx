@@ -24,6 +24,7 @@ interface TijdslotConfig {
   standaard_starttijden: string[];
   eerste_datum: string | null;
   hergebruik_configuratie: boolean;
+  reminder_days_before: number;
 }
 
 const DAGEN = [
@@ -59,6 +60,7 @@ export default function CompetitiesPage() {
     standaard_starttijden: [],
     eerste_datum: null,
     hergebruik_configuratie: true,
+    reminder_days_before: 3,
   });
   const [formData, setFormData] = useState({
     naam: "",
@@ -122,6 +124,7 @@ export default function CompetitiesPage() {
           standaard_starttijden: tijdslotConfig.standaard_starttijden,
           eerste_datum: tijdslotConfig.eerste_datum || undefined,
           hergebruik_configuratie: tijdslotConfig.hergebruik_configuratie,
+          reminder_days_before: tijdslotConfig.reminder_days_before,
         }
       });
       setShowTijdslotModal(false);
@@ -548,6 +551,26 @@ export default function CompetitiesPage() {
                     Configuratie hergebruiken bij nieuwe seizoensplanning
                   </span>
                 </label>
+              </div>
+
+              <div className="pt-4 border-t">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reminder email
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Aantal dagen voor de speeldag om herinneringsmail naar captains te sturen.
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    max="14"
+                    value={tijdslotConfig.reminder_days_before}
+                    onChange={(e) => setTijdslotConfig({...tijdslotConfig, reminder_days_before: parseInt(e.target.value)})}
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                  <span className="text-sm text-gray-600">dagen voor de wedstrijd</span>
+                </div>
               </div>
             </div>
 

@@ -8,7 +8,15 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Baan, BaanToewijzing, Club, Speelronde, Team
+from app.models import Baan, BaanToewijzing, Club, Speelronde, Team, Wedstrijd, Beschikbaarheid
+from app.schemas import (
+    CaptainPortalResponse,
+    CaptainWedstrijdResponse,
+    DisplayClubInfo,
+    BeschikbaarheidResponse,
+    BeschikbaarheidCreate,
+    ResultSubmission,
+)
 
 router = APIRouter(tags=["display"])
 
@@ -220,3 +228,157 @@ async def get_display_current(
             toewijzingen=toewijzingen_with_details,
         ),
     )
+
+
+@router.get("/captain/{token}", response_model=CaptainPortalResponse)
+async def get_captain_portal(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> CaptainPortalResponse:
+    # 1. Vind het team via de token
+    result = await db.execute(
+        select(Team)
+        .options(joinedload(Team.competitie), joinedload(Team.club))
+        .where(Team.public_token == token)
+    )
+    team = result.scalar_one_or_none()
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team niet gevonden met deze link.",
+        )
+
+    # 2. Haal alle wedstrijden op van dit team
+    result = await db.execute(
+        select(Wedstrijd)
+        .options(joinedload(Wedstrijd.ronde), joinedload(Wedstrijd.thuisteam), joinedload(Wedstrijd.uitteam), joinedload(Wedstrijd.baan))
+        .where(or_(Wedstrijd.thuisteam_id == team.id, Wedstrijd.uitteam_id == team.id))
+    )
+    wedstrijden = result.scalars().all()
+
+    # 3. Haal beschikbaarheden op
+    result = await db.execute(
+        select(Beschikbaarheid).where(Beschikbaarheid.team_id == team.id)
+    )
+    beschikbaarheden = result.scalars().all()
+
+    # Formatteer wedstrijden
+    alle_wedstrijden = []
+    volgende_wedstrijd = None
+    today = datetime.now().date()
+
+    for w in wedstrijden:
+        is_thuis = w.thuisteam_id == team.id
+        tegenstander = w.uitteam.naam if is_thuis else w.thuisteam.naam
+        
+        w_resp = CaptainWedstrijdResponse(
+            id=w.id,
+            datum=w.speeldatum or w.ronde.datum,
+            tijd=w.speeltijd,
+            is_thuis=is_thuis,
+            tegenstander=tegenstander,
+            baan_nummer=w.baan.nummer if w.baan else None,
+            baan_naam=w.baan.naam if w.baan else None,
+            status=w.status,
+            uitslag_thuisteam=w.uitslag_thuisteam,
+            uitslag_uitteam=w.uitslag_uitteam,
+        )
+        alle_wedstrijden.append(w_resp)
+        
+        if not volgende_wedstrijd and (w.speeldatum or w.ronde.datum) >= today:
+            volgende_wedstrijd = w_resp
+
+    # Sorteer wedstrijden op datum
+    alle_wedstrijden.sort(key=lambda x: (x.datum, x.tijd or datetime.min.time()))
+
+    return CaptainPortalResponse(
+        team_naam=team.naam,
+        competitie_naam=team.competitie.naam,
+        club=DisplayClubInfo(
+            naam=team.club.naam,
+            slug=team.club.slug,
+            primary_color=team.club.primary_color,
+            secondary_color=team.club.secondary_color,
+            accent_color=team.club.accent_color,
+            logo_url=team.club.logo_url,
+        ),
+        volgende_wedstrijd=volgende_wedstrijd,
+        alle_wedstrijden=alle_wedstrijden,
+        beschikbaarheden=[BeschikbaarheidResponse.model_validate(b) for b in beschikbaarheden],
+    )
+
+
+@router.post("/captain/{token}/beschikbaarheid", response_model=BeschikbaarheidResponse)
+async def submit_beschikbaarheid(
+    token: str,
+    data: BeschikbaarheidCreate,
+    db: AsyncSession = Depends(get_db),
+) -> BeschikbaarheidResponse:
+    result = await db.execute(select(Team).where(Team.public_token == token))
+    team = result.scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team niet gevonden")
+
+    # Check of de ronde bestaat
+    result = await db.execute(select(Speelronde).where(Speelronde.id == data.ronde_id))
+    ronde = result.scalar_one_or_none()
+    if not ronde:
+        raise HTTPException(status_code=404, detail="Ronde niet gevonden")
+
+    # Upsert beschikbaarheid
+    result = await db.execute(
+        select(Beschikbaarheid).where(
+            and_(Beschikbaarheid.team_id == team.id, Beschikbaarheid.ronde_id == data.ronde_id)
+        )
+    )
+    beschikbaarheid = result.scalar_one_or_none()
+
+    if beschikbaarheid:
+        beschikbaarheid.is_beschikbaar = data.is_beschikbaar
+        beschikbaarheid.notitie = data.notitie
+    else:
+        beschikbaarheid = Beschikbaarheid(
+            team_id=team.id,
+            ronde_id=data.ronde_id,
+            is_beschikbaar=data.is_beschikbaar,
+            notitie=data.notitie,
+        )
+        db.add(beschikbaarheid)
+
+    await db.commit()
+    await db.refresh(beschikbaarheid)
+    return BeschikbaarheidResponse.model_validate(beschikbaarheid)
+
+
+@router.post("/captain/{token}/uitslag")
+async def submit_uitslag(
+    token: str,
+    data: ResultSubmission,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Team).where(Team.public_token == token))
+    team = result.scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team niet gevonden")
+
+    result = await db.execute(
+        select(Wedstrijd).where(
+            and_(
+                Wedstrijd.id == data.wedstrijd_id,
+                or_(Wedstrijd.thuisteam_id == team.id, Wedstrijd.uitteam_id == team.id)
+            )
+        )
+    )
+    wedstrijd = result.scalar_one_or_none()
+    if not wedstrijd:
+        raise HTTPException(status_code=404, detail="Wedstrijd niet gevonden of geen toegang")
+
+    wedstrijd.uitslag_thuisteam = data.uitslag_thuisteam
+    wedstrijd.uitslag_uitteam = data.uitslag_uitteam
+    if data.notitie:
+        wedstrijd.notitie = (wedstrijd.notitie or "") + f"\n[Captain]: {data.notitie}"
+    
+    wedstrijd.status = "voltooid"
+    
+    await db.commit()
+    return {"status": "success"}

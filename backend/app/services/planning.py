@@ -447,7 +447,7 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
         select(Speelronde)
         .options(
             selectinload(Speelronde.competitie),
-            selectinload(Speelronde.wedstrijden),
+            selectinload(Speelronde.wedstrijden).selectinload(Wedstrijd.thuisteam),
         )
         .where(
             Speelronde.datum == datum,
@@ -472,10 +472,28 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
         total_banen_nodig += banen_nodig
 
         if banen_nodig > 0:
+            # We assume one home team per competition per round for the overview
+            # If there are multiple, we pick the first one's name as representative
+            team_naam = "Meerdere teams"
+            speelklasse = ""
+            voorkeur_tijd = "19:00"
+            
+            if ronde.wedstrijden:
+                first_thuisteam = next((w.thuisteam for w in ronde.wedstrijden if w.thuisteam), None)
+                if first_thuisteam:
+                    team_naam = first_thuisteam.naam
+                    speelklasse = first_thuisteam.speelklasse or ""
+
+            if ronde.competitie.standaard_starttijden:
+                voorkeur_tijd = ronde.competitie.standaard_starttijden[0].strftime("%H:%M")
+
             competities_overzicht.append({
                 "competitie_id": str(ronde.competitie.id),
                 "competitie_naam": ronde.competitie.naam,
+                "team_naam": team_naam,
+                "divisie": speelklasse,
                 "banen_nodig": banen_nodig,
+                "voorkeur_tijd": voorkeur_tijd,
                 "speeldag": ronde.competitie.speeldag,
             })
 
@@ -523,6 +541,54 @@ async def detecteer_conflicten(datum: date, club_id: uuid.UUID, db: AsyncSession
         "conflicten": conflicten,
         "total_banen_nodig": dagoverzicht["totaal_banen_nodig"],
         "beschikbare_banen": dagoverzicht["beschikbare_banen"],
+    }
+
+
+async def plan_banen(dagoverzicht: dict, db: AsyncSession) -> dict:
+    """
+    Voert het planning-algoritme uit om banen toe te wijzen over alle competities.
+    Dit is een vereenvoudigde versie voor het dagoverzicht.
+    """
+    beschikbare_banen = dagoverzicht.get("beschikbare_banen", 0)
+    competities = dagoverzicht.get("competities", [])
+
+    # Sorteer op banen_nodig (desc) om 'moeilijke' competities eerst te doen
+    gesorteerd = sorted(competities, key=lambda x: x.get("banen_nodig", 1), reverse=True)
+
+    toewijzingen = []
+    gebruikte_banen = 0
+
+    for comp in gesorteerd:
+        banen_nodig = comp.get("banen_nodig", 1)
+        if gebruikte_banen + banen_nodig <= beschikbare_banen:
+            toewijzingen.append(
+                {
+                    "competitie_id": comp.get("competitie_id"),
+                    "team_naam": comp.get("team_naam"),
+                    "toegewezen_banen": banen_nodig,
+                    "tijdblok": comp.get("voorkeur_tijd", "19:00"),
+                    "status": "toegewezen",
+                }
+            )
+            gebruikte_banen += banen_nodig
+        else:
+            toewijzingen.append(
+                {
+                    "competitie_id": comp.get("competitie_id"),
+                    "team_naam": comp.get("team_naam"),
+                    "toegewezen_banen": 0,
+                    "tijdblok": None,
+                    "status": "conflict",
+                }
+            )
+
+    return {
+        "datum": dagoverzicht.get("datum"),
+        "club_id": dagoverzicht.get("club_id"),
+        "total_banen": beschikbare_banen,
+        "used_banen": gebruikte_banen,
+        "toewijzingen": toewijzingen,
+        "unassigned": [c for c in toewijzingen if c["status"] == "conflict"],
     }
 
 

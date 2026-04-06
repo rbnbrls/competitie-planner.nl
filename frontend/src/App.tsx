@@ -28,6 +28,7 @@ import DisplayPage from "./pages/Display";
 import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
 import SeizoensoverzichtPage from "./pages/tenant/Seizoensoverzicht";
 import OnboardingPage from "./pages/Onboarding";
+import CaptainPortaalPage from "./pages/CaptainPortaal";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { authApi, paymentApi } from "./lib/api";
@@ -184,6 +185,7 @@ function AppRoutes() {
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/captain/:token" element={<CaptainPortaalPage />} />
         <Route element={<TenantLayout />}>
           <Route element={<TenantRoutes />}>
             <Route path="/onboarding" element={<OnboardingPage />} />

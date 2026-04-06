@@ -511,6 +511,7 @@ class TijdslotConfig(BaseModel):
     standaard_starttijden: list[str] | None = None
     eerste_datum: str | None = None
     hergebruik_configuratie: bool | None = None
+    reminder_days_before: int | None = None
 
 
 @router.get("/{competitie_id}/tijdslot-config")
@@ -590,6 +591,9 @@ async def update_tijdslot_config(
 
     if data.hergebruik_configuratie is not None:
         competitie.hergebruik_configuratie = data.hergebruik_configuratie
+
+    if data.reminder_days_before is not None:
+        competitie.reminder_days_before = data.reminder_days_before
 
     await db.commit()
     await db.refresh(competitie)

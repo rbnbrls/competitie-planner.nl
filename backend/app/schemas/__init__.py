@@ -210,6 +210,7 @@ class TeamUpdate(BaseModel):
     speelklasse: str | None = None
     knltb_team_id: str | None = None
     actief: bool | None = None
+    public_token: str | None = None
 
 
 class TeamResponse(TeamBase):
@@ -219,6 +220,7 @@ class TeamResponse(TeamBase):
     competitie_id: UUID
     created_at: datetime
     updated_at: datetime
+    public_token: str
 
 
 class BaanBase(BaseModel):
@@ -265,6 +267,7 @@ class CompetitieBase(BaseModel):
     standaard_starttijden: list[time] = []
     eerste_datum: date | None = None
     hergebruik_configuratie: bool = True
+    reminder_days_before: int = 3
 
 
 class CompetitieCreate(CompetitieBase):
@@ -283,6 +286,7 @@ class CompetitieUpdate(BaseModel):
     standaard_starttijden: list[time] | None = None
     eerste_datum: date | None = None
     hergebruik_configuratie: bool | None = None
+    reminder_days_before: int | None = None
 
 
 class CompetitieResponse(CompetitieBase):
@@ -340,3 +344,53 @@ class SeizoensoverzichtTeamRow(BaseModel):
 class SeizoensoverzichtResponse(BaseModel):
     rondes: List[SpeelrondeNestedResponse]
     rows: List[SeizoensoverzichtTeamRow]
+
+
+# --- Captain Portal Schemas ---
+
+class BeschikbaarheidBase(BaseModel):
+    is_beschikbaar: bool = True
+    notitie: str | None = None
+
+
+class BeschikbaarheidCreate(BeschikbaarheidBase):
+    ronde_id: UUID
+
+
+class BeschikbaarheidResponse(BeschikbaarheidBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    team_id: UUID
+    ronde_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class CaptainWedstrijdResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    datum: date
+    tijd: time | None = None
+    is_thuis: bool
+    tegenstander: str
+    baan_nummer: int | None = None
+    baan_naam: str | None = None
+    status: str
+    uitslag_thuisteam: int | None = None
+    uitslag_uitteam: int | None = None
+
+
+class CaptainPortalResponse(BaseModel):
+    team_naam: str
+    competitie_naam: str
+    club: DisplayClubInfo
+    volgende_wedstrijd: CaptainWedstrijdResponse | None = None
+    alle_wedstrijden: List[CaptainWedstrijdResponse]
+    beschikbaarheden: List[BeschikbaarheidResponse]
+
+
+class ResultSubmission(BaseModel):
+    wedstrijd_id: UUID
+    uitslag_thuisteam: int
+    uitslag_uitteam: int
+    notitie: str | None = None
