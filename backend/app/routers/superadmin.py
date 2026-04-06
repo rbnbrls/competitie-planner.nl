@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -28,11 +28,11 @@ async def get_dashboard(
     trial_clubs = sum(1 for c in clubs if c.status == "trial")
     suspended_clubs = sum(1 for c in clubs if c.status == "suspended")
 
-    users_result = await db.execute(select(User).where(User.is_superadmin == False))
+    users_result = await db.execute(select(User).where(~User.is_superadmin))
     users = users_result.scalars().all()
     total_users = len(users)
 
-    week_ago = datetime.now(UTC) - timedelta(days=7)
+    week_ago = datetime.now(datetime.UTC) - timedelta(days=7)
     active_users = sum(1 for u in users if u.last_login and u.last_login >= week_ago)
 
     recent_clubs = sorted(clubs, key=lambda c: c.created_at, reverse=True)[:5]
@@ -134,7 +134,7 @@ async def create_club(
         telefoon=club_data.telefoon,
         website=club_data.website,
         status="trial",
-        trial_ends_at=datetime.now(UTC) + timedelta(days=7),
+        trial_ends_at=datetime.now(datetime.UTC) + timedelta(days=7),
     )
     db.add(club)
     await db.commit()
@@ -172,7 +172,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superadmin),
 ) -> list[User]:
-    query = select(User).where(User.is_superadmin == False)
+    query = select(User).where(~User.is_superadmin)
 
     if club_id:
         query = query.where(User.club_id == club_id)
@@ -249,7 +249,7 @@ async def get_billing_overview(
     actives = []
     suspended = []
 
-    now = datetime.now(UTC)
+    # now = datetime.now(datetime.UTC)  # reserved for future billing logic
 
     for c in clubs:
         entry = {

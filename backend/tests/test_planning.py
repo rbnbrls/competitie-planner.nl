@@ -4,10 +4,10 @@ Tests for the planning algorithm (services/planning.py)
 
 import uuid
 from datetime import date
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -25,8 +25,8 @@ from app.services.planning import (
     detecteer_conflicten,
     genereer_indeling,
     get_historie_heatmap,
-    validate_club_max_thuisteams,
     plan_competitie,
+    validate_club_max_thuisteams,
 )
 
 
@@ -165,7 +165,7 @@ class TestGenereerIndeling:
         result = await db_session.execute(
             select(Team).where(
                 Team.competitie_id == competitie.id,
-                Team.actief == True,
+                Team.actief,
             )
         )
         teams = list(result.scalars().all())
@@ -277,7 +277,7 @@ class TestDagoverzicht:
 
         result = await detecteer_conflicten(test_datum, club.id, db_session)
 
-        assert result["has_conflicts"] == False
+        assert not result["has_conflicts"]
         assert len(result["conflicten"]) == 0
 
     async def test_validate_club_max_thuisteams(
@@ -292,7 +292,7 @@ class TestDagoverzicht:
 
         is_valid = await validate_club_max_thuisteams(club.id, test_datum, db_session)
 
-        assert is_valid == True
+        assert is_valid
 
 
 class TestBatchPlanning:
@@ -307,24 +307,24 @@ class TestBatchPlanning:
     ):
         """Test planning preview (no DB changes)."""
         club, competitie = club_with_competitie
-        
+
         # Create two rounds
         ronde1 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 4, 1))
         ronde2 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 4, 8))
         db_session.add_all([ronde1, ronde2])
         await db_session.commit()
-        
+
         # Add home matches
         w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
         w2 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde2.id, thuisteam_id=teams[0].id, uitteam_id=teams[2].id)
         db_session.add_all([w1, w2])
         await db_session.commit()
-        
+
         result = await plan_competitie(competitie.id, db_session, apply=False)
-        
+
         assert result["success"] is True
         assert len(result["toewijzingen"]) == 2
-        
+
         # Verify no DB changes
         query = select(BaanToewijzing).where(BaanToewijzing.ronde_id.in_([ronde1.id, ronde2.id]))
         db_result = await db_session.execute(query)
@@ -342,14 +342,14 @@ class TestBatchPlanning:
         ronde1 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 4, 1))
         db_session.add(ronde1)
         await db_session.commit()
-        
+
         w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
         db_session.add(w1)
         await db_session.commit()
-        
+
         result = await plan_competitie(competitie.id, db_session, apply=True)
         assert result["counts"]["toewijzingen"] == 1
-        
+
         # Verify DB changes
         query = select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde1.id)
         db_result = await db_session.execute(query)
@@ -364,28 +364,28 @@ class TestBatchPlanning:
     ):
         """Test that teams don't play on the same court twice in a row if possible."""
         club, competitie = club_with_competitie
-        
+
         # Reduce to 2 courts to force potential reuse
         for b in banen[2:]:
             b.actief = False
         await db_session.commit()
-        
+
         ronde1 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 5, 1))
         ronde2 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 5, 8))
         db_session.add_all([ronde1, ronde2])
-        
+
         # Team 0 plays home twice in a row
         w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
         w2 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde2.id, thuisteam_id=teams[0].id, uitteam_id=teams[2].id)
         db_session.add_all([w1, w2])
         await db_session.commit()
-        
+
         result = await plan_competitie(competitie.id, db_session, apply=False)
-        
+
         toewijzingen = result["toewijzingen"]
         t1 = next(t for t in toewijzingen if t["ronde_id"] == str(ronde1.id))
         t2 = next(t for t in toewijzingen if t["ronde_id"] == str(ronde2.id))
-        
+
         # Should be different courts
         assert t1["baan_id"] != t2["baan_id"]
 
@@ -400,17 +400,17 @@ class TestBatchPlanning:
         club, competitie = club_with_competitie
         club.max_thuisteams_per_dag = 1
         await db_session.commit()
-        
+
         ronde1 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 6, 1))
         db_session.add(ronde1)
-        
+
         # 2 home matches for same competition on same day
         w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
         w2 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[2].id, uitteam_id=teams[3].id)
         db_session.add_all([w1, w2])
         await db_session.commit()
-        
+
         result = await plan_competitie(competitie.id, db_session, apply=False)
-        
-        warnings = [l for l in result["logs"] if l["severity"] == "warning"]
+
+        warnings = [log for log in result["logs"] if log["severity"] == "warning"]
         assert any("Maximum aantal thuisteams" in w["message"] for w in warnings)

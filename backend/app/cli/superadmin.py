@@ -4,7 +4,7 @@ import sys
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.models import User
 from app.services.auth import get_password_hash
@@ -15,7 +15,7 @@ async def create_superadmin(email: str, password: str, database_url: str) -> Non
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session_maker() as session:
-        result = await session.execute(select(User).where(User.is_superadmin == True))
+        result = await session.execute(select(User).where(User.is_superadmin))
         existing_superadmin = result.scalar_one_or_none()
 
         if existing_superadmin:

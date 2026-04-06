@@ -2,13 +2,9 @@
 Tests for auth endpoints: login, register-admin, token refresh
 """
 
-import uuid
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Club, User
 
 
 class TestLogin:
@@ -111,7 +107,7 @@ class TestRefreshToken:
 
         response = await client.post(
             "/api/v1/auth/refresh",
-            data={"username": refresh_token},
+            headers={"Authorization": f"Bearer {refresh_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -121,7 +117,7 @@ class TestRefreshToken:
         """Test refresh with invalid token."""
         response = await client.post(
             "/api/v1/auth/refresh",
-            data={"username": "invalid_token"},
+            headers={"Authorization": "Bearer invalid_token"},
         )
         assert response.status_code == 401
 

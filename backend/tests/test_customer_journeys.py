@@ -3,8 +3,9 @@ Customer Journey: Club Setup & Admin Management
 Test complete flow from club creation to user invitation
 """
 
-import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import Club, PasswordResetToken
 
 
 class TestClubSetupJourney:
@@ -22,7 +23,7 @@ class TestClubSetupJourney:
             headers=admin_auth_headers,
         )
         assert baan_response.status_code == 200
-        baan_id = baan_response.json()["id"]
+        baan_response.json()["id"]
 
         # Step 2: Create competitie
         competitie_response = await client.post(
@@ -62,21 +63,17 @@ class TestClubSetupJourney:
         assert len(rondes_response.json()) > 0
 
     async def test_publish_and_view_ronde(
-        self, client: AsyncClient, admin_auth_headers: dict, db_session
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession, club: Club
     ):
         """Journey: Admin publishes a round and views it via display link."""
-        from app.models import Club, Competitie, Speelronde, Team, Baan
-
-        # Setup: Create club, competitie, ronde, team, baan
-        club = Club(naam="Test Club", slug="testjourney", status="trial")
-        db_session.add(club)
-        await db_session.commit()
-
         from datetime import date
 
+        from app.models import Baan, Competitie, Speelronde, Team
+
+        # Setup: Use existing club
         competitie = Competitie(
             club_id=club.id,
-            naam="Test Comp",
+            naam="Test Comp Jou",
             speeldag="vrijdag",
             start_datum=date(2024, 1, 1),
             eind_datum=date(2024, 12, 31),
@@ -93,11 +90,11 @@ class TestClubSetupJourney:
         db_session.add(ronde)
         await db_session.commit()
 
-        baan = Baan(club_id=club.id, nummer=1)
+        baan = Baan(club_id=club.id, nummer=5)
         db_session.add(baan)
         await db_session.commit()
 
-        team = Team(club_id=club.id, competitie_id=competitie.id, naam="Test Team")
+        team = Team(club_id=club.id, competitie_id=competitie.id, naam="Test Team Jou")
         db_session.add(team)
         await db_session.commit()
 
@@ -119,19 +116,17 @@ class TestClubSetupJourney:
         assert data["public_token"] is not None
 
     async def test_generate_ronde_indeling(
-        self, client: AsyncClient, admin_auth_headers: dict, db_session
+        self, client: AsyncClient, admin_auth_headers: dict, db_session: AsyncSession, club: Club
     ):
         """Journey: Admin generates automatic round scheduling."""
-        from app.models import Club, Competitie, Speelronde, Team, Baan
         from datetime import date
 
-        club = Club(naam="Test Club", slug="testplan", status="trial")
-        db_session.add(club)
-        await db_session.commit()
+        from app.models import Baan, Competitie, Speelronde, Team
 
+        # Setup: Use fixture club
         competitie = Competitie(
             club_id=club.id,
-            naam="Test Comp",
+            naam="Test Comp Plan",
             speeldag="vrijdag",
             start_datum=date(2024, 1, 1),
             eind_datum=date(2024, 12, 31),
@@ -149,12 +144,12 @@ class TestClubSetupJourney:
         await db_session.commit()
 
         # Add baan and teams
-        for i in range(1, 3):
+        for i in range(10, 12):
             baan = Baan(club_id=club.id, nummer=i)
             db_session.add(baan)
 
         for i in range(1, 5):
-            team = Team(club_id=club.id, competitie_id=competitie.id, naam=f"Team {i}")
+            team = Team(club_id=club.id, competitie_id=competitie.id, naam=f"Team Plan {i}")
             db_session.add(team)
 
         await db_session.commit()
@@ -172,7 +167,7 @@ class TestClubSetupJourney:
             headers=admin_auth_headers,
         )
         data = detail_response.json()
-        assert len(data.get("baantoewijzingen", [])) > 0
+        assert len(data.get("toewijzingen", [])) > 0
 
 
 class TestUserInvitationJourney:
@@ -186,7 +181,7 @@ class TestUserInvitationJourney:
             "/api/v1/tenant/invite",
             json={
                 "email": "newuser@testclub.nl",
-                "role": "user",
+                "role": "planner",
             },
             headers=admin_auth_headers,
         )
@@ -221,7 +216,7 @@ class TestUserInvitationJourney:
     ):
         """Journey: Admin views, updates and deactivates users."""
         from app.models import Club, User
-        from passlib.hash import bcrypt
+        from app.services.auth import get_password_hash
 
         club = Club(naam="Test Club", slug="testusers", status="trial")
         db_session.add(club)
@@ -231,7 +226,7 @@ class TestUserInvitationJourney:
         user = User(
             club_id=club.id,
             email="member@testclub.nl",
-            password_hash=bcrypt("password"),
+            password_hash=get_password_hash("password"),
             full_name="Test Member",
             role="user",
         )
@@ -244,7 +239,8 @@ class TestUserInvitationJourney:
             headers=admin_auth_headers,
         )
         assert list_response.status_code == 200
-        users = list_response.json()
+        users_data = list_response.json()
+        users = users_data["users"]
         assert any(u["email"] == "member@testclub.nl" for u in users)
 
         # Step 2: Update user
@@ -264,9 +260,9 @@ class TestPasswordResetJourney:
         self, client: AsyncClient, admin_auth_headers: dict, db_session
     ):
         """Journey: User forgets password and resets it."""
-        from app.models import Club, User, PasswordResetToken
-        from passlib.hash import bcrypt
-        from datetime import datetime, timedelta
+
+        from app.models import Club, PasswordResetToken, User
+        from app.services.auth import get_password_hash
 
         club = Club(naam="Test Club", slug="testpwd", status="trial")
         db_session.add(club)
@@ -275,7 +271,7 @@ class TestPasswordResetJourney:
         user = User(
             club_id=club.id,
             email="resetuser@testclub.nl",
-            password_hash=bcrypt("oldpassword"),
+            password_hash=get_password_hash("oldpassword"),
             full_name="Reset User",
             role="user",
         )
@@ -290,7 +286,9 @@ class TestPasswordResetJourney:
         assert forgot_response.status_code == 200
 
         # Get reset token from DB
-        reset_token = await db_session.get(PasswordResetToken, user.id)
+        from sqlalchemy import select
+        result = await db_session.execute(select(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+        reset_token = result.scalar_one_or_none()
         assert reset_token is not None
 
         # Step 2: Reset password

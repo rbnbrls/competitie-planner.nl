@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Baan, Club, Competitie, Team, User
+from app.models import Baan, Club, Competitie, Team
 from app.services.tenant_auth import get_current_tenant_user
 
 router = APIRouter(prefix="/tenant/onboarding", tags=["onboarding"])

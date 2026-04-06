@@ -1,22 +1,22 @@
 from datetime import date, datetime, time
+from enum import StrEnum
+from typing import TypeVar
 from uuid import UUID
-from enum import Enum
-from typing import Generic, TypeVar, List
-from pydantic import BaseModel, ConfigDict, EmailStr
 
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 T = TypeVar("T")
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
-    items: List[T]
+class PaginatedResponse[T](BaseModel):
+    items: list[T]
     total: int
     page: int
     size: int
     pages: int
 
 
-class WedstrijdStatus(str, Enum):
+class WedstrijdStatus(StrEnum):
     GEPLAND = "gepland"
     BEVESTIGD = "bevestigd"
     GAANDE = "gaande"
@@ -338,12 +338,12 @@ class SeizoensoverzichtEntry(BaseModel):
 class SeizoensoverzichtTeamRow(BaseModel):
     team_id: UUID
     team_naam: str
-    planning: List[SeizoensoverzichtEntry]
+    planning: list[SeizoensoverzichtEntry]
 
 
 class SeizoensoverzichtResponse(BaseModel):
-    rondes: List[SpeelrondeNestedResponse]
-    rows: List[SeizoensoverzichtTeamRow]
+    rondes: list[SpeelrondeNestedResponse]
+    rows: list[SeizoensoverzichtTeamRow]
 
 
 # --- Captain Portal Schemas ---
@@ -394,8 +394,8 @@ class CaptainPortalResponse(BaseModel):
     competitie_naam: str
     club: DisplayClubInfo
     volgende_wedstrijd: CaptainWedstrijdResponse | None = None
-    alle_wedstrijden: List[CaptainWedstrijdResponse]
-    beschikbaarheden: List[BeschikbaarheidResponse]
+    alle_wedstrijden: list[CaptainWedstrijdResponse]
+    beschikbaarheden: list[BeschikbaarheidResponse]
 
 
 class ResultSubmission(BaseModel):

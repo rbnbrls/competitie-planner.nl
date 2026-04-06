@@ -1,17 +1,15 @@
+import os
+import shutil
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.db import get_db
-from app.models import Club, Baan, User
-from app.schemas import ClubResponse, BaanResponse
-from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
-import os
-import shutil
+from app.models import Baan, User
+from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
 router = APIRouter(prefix="/tenant", tags=["tenant"])
 

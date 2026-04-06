@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, date, datetime, time, timezone
+from datetime import date, datetime, time
 from typing import Optional
 
 from sqlalchemy import (
@@ -48,9 +48,9 @@ class Club(Base):
     billing_info: Mapped[str | None] = mapped_column(Text, default=None)
     payment_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     users: Mapped[list["User"]] = relationship("User", back_populates="club")
@@ -79,9 +79,9 @@ class User(Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     last_login: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     club: Mapped[Optional["Club"]] = relationship("Club", back_populates="users")
@@ -101,7 +101,7 @@ class InviteToken(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (Index("idx_invite_tokens_club", "club_id"),)
 
@@ -124,9 +124,9 @@ class Baan(Base):
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
     notitie: Mapped[str | None] = mapped_column(Text, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -161,9 +161,9 @@ class Competitie(Base):
     hergebruik_configuratie: Mapped[bool] = mapped_column(Boolean, default=True)
     reminder_days_before: Mapped[int] = mapped_column(SmallInteger, default=3)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (Index("idx_competities_club", "club_id"),)
@@ -201,9 +201,9 @@ class Team(Base):
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
     public_token: Mapped[str] = mapped_column(String(64), unique=True, default=lambda: uuid.uuid4().hex)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -259,9 +259,9 @@ class Wedstrijd(Base):
     scorendetails: Mapped[str | None] = mapped_column(Text, default=None)
     notitie: Mapped[str | None] = mapped_column(Text, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -311,9 +311,9 @@ class Speelronde(Base):
     )
     public_token: Mapped[str | None] = mapped_column(String(64), unique=True, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -351,9 +351,9 @@ class BaanToewijzing(Base):
     tijdslot_eind: Mapped[time | None] = mapped_column(Time, default=None)
     notitie: Mapped[str | None] = mapped_column(Text, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -394,7 +394,7 @@ class PlanningHistorie(Base):
     totaal_score: Mapped[float] = mapped_column(Numeric(8, 2), default=0)
 
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -427,7 +427,7 @@ class StatusChange(Base):
     )
     old_status: Mapped[str | None] = mapped_column(String(20), default=None)
     new_status: Mapped[str] = mapped_column(String(20), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (Index("idx_status_changes_club", "club_id"),)
 
@@ -449,7 +449,7 @@ class PasswordResetToken(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (Index("idx_password_reset_tokens_user", "user_id"),)
     club: Mapped["Club"] = relationship("Club")
@@ -470,9 +470,9 @@ class Beschikbaarheid(Base):
     is_beschikbaar: Mapped[bool] = mapped_column(Boolean, default=True)
     notitie: Mapped[str | None] = mapped_column(Text, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (
@@ -490,9 +490,9 @@ class MollieConfig(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     api_key: Mapped[str] = mapped_column(String(100), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
 
@@ -503,9 +503,9 @@ class CompetitionPrice(Base):
     competitie_naam: Mapped[str] = mapped_column(String(100), nullable=False)
     price_small_club: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     price_large_club: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
 
@@ -524,9 +524,9 @@ class SepaMandate(Base):
     iban: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     signed_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (Index("idx_sepa_mandates_club", "club_id"),)
@@ -554,9 +554,9 @@ class Payment(Base):
     mollie_payment_status: Mapped[str | None] = mapped_column(String(20), default=None)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC)
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (Index("idx_payments_club", "club_id"),)

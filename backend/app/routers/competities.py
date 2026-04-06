@@ -1,32 +1,63 @@
+from datetime import date, time
 from uuid import UUID
-from datetime import time, date
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select, func
-from app.schemas import (
-    CompetitieCreate,
-    CompetitieUpdate,
-    CompetitieResponse,
-    PaginatedResponse,
-    SeizoensoverzichtResponse,
-    SeizoensoverzichtTeamRow,
-    SeizoensoverzichtEntry,
-    SpeelrondeNestedResponse
-)
-
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.db import get_db
-from app.models import Club, Competitie, Team, Baan, Speelronde, BaanToewijzing, Wedstrijd
-from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
+from app.models import BaanToewijzing, Competitie, Speelronde, Team, Wedstrijd
+from app.schemas import (
+    CompetitieCreate,
+    CompetitieUpdate,
+    SeizoensoverzichtEntry,
+    SeizoensoverzichtResponse,
+    SeizoensoverzichtTeamRow,
+    SpeelrondeNestedResponse,
+    TeamBase,
+    TeamCreate,
+)
 from app.services import planning as planning_service
+from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
 router = APIRouter(prefix="/tenant/competities", tags=["competities"])
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
+
+@router.post("")
+async def create_competitie(
+    data: CompetitieCreate,
+    current: tuple = CURRENT_ADMIN_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+
+    competitie = Competitie(
+        club_id=club.id,
+        naam=data.naam,
+        speeldag=data.speeldag,
+        start_datum=data.start_datum,
+        eind_datum=data.eind_datum,
+        feestdagen=data.feestdagen,
+        inhaal_datums=data.inhaal_datums,
+        actief=data.actief,
+        email_notifications_enabled=data.email_notifications_enabled,
+        standaard_starttijden=data.standaard_starttijden,
+        eerste_datum=data.eerste_datum,
+        hergebruik_configuratie=data.hergebruik_configuratie,
+        reminder_days_before=data.reminder_days_before,
+    )
+    db.add(competitie)
+    await db.commit()
+    await db.refresh(competitie)
+
+    return {
+        "id": str(competitie.id),
+        "naam": competitie.naam,
+    }
 
 
 @router.get("")
@@ -38,16 +69,19 @@ async def list_competities(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    
-    if page < 1: page = 1
-    if size < 1: size = 20
-    if size > 100: size = 100
-    
+
+    if page < 1:
+        page = 1
+    if size < 1:
+        size = 20
+    if size > 100:
+        size = 100
+
     offset = (page - 1) * size
 
     base_query = select(Competitie).where(Competitie.club_id == club.id)
     if actief_only:
-        base_query = base_query.where(Competitie.actief == True)
+        base_query = base_query.where(Competitie.actief)
 
     # Count total
     count_query = select(func.count()).select_from(base_query.subquery())
@@ -61,7 +95,7 @@ async def list_competities(
         .limit(size)
     )
     competities = result.scalars().all()
-    
+
     pages = (total + size - 1) // size
 
     return {
@@ -178,6 +212,82 @@ async def list_rondes(
     }
 
 
+@router.get("/{competitie_id}/teams")
+async def list_competitie_teams(
+    competitie_id: str,
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid competition ID")
+
+    result = await db.execute(
+        select(Team).where(
+            Team.competitie_id == competitie_uuid,
+            Team.club_id == club.id
+        ).order_by(Team.naam)
+    )
+    teams = result.scalars().all()
+
+    return {
+        "items": [
+            {
+                "id": str(t.id),
+                "naam": t.naam,
+                "captain_naam": t.captain_naam,
+                "captain_email": t.captain_email,
+                "speelklasse": t.speelklasse,
+                "actief": t.actief,
+            }
+            for t in teams
+        ]
+    }
+
+
+@router.post("/{competitie_id}/teams")
+async def create_competitie_team(
+    competitie_id: str,
+    data: TeamBase,
+    current: tuple = CURRENT_ADMIN_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid competition ID")
+
+    # Check if competitie exists and belongs to club
+    result = await db.execute(
+        select(Competitie).where(
+            Competitie.id == competitie_uuid,
+            Competitie.club_id == club.id
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Competitie not found")
+
+    team = Team(
+        club_id=club.id,
+        competitie_id=competitie_uuid,
+        naam=data.naam,
+        captain_naam=data.captain_naam,
+        captain_email=data.captain_email,
+        speelklasse=data.speelklasse,
+    )
+    db.add(team)
+    await db.commit()
+    await db.refresh(team)
+
+    return {
+        "id": str(team.id),
+        "naam": team.naam,
+    }
+
+
 @router.get("/{competitie_id}/seizoensoverzicht", response_model=SeizoensoverzichtResponse)
 async def get_seizoensoverzicht(
     competitie_id: str,
@@ -291,7 +401,7 @@ async def export_seizoensoverzicht_pdf(
 
     from app.services.pdf import PDFService
     pdf_service = PDFService(db)
-    
+
     try:
         pdf_content = await pdf_service.generate_seizoensoverzicht_pdf(competitie_uuid)
     except ValueError as e:
@@ -314,27 +424,27 @@ async def export_seizoensoverzicht_csv(
 ):
     user, club = current
     try:
-        competitie_uuid = UUID(competitie_id)
+        UUID(competitie_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid competition ID")
 
     # Re-use the logic from get_seizoensoverzicht but format as CSV
     data = await get_seizoensoverzicht(competitie_id, current, db)
-    
-    import io
+
     import csv
-    
+    import io
+
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Header
     header = ["Team"] + [r.datum.strftime("%d-%m-%Y") for r in data.rondes]
     writer.writerow(header)
-    
+
     # Rows
     for row in data.rows:
         writer.writerow([row.team_naam] + [p.label for p in row.planning])
-    
+
     return Response(
         content=output.getvalue(),
         media_type="text/csv",

@@ -5,11 +5,10 @@ Tests for competities and teams CRUD endpoints
 import uuid
 from datetime import date
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Baan, Club, Competitie, Team
+from app.models import Baan, Competitie, Team
 
 
 class TestCompetitiesList:
@@ -27,8 +26,8 @@ class TestCompetitiesList:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "competities" in data
-        assert data["competities"] == []
+        assert "items" in data
+        assert data["items"] == []
 
     async def test_list_competities_with_data(
         self,
@@ -54,7 +53,7 @@ class TestCompetitiesList:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data["competities"]) == 1
+        assert len(data["items"]) == 1
 
 
 class TestCompetitiesCreate:
@@ -191,8 +190,8 @@ class TestTeamsCRUD:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "teams" in data
-        assert len(data["teams"]) == 1
+        assert "items" in data
+        assert len(data["items"]) == 1
 
 
 class TestBaanenCRUD:

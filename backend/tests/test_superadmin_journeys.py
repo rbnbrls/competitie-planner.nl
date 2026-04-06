@@ -3,7 +3,6 @@ Customer Journey: Superadmin and Payments
 Test complete flows for superadmin operations and payment setup
 """
 
-import pytest
 from httpx import AsyncClient
 
 
@@ -24,7 +23,7 @@ class TestSuperadminJourney:
             },
             headers=superadmin_auth_headers,
         )
-        assert create_response.status_code == 200
+        assert create_response.status_code == 201
         club_id = create_response.json()["id"]
 
         # Step 2: List clubs
@@ -50,7 +49,7 @@ class TestSuperadminJourney:
     ):
         """Journey: Superadmin manages users across clubs."""
         from app.models import Club, User
-        from passlib.hash import bcrypt
+        from app.services.auth import get_password_hash
 
         club = Club(naam="Test Club", slug="testsuperadmin", status="trial")
         db_session.add(club)
@@ -59,7 +58,7 @@ class TestSuperadminJourney:
         user = User(
             club_id=club.id,
             email="clubadmin@test.nl",
-            password_hash=bcrypt("password"),
+            password_hash=get_password_hash("password"),
             full_name="Club Admin",
             role="admin",
         )
@@ -151,8 +150,9 @@ class TestDisplayJourney:
 
     async def test_view_published_ronde_without_auth(self, client: AsyncClient, db_session):
         """Journey: Anyone with public token can view a published round."""
-        from app.models import Club, Competitie, Speelronde
         from datetime import date
+
+        from app.models import Club, Competitie, Speelronde
 
         club = Club(naam="Test Club", slug="testdisplay", status="trial")
         db_session.add(club)

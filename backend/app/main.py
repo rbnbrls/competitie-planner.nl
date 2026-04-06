@@ -1,20 +1,19 @@
 import logging
 import os
-import sys
-import structlog
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Depends, HTTPException, status
+import structlog
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from slowapi.errors import RateLimitExceeded
-
-from app.limiter import limiter
 from app.config import settings
 from app.db import engine, get_db
+from app.limiter import limiter
+from app.middleware.logging import LoggingMiddleware
 from app.routers import (
     auth,
     calendar,
@@ -32,7 +31,6 @@ from app.routers import (
     wedstrijden,
 )
 
-from app.middleware.logging import LoggingMiddleware
 
 # Configure structlog
 def setup_logging():
@@ -96,7 +94,8 @@ async def lifespan(app: FastAPI):
         logger.info("Security check: CSRF protection verified - tokens are stateless (OAuth2 Bearer).")
 
     yield
-    await engine.dispose()
+    if not os.getenv("TEST_MODE") and not os.getenv("TESTING"):
+        await engine.dispose()
 
 
 app = FastAPI(
@@ -112,11 +111,12 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     Custom handler for RateLimitExceeded exceptions.
     Returns 429 Too Many Requests with Retry-After header.
     """
+    retry_after = getattr(exc, "retry_after", 60)
     response = JSONResponse(
         status_code=429,
-        content={"detail": f"Te veel aanvragen. Probeer het over {exc.retry_after} seconden opnieuw."},
+        content={"detail": f"Te veel aanvragen. Probeer het over {retry_after} seconden opnieuw."},
     )
-    response.headers["Retry-After"] = str(exc.retry_after)
+    response.headers["Retry-After"] = str(retry_after)
     return response
 
 

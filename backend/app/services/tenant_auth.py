@@ -1,7 +1,4 @@
-from datetime import datetime
-from uuid import UUID
 import structlog
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
@@ -9,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Club, User
-from app.services.auth import decode_token, TokenPayload
+from app.services.auth import TokenPayload, decode_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/tenant/login")
 
@@ -75,3 +72,9 @@ async def get_current_tenant_admin(
             detail="Admin access required",
         )
     return user, club
+
+
+def generate_public_token() -> str:
+    """Generate a secure random string for public links."""
+    import secrets
+    return secrets.token_urlsafe(32)

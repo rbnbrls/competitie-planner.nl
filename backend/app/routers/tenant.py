@@ -1,26 +1,24 @@
-from datetime import UTC, datetime, timedelta, timezone
-from uuid import UUID
-import structlog
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select, or_, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Club, User, InviteToken, PasswordResetToken
 from app.limiter import limiter
+from app.models import Club, InviteToken, PasswordResetToken, User
 from app.schemas import UserResponse
 from app.services.auth import (
     TokenPayload,
     create_access_token,
     create_refresh_token,
     decode_token,
-    verify_password,
     get_password_hash,
+    verify_password,
 )
-from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
 
 router = APIRouter(prefix="/tenant", tags=["tenant"])
 
@@ -130,8 +128,8 @@ async def login(
     user = result.scalar_one_or_none()
 
     if user:
-        if user.locked_until and user.locked_until > datetime.now(UTC):
-            retry_after = int((user.locked_until - datetime.now(UTC)).total_seconds())
+        if user.locked_until and user.locked_until > datetime.now(datetime.UTC):
+            retry_after = int((user.locked_until - datetime.now(datetime.UTC)).total_seconds())
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
@@ -141,7 +139,7 @@ async def login(
         if user:
             user.failed_login_attempts += 1
             if user.failed_login_attempts >= 10:
-                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+                user.locked_until = datetime.now(datetime.UTC) + timedelta(minutes=15)
             await db.commit()
 
         raise HTTPException(
@@ -171,7 +169,7 @@ async def login(
     # Reset failed attempts on success
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now(UTC)
+    user.last_login = datetime.now(datetime.UTC)
 
     logger = structlog.get_logger()
     logger.info(
@@ -287,7 +285,7 @@ async def create_invite(
     import secrets
 
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(UTC) + timedelta(hours=48)
+    expires_at = datetime.now(datetime.UTC) + timedelta(hours=48)
 
     invite = InviteToken(
         club_id=club.id,
@@ -319,7 +317,7 @@ async def accept_invite(
     result = await db.execute(
         select(InviteToken).where(
             InviteToken.token == data.token,
-            InviteToken.used == False,
+            InviteToken.used.is_(False),
         )
     )
     invite = result.scalar_one_or_none()
@@ -330,7 +328,7 @@ async def accept_invite(
             detail="Invalid or expired invite token",
         )
 
-    if invite.expires_at < datetime.now(UTC):
+    if invite.expires_at < datetime.now(datetime.UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite token has expired",
@@ -413,7 +411,7 @@ async def forgot_password(
         result = await db.execute(
             select(func.count(PasswordResetToken.id)).where(
                 PasswordResetToken.user_id == user.id,
-                PasswordResetToken.created_at > datetime.now(UTC) - timedelta(hours=1),
+                PasswordResetToken.created_at > datetime.now(datetime.UTC) - timedelta(hours=1),
             )
         )
         reset_count = result.scalar()
@@ -424,10 +422,10 @@ async def forgot_password(
             )
 
         import secrets
-        from app.models import PasswordResetToken
+
 
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(UTC) + timedelta(hours=1)
+        expires_at = datetime.now(datetime.UTC) + timedelta(hours=1)
 
         reset_token = PasswordResetToken(
             club_id=club.id,
@@ -456,12 +454,11 @@ async def reset_password(
     data: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    from app.models import PasswordResetToken
 
     result = await db.execute(
         select(PasswordResetToken).where(
             PasswordResetToken.token == data.token,
-            PasswordResetToken.used == False,
+            PasswordResetToken.used.is_(False),
         )
     )
     reset_token = result.scalar_one_or_none()
@@ -472,7 +469,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    if reset_token.expires_at < datetime.now(UTC):
+    if reset_token.expires_at < datetime.now(datetime.UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",

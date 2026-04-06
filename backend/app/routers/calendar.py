@@ -1,14 +1,13 @@
 import uuid
-from datetime import datetime, date, time, timedelta, UTC
-from typing import List
+from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlalchemy import select, and_, or_
-from sqlalchemy.orm import joinedload
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.db import get_db
-from app.models import BaanToewijzing, Club, Speelronde, Team, Wedstrijd, Competitie
+from app.models import BaanToewijzing, Competitie, Speelronde, Team, Wedstrijd
 
 router = APIRouter(tags=["calendar"])
 
@@ -19,7 +18,7 @@ def format_ical_datetime(dt: datetime) -> str:
 def format_ical_date(d: date) -> str:
     return d.strftime("%Y%m%d")
 
-def generate_ics(events: List[dict], calendar_name: str) -> str:
+def generate_ics(events: list[dict], calendar_name: str) -> str:
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -28,14 +27,14 @@ def generate_ics(events: List[dict], calendar_name: str) -> str:
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
     ]
-    
-    now_str = format_ical_datetime(datetime.now(UTC))
-    
+
+    now_str = format_ical_datetime(datetime.now(datetime.UTC))
+
     for event in events:
         lines.append("BEGIN:VEVENT")
         lines.append(f"UID:{event['uid']}")
         lines.append(f"DTSTAMP:{now_str}")
-        
+
         if event.get('all_day'):
             lines.append(f"DTSTART;VALUE=DATE:{format_ical_date(event['start'])}")
             # For all-day events, DTEND is the following day according to RFC 5545
@@ -55,7 +54,7 @@ def generate_ics(events: List[dict], calendar_name: str) -> str:
                 end_dt = event['start'] + timedelta(hours=2)
                 end_str = end_dt.strftime("%Y%m%dT%H%M%S")
                 lines.append(f"DTEND:{end_str}")
-        
+
         lines.append(f"SUMMARY:{event['summary']}")
         if event.get('description'):
             # Escape special characters
@@ -64,9 +63,9 @@ def generate_ics(events: List[dict], calendar_name: str) -> str:
         if event.get('location'):
             loc = str(event['location']).replace('\\', '\\\\').replace(',', '\\,').replace(';', '\\;').replace('\n', '\\n')
             lines.append(f"LOCATION:{loc}")
-        
+
         lines.append("END:VEVENT")
-    
+
     lines.append("END:VCALENDAR")
     return "\r\n".join(lines)
 
@@ -112,7 +111,7 @@ async def get_competition_calendar(
         .where(Wedstrijd.ronde_id.in_(ronde_ids))
     )
     wedstrijden = result.scalars().all()
-    
+
     # Map matches by (ronde_id, thuisteam_id) to link court assignments to opponents
     matches_map = {}
     for w in wedstrijden:
@@ -122,14 +121,14 @@ async def get_competition_calendar(
     for t in toewijzingen:
         ronde = t.ronde
         match = matches_map.get((t.ronde_id, t.team_id))
-        
+
         start_date = ronde.datum
         start_time = t.tijdslot_start
         end_time = t.tijdslot_eind
         location = f"{competitie.club.naam} - Baan {t.baan.nummer}"
         if t.baan.naam:
             location += f" ({t.baan.naam})"
-        
+
         opponent = match.uitteam.naam if match else "TBD"
         summary = f"{t.team.naam} vs {opponent}"
         description = f"Competitie: {competitie.naam}\nOrganisatie: {competitie.club.naam}"
@@ -140,7 +139,7 @@ async def get_competition_calendar(
 
         start_dt = datetime.combine(start_date, start_time)
         end_dt = datetime.combine(start_date, end_time) if end_time else None
-        
+
         events.append({
             "uid": f"toewijzing-{t.id}@competitie-planner.nl",
             "start": start_dt,
@@ -150,7 +149,7 @@ async def get_competition_calendar(
             "location": location,
             "all_day": False
         })
-    
+
     ics_content = generate_ics(events, f"{competitie.club.naam} - {competitie.naam}")
     return Response(content=ics_content, media_type="text/calendar", headers={
         "Content-Disposition": f"attachment; filename=competitie-{competition_id}.ics"
@@ -197,13 +196,13 @@ async def get_team_calendar(
     for w in wedstrijden:
         if w.ronde.status != "gepubliceerd":
             continue
-            
+
         is_thuis = w.thuisteam_id == team.id
         start_date = w.speeldatum or w.ronde.datum
         start_time = w.speeltijd
         end_time = None
         location = "TBD"
-        
+
         if is_thuis:
             location = f"{team.club.naam}"
             t = toewijzingen_map.get(w.ronde_id)

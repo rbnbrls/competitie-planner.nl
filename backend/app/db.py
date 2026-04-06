@@ -7,7 +7,7 @@ Base = declarative_base()
 
 
 engine = create_async_engine(
-    settings.DATABASE_URL, 
+    settings.DATABASE_URL,
     echo=settings.ENVIRONMENT == "development"
 )
 

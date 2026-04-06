@@ -1,9 +1,8 @@
-from datetime import UTC, date, datetime, timedelta
-from uuid import UUID
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -194,7 +193,7 @@ async def get_dashboard(
         .options(selectinload(Competitie.speelrondes))
         .where(
             Competitie.club_id == club.id,
-            Competitie.actief == True,
+            Competitie.actief,
         )
     )
     competities = result.scalars().all()
@@ -205,7 +204,7 @@ async def get_dashboard(
     for comp in competities:
         totaal = len(comp.speelrondes)
         gepub = sum(1 for r in comp.speelrondes if r.status == "gepubliceerd")
-        pct = int((gepub / totaal * 100)) if totaal > 0 else 0
+        pct = int(gepub / totaal * 100) if totaal > 0 else 0
 
         competities_voortgang.append(
             DashboardCompetitieVoortgang(
@@ -246,7 +245,7 @@ async def get_dashboard(
                         DashboardActie(
                             id=f"toewijzing-{ronde.id}",
                             type="baan_toewijzing",
-                            titel=f"Baantoewijzing invullen",
+                            titel="Baantoewijzing invullen",
                             beschrijving=f"{teams_zonder} team(s) hebben nog geen baan toegewezen",
                             prioriteit="hoog"
                             if ronde.datum <= vandaag + timedelta(days=3)
@@ -260,7 +259,7 @@ async def get_dashboard(
     result = await db.execute(
         select(Team).where(
             Team.club_id == club.id,
-            Team.actief == True,
+            Team.actief,
             Team.captain_email.is_(None),
         )
     )
@@ -274,7 +273,7 @@ async def get_dashboard(
                 DashboardActie(
                     id=f"captain-{team.id}",
                     type="team_captain",
-                    titel=f"Captain toevoegen aan team",
+                    titel="Captain toevoegen aan team",
                     beschrijving=f"Team '{team.naam}' heeft geen captain email",
                     prioriteit="laag",
                     competitie_id=str(team.competitie_id),
@@ -338,17 +337,17 @@ async def get_dashboard(
         )
 
     result = await db.execute(
-        select(func.count(Baan.id)).where(Baan.club_id == club.id, Baan.actief == True)
+        select(func.count(Baan.id)).where(Baan.club_id == club.id, Baan.actief)
     )
     totaal_banen = result.scalar() or 0
 
     result = await db.execute(
-        select(func.count(Team.id)).where(Team.club_id == club.id, Team.actief == True)
+        select(func.count(Team.id)).where(Team.club_id == club.id, Team.actief)
     )
     totaal_teams = result.scalar() or 0
 
     result = await db.execute(
-        select(func.count(User.id)).where(User.club_id == club.id, User.is_active == True)
+        select(func.count(User.id)).where(User.club_id == club.id, User.is_active)
     )
     totaal_gebruikers = result.scalar() or 0
 

@@ -78,13 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, slug?: string) => {
     if (slug) {
       const response = await tenantApi.login(email, password, slug);
-      const { access_token, refresh_token, user: userData, club: clubData } = response.data;
+      const { access_token, refresh_token } = response.data;
       localStorage.setItem("access_token", access_token);
       localStorage.setItem("refresh_token", refresh_token);
       localStorage.setItem("club_slug", slug);
-      setUser({ ...userData, is_superadmin: false });
-      setClub(clubData);
-      applyClubTheme(clubData);
+      // Fetch user and club info separately after login
+      const [meRes, clubRes] = await Promise.all([
+        tenantApi.me(),
+        tenantApi.getClub(),
+      ]);
+      setUser({ ...meRes.data, is_superadmin: false, club_slug: slug });
+      setClub(clubRes.data);
+      applyClubTheme(clubRes.data);
     } else {
       const response = await authApi.login(email, password);
       const { access_token, refresh_token } = response.data;

@@ -1,26 +1,25 @@
-from datetime import UTC, datetime, timezone, time
+from datetime import datetime
 from uuid import UUID
-import structlog
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Baan, BaanToewijzing, Competitie, Speelronde, Team
 from app.routers.tenant import get_current_tenant_user
-from app.services.planning import (
-    genereer_indeling,
-    get_historie_heatmap,
-    update_planning_historie,
-    plan_competitie,
-)
-from app.services.auth import get_password_hash
 from app.services.email import EmailService
 from app.services.mollie import MollieService
 from app.services.pdf import PDFService
+from app.services.planning import (
+    genereer_indeling,
+    get_historie_heatmap,
+    plan_competitie,
+    update_planning_historie,
+)
 
 router = APIRouter(prefix="/tenant", tags=["planning"])
 
@@ -374,7 +373,7 @@ async def publish_ronde(
         ronde.public_token = secrets.token_urlsafe(32)
 
     ronde.status = "gepubliceerd"
-    ronde.published_at = datetime.now(UTC)
+    ronde.published_at = datetime.now(datetime.UTC)
     ronde.published_by = user.id
 
     result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
@@ -502,13 +501,13 @@ async def get_competitie_historie(
             detail="Access denied",
         )
 
-    result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief == True))
+    result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief))
     banen = list(result.scalars().all())
 
     heatmap = await get_historie_heatmap(competitie_uuid, db)
 
     result = await db.execute(
-        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief == True)
+        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief)
     )
     teams = list(result.scalars().all())
 
@@ -533,43 +532,7 @@ async def get_competitie_historie(
     )
 
 
-@router.get("/competities/{competitie_id}/teams")
-async def list_teams_for_planning(
-    competitie_id: str,
-    current: tuple = Depends(get_current_tenant_user),
-    db: AsyncSession = Depends(get_db),
-) -> list[dict]:
-    user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
 
-    result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
-    competitie = result.scalar_one_or_none()
-    if not competitie or competitie.club_id != club.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
-        )
-
-    result = await db.execute(
-        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief == True)
-    )
-    teams = list(result.scalars().all())
-
-    return [
-        {
-            "id": str(t.id),
-            "naam": t.naam,
-            "captain_naam": t.captain_naam,
-            "speelklasse": t.speelklasse,
-        }
-        for t in teams
-    ]
 
 
 @router.get("/banen")
@@ -579,7 +542,7 @@ async def list_banen_for_planning(
 ) -> list[dict]:
     user, club = current
 
-    result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief == True))
+    result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief))
     banen = list(result.scalars().all())
 
     return [
@@ -782,7 +745,7 @@ async def bulk_publish_rondes(
                 ronde.public_token = secrets.token_urlsafe(32)
 
             ronde.status = "gepubliceerd"
-            ronde.published_at = datetime.now(UTC)
+            ronde.published_at = datetime.now(datetime.UTC)
             ronde.published_by = user.id
             await db.commit()
             await db.refresh(ronde)

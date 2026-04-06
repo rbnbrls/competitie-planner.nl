@@ -1,15 +1,14 @@
-from datetime import UTC, datetime, timedelta, timezone
-from uuid import UUID
-import structlog
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import select, func, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import User
 from app.limiter import limiter
+from app.models import User
 from app.schemas import UserResponse
 from app.services.auth import (
     TokenPayload,
@@ -72,8 +71,8 @@ async def login(
     user = result.scalar_one_or_none()
 
     if user:
-        if user.locked_until and user.locked_until > datetime.now(UTC):
-            retry_after = int((user.locked_until - datetime.now(UTC)).total_seconds())
+        if user.locked_until and user.locked_until > datetime.now(datetime.UTC):
+            retry_after = int((user.locked_until - datetime.now(datetime.UTC)).total_seconds())
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
@@ -83,7 +82,7 @@ async def login(
         if user:
             user.failed_login_attempts += 1
             if user.failed_login_attempts >= 10:
-                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+                user.locked_until = datetime.now(datetime.UTC) + timedelta(minutes=15)
             await db.commit()
 
         raise HTTPException(
@@ -107,7 +106,7 @@ async def login(
     # Reset failed attempts on success
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now(UTC)
+    user.last_login = datetime.now(datetime.UTC)
 
     access_token = create_access_token(
         data={
@@ -192,7 +191,7 @@ async def logout() -> dict:
 
 @router.get("/admin-exists")
 async def admin_exists(db: AsyncSession = Depends(get_db)) -> dict:
-    result = await db.execute(select(func.count(User.id)).where(User.is_superadmin == True))
+    result = await db.execute(select(func.count(User.id)).where(User.is_superadmin))
     count = result.scalar()
     return {"exists": count > 0}
 
@@ -206,7 +205,7 @@ async def register_admin(
     full_name: str,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await db.execute(select(func.count(User.id)).where(User.is_superadmin == True))
+    result = await db.execute(select(func.count(User.id)).where(User.is_superadmin))
     if result.scalar() > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

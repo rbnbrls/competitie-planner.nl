@@ -1,8 +1,8 @@
 import uuid
-from datetime import date, time, timedelta
-from typing import Any, Optional, Protocol
+from datetime import date, time
+from typing import Protocol
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,7 +13,6 @@ from app.models import (
     Competitie,
     PlanningHistorie,
     Speelronde,
-    Team,
     Wedstrijd,
 )
 
@@ -44,9 +43,9 @@ async def detecteer_tijdslot_conflicten(
     baan_id: uuid.UUID,
     datum: date,
     tijdslot_start: time,
-    tijdslot_eind: Optional[time] = None,
-    exclude_toewijzing_id: Optional[uuid.UUID] = None,
-    db: Optional[AsyncSession] = None,
+    tijdslot_eind: time | None = None,
+    exclude_toewijzing_id: uuid.UUID | None = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """
     Detecteert conflicterende tijdslots op dezelfde baan op een specifieke datum.
@@ -63,7 +62,7 @@ async def detecteer_tijdslot_conflicten(
             Speelronde.datum == datum,
         )
     )
-    
+
     if exclude_toewijzing_id:
         query = query.where(BaanToewijzing.id != exclude_toewijzing_id)
 
@@ -71,7 +70,7 @@ async def detecteer_tijdslot_conflicten(
     all_toewijzingen = list(result.scalars().all())
 
     conflicten = []
-    
+
     # Simple overlap check
     new_start_min = tijdslot_start.hour * 60 + tijdslot_start.minute
     new_end_min = (tijdslot_eind.hour * 60 + tijdslot_eind.minute) if tijdslot_eind else new_start_min + 60
@@ -95,7 +94,7 @@ async def detecteer_tijdslot_conflicten(
 async def plan_competitie(
     competitie_id: uuid.UUID,
     db: AsyncSession,
-    ronde_ids: Optional[list[uuid.UUID]] = None,
+    ronde_ids: list[uuid.UUID] | None = None,
     apply: bool = False,
 ) -> dict:
     """
@@ -115,28 +114,28 @@ async def plan_competitie(
     competitie = result.scalar_one_or_none()
     if not competitie:
         raise ValueError("Competitie not found")
-    
+
     club = competitie.club
-    
+
     query = select(Speelronde).where(Speelronde.competitie_id == competitie_id)
     if ronde_ids:
         query = query.where(Speelronde.id.in_(ronde_ids))
     query = query.order_by(Speelronde.datum.asc())
-    
+
     result = await db.execute(query)
     rondes = list(result.scalars().all())
-    
+
     # 2. Fetch all active courts for the club
     result = await db.execute(
         select(Baan)
-        .where(Baan.club_id == club.id, Baan.actief == True)
+        .where(Baan.club_id == club.id, Baan.actief)
         .order_by(Baan.prioriteit_score.desc())
     )
     banen = list(result.scalars().all())
-    
+
     # 3. Fetch existing history and current allocations for the dates involved
     dates = [r.datum for r in rondes]
-    
+
     # Fetch all allocations on these dates to avoid conflicts with OTHER competitions
     result = await db.execute(
         select(BaanToewijzing)
@@ -145,7 +144,7 @@ async def plan_competitie(
         .options(selectinload(BaanToewijzing.ronde))
     )
     existing_allocations = list(result.scalars().all())
-    
+
     # Organize existing allocations by date and court
     # date -> court_id -> [list of (start, end)]
     occupied_slots: dict[date, dict[uuid.UUID, list[tuple[time, time]]]] = {}
@@ -153,13 +152,13 @@ async def plan_competitie(
         # If we are replanning this competition, don't count its own existing allocations
         if alloc.ronde.competitie_id == competitie_id:
             continue
-            
+
         d = alloc.ronde.datum
         if d not in occupied_slots:
             occupied_slots[d] = {}
         if alloc.baan_id not in occupied_slots[d]:
             occupied_slots[d][alloc.baan_id] = []
-        
+
         start = alloc.tijdslot_start
         end = alloc.tijdslot_eind or time((start.hour + 1) % 24, start.minute)
         occupied_slots[d][alloc.baan_id].append((start, end))
@@ -175,10 +174,10 @@ async def plan_competitie(
     # 4. Prepare for planning
     new_toewijzingen = []
     logs = []
-    
+
     # Track assignments during this planning session to respect "not twice in a row"
     last_court_per_team: dict[uuid.UUID, uuid.UUID] = {}
-    
+
     # Also track current season scores for fairness within this batch
     current_season_scores: dict[uuid.UUID, float] = {} # team_id -> total_score
 
@@ -190,7 +189,7 @@ async def plan_competitie(
         )
         wedstrijden = list(result.scalars().all())
         thuisteam_ids = [w.thuisteam_id for w in wedstrijden]
-        
+
         if not thuisteam_ids:
             continue
 
@@ -219,7 +218,7 @@ async def plan_competitie(
         thuisteam_ids.sort(key=lambda tid: current_season_scores.get(tid, 0))
 
         standaard_tijden = competitie.standaard_starttijden or [time(19, 0)]
-        
+
         assigned_in_ronde = 0
         for idx, team_id in enumerate(thuisteam_ids):
             # Try to find a court
@@ -227,15 +226,15 @@ async def plan_competitie(
             # 1. Not occupied
             # 2. Not the same as last round for this team
             # 3. Balances the scores
-            
+
             best_baan = None
             best_tijd = None
-            
+
             # Simple strategy: try times in order
             found = False
             for t_start in standaard_tijden:
                 t_end = time((t_start.hour + 1) % 24, t_start.minute)
-                
+
                 # Check courts
                 for baan in banen:
                     # Check if occupied on this date/time
@@ -245,26 +244,26 @@ async def plan_competitie(
                             if max(t_start, occ_start) < min(t_end, occ_end):
                                 is_occupied = True
                                 break
-                    
+
                     if is_occupied:
                         continue
-                        
+
                     # Check "not twice in arow"
                     if last_court_per_team.get(team_id) == baan.id:
                         # Continue to see if there's another court, but keep this as fallback if needed
                         # For now, let's just skip it if possible
                         if len(banen) > 1:
                             continue
-                    
+
                     # We found a candidate
                     best_baan = baan
                     best_tijd = t_start
                     found = True
                     break
-                
+
                 if found:
                     break
-            
+
             if best_baan:
                 toewijzing = BaanToewijzing(
                     id=uuid.uuid4(),
@@ -275,18 +274,18 @@ async def plan_competitie(
                     tijdslot_eind=time((best_tijd.hour + 1) % 24, best_tijd.minute)
                 )
                 new_toewijzingen.append(toewijzing)
-                
+
                 # Update tracking state
                 last_court_per_team[team_id] = best_baan.id
                 current_season_scores[team_id] = current_season_scores.get(team_id, 0) + best_baan.prioriteit_score
-                
+
                 # Mark as occupied for subsequent teams in the same round
                 if ronde.datum not in occupied_slots:
                     occupied_slots[ronde.datum] = {}
                 if best_baan.id not in occupied_slots[ronde.datum]:
                     occupied_slots[ronde.datum][best_baan.id] = []
                 occupied_slots[ronde.datum][best_baan.id].append((best_tijd, time((best_tijd.hour + 1) % 24, best_tijd.minute)))
-                
+
                 assigned_in_ronde += 1
             else:
                 logs.append({
@@ -303,11 +302,11 @@ async def plan_competitie(
             await db.execute(
                 BaanToewijzing.__table__.delete().where(BaanToewijzing.ronde_id == ronde.id)
             )
-        
+
         # Add new ones
         for t in new_toewijzingen:
             db.add(t)
-        
+
         await db.commit()
 
     # 7. Return summary
@@ -342,9 +341,9 @@ async def genereer_indeling(ronde_id: uuid.UUID, db: AsyncSession) -> list[BaanT
     ronde = result.scalar_one_or_none()
     if not ronde:
         raise ValueError(f"Speelronde {ronde_id} not found")
-        
-    plan_result = await plan_competitie(ronde.competitie_id, db, ronde_ids=[ronde_id], apply=True)
-    
+
+    await plan_competitie(ronde.competitie_id, db, ronde_ids=[ronde_id], apply=True)
+
     # Refetch objects to return them as requested by the original signature
     final_result = await db.execute(
         select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_id)
@@ -439,7 +438,7 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
     if not club:
         raise ValueError(f"Club {club_id} not found")
 
-    result = await db.execute(select(Baan).where(Baan.club_id == club_id, Baan.actief == True))
+    result = await db.execute(select(Baan).where(Baan.club_id == club_id, Baan.actief))
     actieve_banen = list(result.scalars().all())
     count_banen = len(actieve_banen)
 
@@ -462,7 +461,7 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
     for ronde in rondes:
         if not ronde.competitie:
             continue
-            
+
         thuisteams = set()
         for w in ronde.wedstrijden:
             if w.thuisteam_id:
@@ -477,7 +476,7 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
             team_naam = "Meerdere teams"
             speelklasse = ""
             voorkeur_tijd = "19:00"
-            
+
             if ronde.wedstrijden:
                 first_thuisteam = next((w.thuisteam for w in ronde.wedstrijden if w.thuisteam), None)
                 if first_thuisteam:

@@ -2,15 +2,15 @@ import csv
 import io
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import select, func
-from app.schemas import TeamCreate, TeamUpdate, TeamResponse, PaginatedResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Club, Team
-from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
+from app.models import Team
+from app.schemas import TeamCreate, TeamUpdate
+from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
 router = APIRouter(prefix="/tenant/teams", tags=["teams"])
 
@@ -34,11 +34,14 @@ async def list_teams(
 ) -> dict:
     from sqlalchemy import or_
     user, club = current
-    
-    if page < 1: page = 1
-    if size < 1: size = 20
-    if size > 100: size = 100
-    
+
+    if page < 1:
+        page = 1
+    if size < 1:
+        size = 20
+    if size > 100:
+        size = 100
+
     offset = (page - 1) * size
 
     base_query = select(Team).where(Team.club_id == club.id)
@@ -70,7 +73,7 @@ async def list_teams(
         base_query.order_by(Team.naam).offset(offset).limit(size)
     )
     teams = result.scalars().all()
-    
+
     pages = (total + size - 1) // size
 
     return {
@@ -331,9 +334,7 @@ async def import_teams_csv(
     rows = list(reader)
 
     preview = []
-    created = []
     existing_count = 0
-    conflicts = []
 
     for row in rows:
         team_naam = row.get(csv_naam, "").strip()

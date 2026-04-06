@@ -1,8 +1,11 @@
 import { http, HttpResponse, delay } from 'msw'
 
+// Axios uses http://localhost:8000/api/v1 as base URL in tests
+const API_BASE = 'http://localhost:8000/api/v1'
+
 export const handlers = [
   // Auth handlers
-  http.post('/api/v1/auth/login', async () => {
+  http.post(`${API_BASE}/auth/login`, async () => {
     await delay(100)
     return HttpResponse.json({
       access_token: 'test_access_token',
@@ -11,12 +14,12 @@ export const handlers = [
     })
   }),
 
-  http.post('/api/v1/auth/logout', async () => {
+  http.post(`${API_BASE}/auth/logout`, async () => {
     await delay(50)
     return HttpResponse.json({ message: 'Logged out' })
   }),
 
-  http.get('/api/v1/auth/me', async () => {
+  http.get(`${API_BASE}/auth/me`, async () => {
     await delay(50)
     return HttpResponse.json({
       id: 'test-user-id',
@@ -27,14 +30,24 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/auth/admin-exists', async () => {
+  http.get(`${API_BASE}/auth/admin-exists`, async () => {
     await delay(50)
     return HttpResponse.json({ exists: true })
   }),
 
   // Tenant handlers
-  http.post('/api/v1/tenant/login', async () => {
+  http.post(`${API_BASE}/tenant/login`, async ({ request }) => {
     await delay(100)
+    // tenantApi.login sends credentials as query params, not a JSON body
+    const url = new URL(request.url)
+    const username = url.searchParams.get('username')
+    // Return 401 for any email that isn't our test admin
+    if (username !== 'admin@testclub.nl') {
+      return HttpResponse.json(
+        { detail: 'ongeldige inloggegevens' },
+        { status: 401 }
+      )
+    }
     return HttpResponse.json({
       access_token: 'test_access_token',
       refresh_token: 'test_refresh_token',
@@ -42,17 +55,32 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tenant/club', async () => {
+  http.get(`${API_BASE}/tenant/me`, async () => {
+    await delay(50)
+    return HttpResponse.json({
+      id: 'test-user-id',
+      email: 'admin@testclub.nl',
+      full_name: 'Test Admin',
+      role: 'admin',
+      is_superadmin: false,
+    })
+  }),
+
+  http.get(`${API_BASE}/tenant/club`, async () => {
     await delay(50)
     return HttpResponse.json({
       id: 'test-club-id',
       naam: 'Test Club',
       slug: 'testclub',
       status: 'trial',
+      primary_color: '#1B5E20',
+      secondary_color: '#FFFFFF',
+      accent_color: '#FFC107',
+      logo_url: null,
     })
   }),
 
-  http.get('/api/v1/tenant/settings', async () => {
+  http.get(`${API_BASE}/tenant/settings`, async () => {
     await delay(50)
     return HttpResponse.json({
       naam: 'Test Club',
@@ -62,7 +90,7 @@ export const handlers = [
     })
   }),
 
-  http.patch('/api/v1/tenant/settings', async ({ request }) => {
+  http.patch(`${API_BASE}/tenant/settings`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
@@ -71,7 +99,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tenant/branding', async () => {
+  http.get(`${API_BASE}/tenant/branding`, async () => {
     await delay(50)
     return HttpResponse.json({
       primary_color: '#1B5E20',
@@ -81,13 +109,13 @@ export const handlers = [
     })
   }),
 
-  http.patch('/api/v1/tenant/branding', async ({ request }) => {
+  http.patch(`${API_BASE}/tenant/branding`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json(body)
   }),
 
-  http.get('/api/v1/tenant/banen', async () => {
+  http.get(`${API_BASE}/tenant/banen`, async () => {
     await delay(50)
     return HttpResponse.json([
       { id: '1', nummer: 1, naam: 'Baan 1', verlichting_type: 'led', overdekt: true },
@@ -95,7 +123,7 @@ export const handlers = [
     ])
   }),
 
-  http.post('/api/v1/tenant/banen', async ({ request }) => {
+  http.post(`${API_BASE}/tenant/banen`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
@@ -104,7 +132,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tenant/users', async () => {
+  http.get(`${API_BASE}/tenant/users`, async () => {
     await delay(50)
     return HttpResponse.json([
       { id: '1', email: 'admin@testclub.nl', full_name: 'Admin User', role: 'admin', is_active: true },
@@ -112,7 +140,7 @@ export const handlers = [
     ])
   }),
 
-  http.post('/api/v1/tenant/invite', async ({ request }) => {
+  http.post(`${API_BASE}/tenant/invite`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
@@ -121,14 +149,14 @@ export const handlers = [
     })
   }),
 
-  http.post('/api/v1/tenant/accept-invite', async () => {
+  http.post(`${API_BASE}/tenant/accept-invite`, async () => {
     await delay(100)
     return HttpResponse.json({
       access_token: 'test_access_token',
     })
   }),
 
-  http.get('/api/v1/tenant/competities', async () => {
+  http.get(`${API_BASE}/tenant/competities`, async () => {
     await delay(50)
     return HttpResponse.json([
       {
@@ -142,7 +170,7 @@ export const handlers = [
     ])
   }),
 
-  http.post('/api/v1/tenant/competities', async ({ request }) => {
+  http.post(`${API_BASE}/tenant/competities`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
@@ -151,7 +179,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tenant/competities/:id/rondes', async () => {
+  http.get(`${API_BASE}/tenant/competities/:id/rondes`, async () => {
     await delay(50)
     return HttpResponse.json([
       { id: 'r1', datum: '2024-11-15', status: 'concept', week_nummer: 46 },
@@ -159,7 +187,7 @@ export const handlers = [
     ])
   }),
 
-  http.post('/api/v1/tenant/competities/:id/teams', async ({ request }) => {
+  http.post(`${API_BASE}/tenant/competities/:id/teams`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
@@ -168,7 +196,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tenant/competities/:id/teams', async () => {
+  http.get(`${API_BASE}/tenant/competities/:id/teams`, async () => {
     await delay(50)
     return HttpResponse.json([
       { id: 't1', naam: 'Team A', captain_naam: 'Jan', speelklasse: 'A' },
@@ -176,7 +204,7 @@ export const handlers = [
     ])
   }),
 
-  http.post('/api/v1/tenant/rondes/:id/genereer', async () => {
+  http.post(`${API_BASE}/tenant/rondes/:id/genereer`, async () => {
     await delay(200)
     return HttpResponse.json({
       message: 'Indeling gegenereerd',
@@ -184,7 +212,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tenant/rondes/:id', async () => {
+  http.get(`${API_BASE}/tenant/rondes/:id`, async () => {
     await delay(50)
     return HttpResponse.json({
       id: 'r1',
@@ -194,7 +222,7 @@ export const handlers = [
     })
   }),
 
-  http.post('/api/v1/tenant/rondes/:id/publish', async () => {
+  http.post(`${API_BASE}/tenant/rondes/:id/publish`, async () => {
     await delay(100)
     return HttpResponse.json({
       id: 'r1',
@@ -204,7 +232,7 @@ export const handlers = [
   }),
 
   // Superadmin handlers
-  http.get('/api/v1/superadmin/dashboard', async () => {
+  http.get(`${API_BASE}/superadmin/dashboard`, async () => {
     await delay(50)
     return HttpResponse.json({
       total_clubs: 10,
@@ -213,7 +241,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/superadmin/clubs', async () => {
+  http.get(`${API_BASE}/superadmin/clubs`, async () => {
     await delay(50)
     return HttpResponse.json([
       { id: 'c1', naam: 'Club A', slug: 'club-a', status: 'active' },
@@ -221,7 +249,7 @@ export const handlers = [
     ])
   }),
 
-  http.post('/api/v1/superadmin/clubs', async ({ request }) => {
+  http.post(`${API_BASE}/superadmin/clubs`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
@@ -230,24 +258,24 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/superadmin/users', async () => {
+  http.get(`${API_BASE}/superadmin/users`, async () => {
     await delay(50)
     return HttpResponse.json([])
   }),
 
   // Payment handlers
-  http.get('/api/v1/payments/config', async () => {
+  http.get(`${API_BASE}/payments/config`, async () => {
     await delay(50)
     return HttpResponse.json({ configured: true })
   }),
 
-  http.post('/api/v1/payments/config', async ({ request }) => {
+  http.post(`${API_BASE}/payments/config`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json(body)
   }),
 
-  http.get('/api/v1/payments/prices', async () => {
+  http.get(`${API_BASE}/payments/prices`, async () => {
     await delay(50)
     return HttpResponse.json([
       { id: 'p1', competitie_naam: 'Winter', price_small_club: 15000, price_large_club: 25000 },

@@ -1,29 +1,25 @@
 import io
-import os
-from datetime import date, datetime
+from datetime import datetime
 from uuid import UUID
 
+from reportlab.graphics.barcode import qr
+from reportlab.graphics.shapes import Drawing
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.models import (
-    Baan,
     BaanToewijzing,
     Club,
     Competitie,
     Speelronde,
-    Team,
-    Wedstrijd,
 )
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape as rl_landscape
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.graphics.barcode import qr
-from reportlab.graphics.shapes import Drawing
 
 class PDFService:
     def __init__(self, db: AsyncSession):
@@ -58,7 +54,7 @@ class PDFService:
         )
 
         styles = getSampleStyleSheet()
-        
+
         # Custom styles
         title_style = ParagraphStyle(
             'TitleStyle',
@@ -67,7 +63,7 @@ class PDFService:
             spaceAfter=10,
             fontName='Helvetica-Bold'
         )
-        
+
         subtitle_style = ParagraphStyle(
             'SubtitleStyle',
             parent=styles['Normal'],
@@ -99,7 +95,7 @@ class PDFService:
                 "" # Logo placeholder
             ]
         ]
-        
+
         header_table = Table(header_data, colWidths=[140*mm, 40*mm])
         header_table.setStyle(TableStyle([
             ('VALIGN', (0,0), (-1,-1), 'TOP'),
@@ -110,20 +106,20 @@ class PDFService:
 
         # Table data
         data = [['Baan', 'Team / Wedstrijd', 'Tijd']]
-        
+
         # Sort toewijzingen by baan number
         sorted_toewijzingen = sorted(ronde.baantoewijzingen, key=lambda x: x.baan.nummer if x.baan else 0)
-        
+
         for t in sorted_toewijzingen:
             team_naam = t.team.naam if t.team else "-"
             tijd = f"{t.tijdslot_start.strftime('%H:%M')} - {t.tijdslot_eind.strftime('%H:%M') if t.tijdslot_eind else ''}"
-            
+
             team_info = [
                 Paragraph(f"<b>{team_naam}</b>", styles['Normal']),
             ]
             if t.notitie:
                 team_info.append(Paragraph(f"<i>{t.notitie}</i>", styles['Normal']))
-                
+
             data.append([
                 str(t.baan.nummer) if t.baan else "-",
                 team_info,
@@ -148,20 +144,20 @@ class PDFService:
             ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 1), (0, -1), 20),
         ])
-        
+
         table = Table(data, colWidths=[25*mm, 115*mm, 40*mm])
         table.setStyle(t_style)
         elements.append(table)
-        
+
         # Footer section with QR code
         elements.append(Spacer(1, 40 * mm))
-        
+
         # public_url = f"https://display.competitie-planner.nl/{club.slug}/{ronde.public_token}"
         # For development, we use a generic domain
         public_url = f"https://display.competitie-planner.nl/{club.slug}"
         if ronde.public_token:
             public_url += f"/{ronde.public_token}"
-            
+
         qr_code = qr.QrCodeWidget(public_url)
         bounds = qr_code.getBounds()
         width = bounds[2] - bounds[0]
@@ -180,7 +176,7 @@ class PDFService:
                 d
             ]
         ]
-        
+
         footer_table = Table(footer_data, colWidths=[140*mm, 40*mm])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
@@ -212,10 +208,10 @@ class PDFService:
             raise ValueError("Competitie not found")
 
         result = await self.db.execute(select(Club).where(Club.id == competitie.club_id))
-        club = result.scalar_one_or_none()
-        
+        result.scalar_one_or_none()  # reserved for future use
+
         # For now, return a placeholder or implement if needed
         # The user specifically asked for "Print-optimized CSS layout per speeldag"
         # and "A4 format, grote letters" which matches the generate_banenindeling_pdf.
-        
+
         return b"%PDF-1.4\nSeizoensoverzicht placeholder\n"

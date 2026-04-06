@@ -6,12 +6,14 @@ Create Date: 2026-04-06
 
 """
 
-from typing import Sequence, Union
-from alembic import op
-import sqlalchemy as sa
 import base64
-from cryptography.fernet import Fernet
 import os
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from cryptography.fernet import Fernet
+
+from alembic import op
 
 # Try to import settings, otherwise use environment
 try:
@@ -21,9 +23,9 @@ except ImportError:
     ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 
 revision: str = "006_iban_encryption"
-down_revision: Union[str, None] = "005_tijdslot_config"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "005_tijdslot_config"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def get_fernet(key: str):
@@ -32,7 +34,7 @@ def get_fernet(key: str):
         key_str = (key or "").ljust(32)[:32].encode()
     else:
         key_str = key[:32].encode()
-        
+
     encoded_key = base64.urlsafe_b64encode(key_str)
     return Fernet(encoded_key)
 
@@ -53,7 +55,7 @@ def upgrade() -> None:
         for row in res:
             mandate_id = row[0]
             current_iban = row[1]
-            
+
             # Skip if already encrypted (Fernet tokens start with gAAAAA)
             if current_iban and not current_iban.startswith("gAAAAA"):
                 encrypted_iban = fernet.encrypt(current_iban.encode()).decode()

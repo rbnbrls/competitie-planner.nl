@@ -1,20 +1,19 @@
 from datetime import datetime
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, and_, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.db import get_db
-from app.models import Baan, BaanToewijzing, Club, Speelronde, Team, Wedstrijd, Beschikbaarheid
+from app.models import BaanToewijzing, Beschikbaarheid, Club, Speelronde, Team, Wedstrijd
 from app.schemas import (
+    BeschikbaarheidCreate,
+    BeschikbaarheidResponse,
     CaptainPortalResponse,
     CaptainWedstrijdResponse,
     DisplayClubInfo,
-    BeschikbaarheidResponse,
-    BeschikbaarheidCreate,
     ResultSubmission,
 )
 
@@ -314,7 +313,7 @@ async def get_captain_portal(
     for w in wedstrijden:
         is_thuis = w.thuisteam_id == team.id
         tegenstander = w.uitteam.naam if is_thuis else w.thuisteam.naam
-        
+
         w_resp = CaptainWedstrijdResponse(
             id=w.id,
             datum=w.speeldatum or w.ronde.datum,
@@ -328,7 +327,7 @@ async def get_captain_portal(
             uitslag_uitteam=w.uitslag_uitteam,
         )
         alle_wedstrijden.append(w_resp)
-        
+
         if not volgende_wedstrijd and (w.speeldatum or w.ronde.datum) >= today:
             volgende_wedstrijd = w_resp
 
@@ -421,8 +420,8 @@ async def submit_uitslag(
     wedstrijd.uitslag_uitteam = data.uitslag_uitteam
     if data.notitie:
         wedstrijd.notitie = (wedstrijd.notitie or "") + f"\n[Captain]: {data.notitie}"
-    
+
     wedstrijd.status = "voltooid"
-    
+
     await db.commit()
     return {"status": "success"}

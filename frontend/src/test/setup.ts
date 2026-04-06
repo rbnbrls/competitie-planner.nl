@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
+import axios from 'axios'
+
+// Force axios to use the Node http adapter so MSW can intercept requests
+// (jsdom environment uses XHR by default, which bypasses MSW's Node server)
+axios.defaults.adapter = 'http'
 
 afterEach(() => {
   cleanup()

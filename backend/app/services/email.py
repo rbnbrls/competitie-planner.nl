@@ -170,11 +170,10 @@ class EmailService:
 
     async def send_reminder_emails(self, days_before: int = 3) -> dict:
         # Dit zou door een cronjob aangeroepen moeten worden
-        today = datetime.now().date()
         # Vind rondes die over X dagen zijn
-        from datetime import timedelta
-        target_date = today + timedelta(days=days_before)
-        
+        # Vind rondes die over X dagen zijn
+        from datetime import timedelta  # noqa: F401
+
         # ... logic to find rounds and teams ...
         # Voor nu implementeren we de methode maar de cronjob ontbreekt nog
         return {"status": "not_fully_implemented_yet"}

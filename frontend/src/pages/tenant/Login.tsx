@@ -23,15 +23,28 @@ export default function TenantLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Client-side validation
+    if (!email.trim()) {
+      setError("email is verplicht");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await login(email, password, slug);
-      navigate("/dashboard");
+      navigate("/tenant/dashboard");
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Login failed");
+        const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+        if (axiosErr.response?.status === 401) {
+          setError("ongeldige inloggegevens");
+        } else {
+          setError(axiosErr.response?.data?.detail || "Login mislukt");
+        }
+      } else if (err instanceof Error && err.message === "ongeldige inloggegevens") {
+        setError("ongeldige inloggegevens");
       } else {
         setError("An unexpected error occurred");
       }
@@ -67,7 +80,6 @@ export default function TenantLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
             />
           </div>
 
@@ -81,7 +93,6 @@ export default function TenantLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
             />
           </div>
 

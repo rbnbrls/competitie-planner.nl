@@ -1,17 +1,16 @@
 from csv import reader
-from datetime import date, time
+from datetime import date
 from io import StringIO
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import and_, select, or_, func
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Baan, Competitie, Speelronde, Team, Wedstrijd
-from app.schemas import WedstrijdCreate, WedstrijdUpdate, WedstrijdImportRow
+from app.schemas import WedstrijdCreate, WedstrijdUpdate
 from app.services.tenant_auth import get_current_tenant_user
 
 router = APIRouter(prefix="/tenant/wedstrijden", tags=["wedstrijden"])
@@ -531,7 +530,7 @@ async def get_thuis_wedstrijden_per_ronde(
             Wedstrijd.thuisteam_id.in_(
                 select(Team.id).where(
                     Team.competitie_id == competitie_uuid,
-                    Team.actief == True,
+                    Team.actief,
                 )
             ),
         )
@@ -628,8 +627,8 @@ async def import_wedstrijden(
     thuis_uit_idx = next(
         (i for i, h in enumerate(headers) if h in ["thuis/uit", "home/away", "thuis_uit"]), None
     )
-    ronde_idx = next((i for i, h in enumerate(headers) if h in ["ronde", "round"]), None)
-    poulee_idx = next((i for i, h in enumerate(headers) if h in ["poule", "poul"]), None)
+    ronde_idx = next((i for i, h in enumerate(headers) if h in ["ronde", "round"]), None)  # noqa: F841
+    poulee_idx = next((i for i, h in enumerate(headers) if h in ["poule", "poul"]), None)  # noqa: F841
 
     if datum_idx is None or thuis_idx is None or uit_idx is None:
         raise HTTPException(
@@ -638,7 +637,7 @@ async def import_wedstrijden(
         )
 
     result = await db.execute(
-        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief == True)
+        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief)
     )
     teams = list(result.scalars().all())
     team_name_map: dict[str, Team] = {t.naam.lower(): t for t in teams}
@@ -647,8 +646,8 @@ async def import_wedstrijden(
     rondes = list(result.scalars().all())
     ronde_datum_map: dict[str, Speelronde] = {r.datum.isoformat(): r for r in rondes}
 
-    result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief == True))
-    banen = list(result.scalars().all())
+    result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief))
+    _banen = list(result.scalars().all())  # noqa: F841
 
     imported = 0
     skipped = 0
@@ -882,7 +881,7 @@ async def validate_wedstrijden(
         )
 
     result = await db.execute(
-        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief == True)
+        select(Team).where(Team.competitie_id == competitie_uuid, Team.actief)
     )
     teams = list(result.scalars().all())
 
@@ -920,7 +919,7 @@ async def validate_wedstrijden(
                     "type": "duplicate",
                     "thuisteam_id": str(w.thuisteam_id),
                     "uitteam_id": str(w.uitteam_id),
-                    "message": f"Duplicate match between teams",
+                    "message": "Duplicate match between teams",
                 }
             )
         team_combos[combo] = True

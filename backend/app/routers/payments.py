@@ -1,6 +1,6 @@
 from uuid import UUID
-import structlog
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -67,10 +67,10 @@ async def save_mollie_config(
     current: tuple = CURRENT_SUPERADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    if not data.api_key.startswith("live_"):
+    if not (data.api_key.startswith("live_") or data.api_key.startswith("test_")):
         raise HTTPException(
             status_code=400,
-            detail="Invalid API key format. Must start with 'live_'",
+            detail="Invalid API key format. Must start with 'live_' or 'test_'",
         )
     service = MollieService(db)
     await service.save_config(data.api_key)
@@ -349,7 +349,7 @@ async def get_payment_status(
     from app.models import Competitie
 
     result = await db.execute(
-        select(Competitie).where(Competitie.club_id == club.id, Competitie.actief == True)  # type: ignore[comparison-to-true]
+        select(Competitie).where(Competitie.club_id == club.id, Competitie.actief)
     )
     competities = result.scalars().all()
 
