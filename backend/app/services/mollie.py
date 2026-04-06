@@ -13,6 +13,18 @@ class MollieService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    def mask_iban(self, encrypted_iban: str) -> str:
+        encryption = get_encryption_service()
+        try:
+            iban = encryption.decrypt(encrypted_iban)
+        except (ValueError, Exception):
+            # If not encrypted, use as is (might be already masked or plaintext)
+            iban = encrypted_iban
+
+        if len(iban) > 4:
+            return "****" + iban[-4:]
+        return iban
+
     async def get_config(self) -> MollieConfig | None:
         result = await self.db.execute(select(MollieConfig))
         return result.scalar_one_or_none()
@@ -77,12 +89,15 @@ class MollieService:
 
         mollie_data = response.json()
 
+        encryption = get_encryption_service()
+        encrypted_iban = encryption.encrypt(iban)
+
         mandate = SepaMandate(
             club_id=club_id,
             mollie_mandate_id=mollie_data["id"],
             mandate_reference=mandate_ref,
             consumer_name=consumer_name,
-            iban=iban[-4:].rjust(len(iban), "*"),
+            iban=encrypted_iban,
             status="pending",
         )
         self.db.add(mandate)

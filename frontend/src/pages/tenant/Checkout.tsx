@@ -14,6 +14,7 @@ interface CheckoutStatus {
   has_active_mandate: boolean;
   paid_competitions: string[];
   mandate_status: string | null;
+  iban: string | null;
 }
 
 export default function CheckoutPage() {
@@ -201,7 +202,7 @@ export default function CheckoutPage() {
             Actief
           </span>
           <span className="ml-2 text-sm text-gray-600">
-            Je hebt een actieve SEPA machtiging.
+            Je hebt een actieve SEPA machtiging{status?.iban ? ` (IBAN: ${status.iban})` : "."}
           </span>
         </div>
       </div>

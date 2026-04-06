@@ -485,7 +485,7 @@ class SepaMandate(Base):
     mollie_mandate_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     mandate_reference: Mapped[str] = mapped_column(String(100), nullable=False)
     consumer_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    iban: Mapped[str] = mapped_column(String(34), nullable=False)
+    iban: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     signed_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))

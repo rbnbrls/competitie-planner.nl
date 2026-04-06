@@ -121,6 +121,7 @@ async def list_all_mandates(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ) -> dict:
+    service = MollieService(db)
     result = await db.execute(
         select(SepaMandate).order_by(SepaMandate.created_at.desc()).offset(skip).limit(limit)
     )
@@ -144,7 +145,7 @@ async def list_all_mandates(
                 "mollie_mandate_id": m.mollie_mandate_id,
                 "mandate_reference": m.mandate_reference,
                 "consumer_name": m.consumer_name,
-                "iban": m.iban,
+                "iban": service.mask_iban(m.iban),
                 "status": m.status,
                 "signed_at": m.signed_at.isoformat() if m.signed_at else None,
                 "created_at": m.created_at.isoformat(),
@@ -306,6 +307,7 @@ async def get_checkout_status(
         "has_active_mandate": has_active_mandate,
         "paid_competitions": list(paid_competitions),
         "mandate_status": mandate.status if mandate else None,
+        "iban": service.mask_iban(mandate.iban) if mandate else None,
     }
 
 
