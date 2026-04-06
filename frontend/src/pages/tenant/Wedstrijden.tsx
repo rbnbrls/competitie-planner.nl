@@ -140,6 +140,7 @@ export default function WedstrijdenPage() {
     }
   };
 
+  // @ts-expect-error - function exists but form modal not yet implemented
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!competitieId) return;
@@ -197,8 +198,7 @@ export default function WedstrijdenPage() {
     if (!acc[key]) {
       acc[key] = {
         ronde: w.ronde,
-        thuis: [],
-        uit: [],
+        thuis: [] as Wedstrijd[],
       };
     }
     acc[key].thuis.push(w);

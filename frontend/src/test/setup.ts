@@ -13,8 +13,15 @@ global.ResizeObserver = class ResizeObserver {
 }
 
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
+  constructor(
+    _callback: IntersectionObserverCallback,
+    _options?: IntersectionObserverInit
+  ) {}
   observe() {}
   unobserve() {}
   disconnect() {}
-}
+  root: Element | null = null;
+  rootMargin: string = '';
+  thresholds: number | number[] = [];
+  takeRecords(): IntersectionObserverEntry[] { return []; }
+} as unknown as typeof IntersectionObserver;

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { paymentApi, tenantApi } from "../../lib/api";
 
@@ -18,7 +17,7 @@ interface CheckoutStatus {
 }
 
 export default function CheckoutPage() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [status, setStatus] = useState<CheckoutStatus | null>(null);
   const [iban, setIban] = useState("");
   const [consumerName, setConsumerName] = useState("");

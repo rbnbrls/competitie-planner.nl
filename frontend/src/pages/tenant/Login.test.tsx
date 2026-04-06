@@ -1,12 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import Login from '../pages/tenant/Login'
+import Login from './Login'
 
 beforeAll(async () => {
-  const { worker } = await import('../test/msw/browser')
+  const { worker } = await import('../../test/msw/browser')
   await worker.start({ onUnhandledRequest: 'bypass' })
 })
 

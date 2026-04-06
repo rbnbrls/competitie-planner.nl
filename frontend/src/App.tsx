@@ -27,7 +27,7 @@ import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
 import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { authApi, paymentApi } from "./lib/api";
 
 function TenantRoutes() {
@@ -102,6 +102,8 @@ function AdminWrapper() {
 }
 
 function AdminRoutesInner() {
+  const auth = useAuth();
+  
   return (
     <>
       <nav className="bg-white shadow-sm border-b">
@@ -116,8 +118,8 @@ function AdminRoutesInner() {
               </div>
             </div>
             <div className="flex items-center">
-              <span className="text-sm text-gray-600 mr-4">{useAuth().user?.email}</span>
-              <button onClick={() => { useAuth().logout(); window.location.href = '/login'; }} className="text-sm text-gray-600 hover:text-gray-900">Uitloggen</button>
+              <span className="text-sm text-gray-600 mr-4">{auth.user?.email}</span>
+              <button onClick={() => { auth.logout(); window.location.href = '/login'; }} className="text-sm text-gray-600 hover:text-gray-900">Uitloggen</button>
             </div>
           </div>
         </div>
