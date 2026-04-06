@@ -35,6 +35,21 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: competitieplanner_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
 
@@ -46,12 +61,24 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: uv sync
+        run: uv sync --group test
 
-      - name: Run health check
+      - name: Add aiosqlite for tests
+        working-directory: backend
+        run: uv add aiosqlite --group test
+
+      - name: Run pytest with coverage
         working-directory: backend
         run: |
-          timeout 10s uv run uvicorn app.main:app --host 127.0.0.1 --port 8765 &
-          sleep 5
-          curl -f http://127.0.0.1:8765/health
-          pkill -f uvicorn
+          uv run pytest tests/ \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: backend-coverage
