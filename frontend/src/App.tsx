@@ -209,12 +209,15 @@ function AppRoutes() {
   return <div className="p-8">Unknown module</div>;
 }
 
+import { ToastContainer } from "./components/Toast";
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
+      <ToastContainer />
     </AuthProvider>
   );
 }

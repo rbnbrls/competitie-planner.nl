@@ -4,28 +4,6 @@ De primaire gebruikers zijn vrijwilligers bij tennisverenigingen in de leeftijds
 
 ---
 
-## 3.4 Mobiele bruikbaarheid
-**Prioriteit: MIDDEL** | **Geschatte omvang: Middel**
-
-Veel werk wordt op een telefoon of tablet gedaan (bijv. op de club zelf).
-
-**Taken:**
-- [x] Responsive design audit van alle pagina's
-- [x] Tabel-layouts vervangen door card-layouts op kleine schermen
-- [x] Touch-friendly drag-and-drop (grotere touch targets, TouchSensor toevoegen aan dnd-kit)
-- [x] Grotere knoppen en invoervelden (min 44px touch targets)
-- [x] Bottom navigation op mobiel i.p.v. sidebar
-- [x] Test op iPhone Safari en Android Chrome
-
-**Bestanden:**
-- `frontend/src/pages/tenant/Layout.tsx`
-- `frontend/src/pages/tenant/RondeDetail.tsx`
-- `frontend/src/pages/tenant/Teams.tsx`
-- `frontend/src/pages/tenant/Banen.tsx`
-- `frontend/tailwind.config.js`
-
----
-
 ## 3.5 Betere foutmeldingen
 **Prioriteit: MIDDEL** | **Geschatte omvang: Middel**
 

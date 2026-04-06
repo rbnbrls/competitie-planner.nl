@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { tenantApi } from "../../lib/api";
+import { showToast } from "../../components/Toast";
 
 interface Team {
   id: string;
@@ -193,7 +194,7 @@ export default function RondeDetailPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDepublishing, setIsDepublishing] = useState(false);
-  const [message, setMessage] = useState("");
+  const [isDepublishing, setIsDepublishing] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -258,9 +259,9 @@ export default function RondeDetailPage() {
             }
           : null
       );
-      setMessage("Indeling gegenereerd");
+      showToast.success("Indeling gegenereerd");
     } catch {
-      setMessage("Fout bij genereren");
+      showToast.error("Fout bij genereren");
     } finally {
       setIsGenerating(false);
     }
@@ -276,9 +277,9 @@ export default function RondeDetailPage() {
       if (res.data.public_url) {
         setPublicUrl(res.data.public_url);
       }
-      setMessage("Ronde gepubliceerd");
+      showToast.success("Ronde gepubliceerd");
     } catch {
-      setMessage("Fout bij publiceren");
+      showToast.error("Fout bij publiceren");
     } finally {
       setIsPublishing(false);
     }
@@ -296,9 +297,9 @@ export default function RondeDetailPage() {
       await tenantApi.depublishRonde(rondeId);
       setRonde((prev) => (prev ? { ...prev, status: "concept" } : null));
       setPublicUrl(null);
-      setMessage("Ronde gedepubliceerd");
+      showToast.success("Ronde gedepubliceerd");
     } catch {
-      setMessage("Fout bij depubliceren");
+      showToast.error("Fout bij depubliceren");
     } finally {
       setIsDepublishing(false);
     }
@@ -311,7 +312,7 @@ export default function RondeDetailPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setMessage("Kopiëren mislukt");
+      showToast.error("Kopiëren mislukt");
     }
   };
 
@@ -320,7 +321,7 @@ export default function RondeDetailPage() {
       await tenantApi.updateToewijzing(id, data);
       loadData();
     } catch {
-      setMessage("Fout bij bijwerken");
+      showToast.error("Fout bij bijwerken");
     }
   };
 
@@ -360,7 +361,7 @@ export default function RondeDetailPage() {
       ]);
       loadData();
     } catch {
-      setMessage("Fout bij wisselen");
+      showToast.error("Fout bij wisselen");
     }
   };
 
@@ -422,16 +423,6 @@ export default function RondeDetailPage() {
           )}
         </div>
       </div>
-
-      {message && (
-        <div
-          className={`mb-4 p-3 rounded ${
-            message.includes("Fout") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-          }`}
-        >
-          {message}
-        </div>
-      )}
 
       {publicUrl && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded flex items-center gap-2">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { Clock, Calendar, Settings, Copy, Loader2 } from "lucide-react";
+import { showToast } from "../../components/Toast";
 
 interface Competitie {
   id: string;
@@ -38,7 +39,7 @@ export default function CompetitiesPage() {
   const [competities, setCompetities] = useState<Competitie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showTijdslotModal, setShowTijdslotModal] = useState(false);
   const [selectedCompetitie, setSelectedCompetitie] = useState<Competitie | null>(null);
@@ -91,11 +92,10 @@ export default function CompetitiesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setMessage("");
 
     try {
       await tenantApi.createCompetition(formData);
-      setMessage("Competitie aangemaakt");
+      showToast.success("Competitie aangemaakt");
       loadCompetities();
       setShowModal(false);
       setFormData({
@@ -106,7 +106,7 @@ export default function CompetitiesPage() {
       });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij aanmaken");
+      showToast.error(error.response?.data?.detail || "Fout bij aanmaken");
     } finally {
       setIsSaving(false);
     }
@@ -127,12 +127,12 @@ export default function CompetitiesPage() {
         eerste_datum: tijdslotConfig.eerste_datum || undefined,
         hergebruik_configuratie: tijdslotConfig.hergebruik_configuratie,
       });
-      setMessage("Tijdslotconfiguratie opgeslagen");
+      showToast.success("Tijdslotconfiguratie opgeslagen");
       loadCompetities();
       setShowTijdslotModal(false);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij opslaan");
+      showToast.error(error.response?.data?.detail || "Fout bij opslaan");
     } finally {
       setIsSaving(false);
     }
@@ -158,11 +158,11 @@ export default function CompetitiesPage() {
     
     try {
       await tenantApi.duplicateCompetitie(selectedCompetitie.id, duplicateData);
-      setMessage("Competitie is met succes gekopieerd.");
+      showToast.success("Competitie is met succes gekopieerd.");
       loadCompetities();
       setShowDuplicateModal(false);
     } catch {
-      setMessage("Fout bij kopiëren van competitie.");
+      showToast.error("Fout bij kopiëren van competitie.");
     } finally {
       setIsSaving(false);
       setIsBulkOperationProgress({inProgress: false, text: ""});
@@ -220,17 +220,7 @@ export default function CompetitiesPage() {
         )}
       </div>
 
-      {message && !message.includes("Fout") && (
-        <div className="mb-4 p-3 rounded bg-green-100 text-green-700">
-          {message}
-        </div>
-      )}
-
-      {message.includes("Fout") && (
-        <div className="mb-4 p-3 rounded bg-red-100 text-red-700">
-          {message}
-        </div>
-      )}
+      </div>
 
       {isBulkOperationProgress.inProgress && (
         <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">

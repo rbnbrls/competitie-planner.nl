@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { Loader2 } from "lucide-react";
+import { showToast } from "../../components/Toast";
 
 interface Team {
   id: string;
@@ -23,7 +24,7 @@ export default function TeamsPage() {
   const [competitie, setCompetitie] = useState<Competitie | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,22 +67,21 @@ export default function TeamsPage() {
     if (!competitieId) return;
 
     setIsSaving(true);
-    setMessage("");
 
     try {
       if (editingTeam) {
         await tenantApi.updateTeam(editingTeam.id, formData);
-        setMessage("Team bijgewerkt");
+        showToast.success("Team bijgewerkt");
       } else {
         await tenantApi.createTeam(competitieId, formData);
-        setMessage("Team toegevoegd");
+        showToast.success("Team toegevoegd");
       }
       loadData();
       setShowModal(false);
       resetForm();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij opslaan");
+      showToast.error(error.response?.data?.detail || "Fout bij opslaan");
     } finally {
       setIsSaving(false);
     }
@@ -113,20 +113,20 @@ export default function TeamsPage() {
 
     try {
       await tenantApi.updateTeam(team.id, { actief: false });
-      setMessage("Team gedeactiveerd");
+      showToast.success("Team gedeactiveerd");
       loadData();
     } catch {
-      setMessage("Fout bij deactiveren");
+      showToast.error("Fout bij deactiveren");
     }
   };
 
   const handleActivate = async (team: Team) => {
     try {
       await tenantApi.updateTeam(team.id, { actief: true });
-      setMessage("Team geactiveerd");
+      showToast.success("Team geactiveerd");
       loadData();
     } catch {
-      setMessage("Fout bij activeren");
+      showToast.error("Fout bij activeren");
     }
   };
 
@@ -178,14 +178,14 @@ export default function TeamsPage() {
     setIsSaving(true);
     try {
       await tenantApi.importTeams(competitieId, selectedFile);
-      setMessage("Teams geïmporteerd");
+      showToast.success("Teams geïmporteerd");
       setShowImportModal(false);
       setSelectedFile(null);
       setImportPreview([]);
       loadData();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij importeren");
+      showToast.error(error.response?.data?.detail || "Fout bij importeren");
     } finally {
       setIsSaving(false);
     }
@@ -213,11 +213,11 @@ export default function TeamsPage() {
     
     try {
       await tenantApi.bulkActivateTeams(selectedTeamIds, activate);
-      setMessage(`Teams succesvol ${activate ? 'geactiveerd' : 'gedeactiveerd'}`);
+      showToast.success(`Teams succesvol ${activate ? 'geactiveerd' : 'gedeactiveerd'}`);
       loadData();
       setSelectedTeamIds([]);
     } catch {
-      setMessage("Fout bij bulk operatie");
+      showToast.error("Fout bij bulk operatie");
     } finally {
       setIsBulkOperationProgress({inProgress: false, text: ""});
     }
@@ -266,12 +266,6 @@ export default function TeamsPage() {
           </button>
         </div>
       </div>
-
-      {message && (
-        <div className={`mb-4 p-3 rounded ${message.includes("Fout") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-          {message}
-        </div>
-      )}
 
       {isBulkOperationProgress.inProgress && (
         <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">
