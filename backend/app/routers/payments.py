@@ -1,4 +1,5 @@
 from uuid import UUID
+import structlog
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -271,6 +272,16 @@ async def create_payment(
             amount=amount,
             webhook_url=webhook_url,
         )
+
+        logger = structlog.get_logger()
+        logger.info(
+            "payment_created",
+            club_id=str(club.id),
+            competitie_naam=data.competitie_naam,
+            amount=amount,
+            payment_id=result.get("payment_id"),
+        )
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -284,6 +295,14 @@ async def mollie_webhook(
     service = MollieService(db)
     try:
         result = await service.handle_webhook(payment_id)
+
+        logger = structlog.get_logger()
+        logger.info(
+            "payment_webhook_received",
+            payment_id=payment_id,
+            status=result.get("status"),
+        )
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

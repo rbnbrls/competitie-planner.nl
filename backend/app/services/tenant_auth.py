@@ -1,5 +1,6 @@
 from datetime import datetime
 from uuid import UUID
+import structlog
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -55,6 +56,11 @@ async def get_current_tenant_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Uw verenigingsaccount is niet actief. Neem contact op met de platformbeheerder.",
         )
+
+    structlog.contextvars.bind_contextvars(
+        user_id=str(user.id),
+        club_id=str(club.id),
+    )
 
     return user, club
 

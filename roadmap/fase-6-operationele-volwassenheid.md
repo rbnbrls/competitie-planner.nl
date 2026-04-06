@@ -2,32 +2,6 @@
 
 CI pipeline verbeteren, monitoring, en code-kwaliteit standaarden.
 
----
-
-## 6.1 GitHub Actions CI verbeteren
-**Prioriteit: HOOG** | **Geschatte omvang: Middel**
-
-De huidige CI draait alleen lint + typecheck. De backend "test" stap start alleen de server en doet een health check - er worden geen echte tests gedraaid.
-
-**Huidige situatie:**
-- `backend.yml`: ruff lint + format check + health check (geen echte tests)
-- `frontend.yml`: ESLint + TypeScript typecheck (geen tests)
-- Geen test coverage rapportage
-- Geen build-validatie
-
-**Taken:**
-- [ ] Backend CI: voeg pytest stap toe met test-database (PostgreSQL service container)
-- [ ] Backend CI: voeg test coverage rapportage toe (pytest-cov)
-- [ ] Frontend CI: voeg Vitest stap toe
-- [ ] Frontend CI: voeg build-stap toe (`npm run build`) om productie-builds te valideren
-- [ ] Voeg concurrency group toe zodat meerdere pushes niet tegelijk draaien
-- [ ] Branch protection: require CI passing voor merge naar main
-
-**Bestanden:**
-- `.github/workflows/backend.yml`
-- `.github/workflows/frontend.yml`
-
----
 
 ## 6.2 Structured logging
 **Prioriteit: MIDDEL** | **Geschatte omvang: Middel**

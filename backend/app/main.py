@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+import structlog
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -27,7 +29,33 @@ from app.routers import (
     wedstrijden,
 )
 
-logger = logging.getLogger(__name__)
+from app.middleware.logging import LoggingMiddleware
+
+# Configure structlog
+def setup_logging():
+    processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.set_exc_info,
+        structlog.processors.TimeStamper(fmt="iso"),
+    ]
+
+    if settings.ENVIRONMENT.lower() == "production":
+        processors.append(structlog.processors.dict_tracebacks)
+        processors.append(structlog.processors.JSONRenderer())
+    else:
+        processors.append(structlog.dev.ConsoleRenderer())
+
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.PrintLoggerFactory(),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+        cache_logger_on_first_use=True,
+    )
+
+setup_logging()
+logger = structlog.get_logger()
 
 
 @asynccontextmanager
@@ -50,8 +78,7 @@ async def lifespan(app: FastAPI):
                 )
             else:
                 logger.warning(
-                    "CORS_ORIGINS contains wildcard '*'. This allows requests from any origin. "
-                    "Restrict this for production environments."
+                    "CORS_ORIGINS contains wildcard '*'. This allows requests from any origin."
                 )
 
         if is_production:
@@ -113,6 +140,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(LoggingMiddleware)
 
 app.include_router(auth, prefix="/api/v1")
 app.include_router(superadmin, prefix="/api/v1")

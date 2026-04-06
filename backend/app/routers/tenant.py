@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta, timezone
 from uuid import UUID
+import structlog
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -171,6 +172,16 @@ async def login(
     user.failed_login_attempts = 0
     user.locked_until = None
     user.last_login = datetime.now(UTC)
+
+    logger = structlog.get_logger()
+    logger.info(
+        "tenant_login_success",
+        user_id=str(user.id),
+        email=user.email,
+        club_id=str(club.id),
+        club_slug=club.slug,
+    )
+
     await db.commit()
 
     return {

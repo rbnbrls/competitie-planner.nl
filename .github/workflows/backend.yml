@@ -3,9 +3,13 @@ name: Backend CI
 on:
   pull_request:
     branches: [main]
-    paths:
-      - backend/**
-      - .github/workflows/backend.yml**
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
@@ -63,13 +67,10 @@ jobs:
         working-directory: backend
         run: uv sync --group test
 
-      - name: Add aiosqlite for tests
-        working-directory: backend
-        run: uv add aiosqlite --group test
-
       - name: Run pytest with coverage
         working-directory: backend
         run: |
+          export TEST_DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/competitieplanner_test"
           uv run pytest tests/ \
             --cov=app \
             --cov-report=term-missing \

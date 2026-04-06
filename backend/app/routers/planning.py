@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timezone, time
 from uuid import UUID
+import structlog
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
@@ -384,6 +385,15 @@ async def publish_ronde(
         email_service = EmailService(db)
         email_result = await email_service.send_publication_notification(ronde_uuid)
         email_notification_sent = email_result.get("sent", 0) > 0
+
+    logger = structlog.get_logger()
+    logger.info(
+        "ronde_published",
+        ronde_id=str(ronde.id),
+        competitie_id=str(competitie.id),
+        club_id=str(club.id),
+        published_by=str(user.id),
+    )
 
     await db.commit()
     await db.refresh(ronde)
@@ -784,6 +794,15 @@ async def bulk_publish_rondes(
                 email_result = await email_service.send_publication_notification(ronde_uuid)
                 if email_result.get("sent", 0) > 0:
                     email_notifications_sent += 1
+
+            logger = structlog.get_logger()
+            logger.info(
+                "ronde_published_bulk",
+                ronde_id=str(ronde.id),
+                competitie_id=str(competitie.id),
+                club_id=str(club.id),
+                published_by=str(user.id),
+            )
 
             results.append(
                 {
