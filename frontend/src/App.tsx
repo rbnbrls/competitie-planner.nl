@@ -25,6 +25,7 @@ import RondeDetailPage from "./pages/tenant/RondeDetail";
 import HistoriePage from "./pages/tenant/Historie";
 import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
+import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authApi, paymentApi } from "./lib/api";
@@ -186,6 +187,8 @@ function AppRoutes() {
             <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
             <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />
             <Route path="/historie/:competitieId" element={<HistoriePage />} />
+            <Route path="/dagoverzicht" element={<DagoverzichtPage />} />
+            <Route path="/dagoverzicht/:datum" element={<DagoverzichtPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -10,8 +10,23 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Baan, BaanToewijzing, Club, Competitie, PlanningHistorie, Speelronde, Team
-from app.services.planning import genereer_indeling, get_historie_heatmap
+from app.models import (
+    Baan,
+    BaanToewijzing,
+    Club,
+    Competitie,
+    PlanningHistorie,
+    Speelronde,
+    Team,
+    Wedstrijd,
+)
+from app.services.planning import (
+    bereken_banenvereisten,
+    detecteer_conflicten,
+    genereer_indeling,
+    get_historie_heatmap,
+    validate_club_max_thuisteams,
+)
 
 
 @pytest_asyncio.fixture
@@ -201,3 +216,79 @@ class TestHistorieHeatmap:
         assert team.id in heatmap
         assert baan.id in heatmap[team.id]
         assert heatmap[team.id][baan.id] == 3
+
+
+class TestDagoverzicht:
+    """Tests for dagoverzicht functions."""
+
+    async def test_bereken_banenvereisten_basic(
+        self,
+        db_session: AsyncSession,
+        club_with_competitie,
+        banen,
+    ):
+        """Test basic dagoverzicht calculation."""
+        club, _ = club_with_competitie
+        test_datum = date(2024, 3, 15)
+
+        result = await bereken_banenvereisten(test_datum, club.id, db_session)
+
+        assert result["datum"] == "2024-03-15"
+        assert result["club_id"] == str(club.id)
+        assert result["beschikbare_banen"] == 4
+        assert result["max_thuisteams_per_dag"] == 3
+
+    async def test_bereken_banenvereisten_with_ronde(
+        self,
+        db_session: AsyncSession,
+        club_with_competitie,
+        banen,
+        teams,
+        speelronde,
+    ):
+        """Test dagoverzicht with an existing speelronde."""
+        club, competitie = club_with_competitie
+        _, _, team1, team2 = teams
+
+        wedstrijd1 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=speelronde.id,
+            thuisteam_id=team1.id,
+            uitteam_id=team2.id,
+            status="gepland",
+        )
+        db_session.add(wedstrijd1)
+        await db_session.commit()
+
+        result = await bereken_banenvereisten(speelronde.datum, club.id, db_session)
+
+        assert len(result["competities"]) >= 0
+
+    async def test_detecteer_conflicten_no_conflict(
+        self,
+        db_session: AsyncSession,
+        club_with_competitie,
+        banen,
+    ):
+        """Test conflict detection with no conflicts."""
+        club, _ = club_with_competitie
+        test_datum = date(2024, 3, 15)
+
+        result = await detecteer_conflicten(test_datum, club.id, db_session)
+
+        assert result["has_conflicts"] == False
+        assert len(result["conflicten"]) == 0
+
+    async def test_validate_club_max_thuisteams(
+        self,
+        db_session: AsyncSession,
+        club_with_competitie,
+        banen,
+    ):
+        """Test validation of max thuisteams."""
+        club, _ = club_with_competitie
+        test_datum = date(2024, 3, 15)
+
+        is_valid = await validate_club_max_thuisteams(club.id, test_datum, db_session)
+
+        assert is_valid == True

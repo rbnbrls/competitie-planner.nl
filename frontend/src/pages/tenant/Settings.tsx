@@ -11,6 +11,8 @@ interface ClubSettings {
   telefoon: string | null;
   website: string | null;
   status: string;
+  max_thuisteams_per_dag: number;
+  max_banen: number;
 }
 
 export default function SettingsPage() {
@@ -26,6 +28,8 @@ export default function SettingsPage() {
     stad: "",
     telefoon: "",
     website: "",
+    max_thuisteams_per_dag: 3,
+    max_banen: 8,
   });
 
   useEffect(() => {
@@ -38,6 +42,8 @@ export default function SettingsPage() {
         stad: res.data.stad || "",
         telefoon: res.data.telefoon || "",
         website: res.data.website || "",
+        max_thuisteams_per_dag: res.data.max_thuisteams_per_dag || 3,
+        max_banen: res.data.max_banen || 8,
       });
     }).finally(() => setIsLoading(false));
   }, []);
@@ -161,6 +167,41 @@ export default function SettingsPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               placeholder="https://example.com"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max. thuisteams per dag
+              </label>
+              <input
+                type="number"
+                value={formData.max_thuisteams_per_dag}
+                onChange={(e) => setFormData({ ...formData, max_thuisteams_per_dag: parseInt(e.target.value) || 3 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                min="1"
+                max="10"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum aantal thuiswedstrijden op één dag
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aantal banen
+              </label>
+              <input
+                type="number"
+                value={formData.max_banen}
+                onChange={(e) => setFormData({ ...formData, max_banen: parseInt(e.target.value) || 8 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                min="1"
+                max="20"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Totaal beschikbare banen
+              </p>
+            </div>
           </div>
         </div>
 

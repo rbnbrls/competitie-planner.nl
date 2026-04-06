@@ -26,6 +26,8 @@ class ClubSettingsUpdate(BaseModel):
     stad: str | None = None
     telefoon: str | None = None
     website: str | None = None
+    max_thuisteams_per_dag: int | None = None
+    max_banen: int | None = None
 
 
 @router.get("/settings")
@@ -44,6 +46,8 @@ async def get_settings(
         "telefoon": club.telefoon,
         "website": club.website,
         "status": club.status,
+        "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
+        "max_banen": club.max_banen,
     }
 
 
@@ -67,6 +71,10 @@ async def update_settings(
         club.telefoon = data.telefoon
     if data.website is not None:
         club.website = data.website
+    if data.max_thuisteams_per_dag is not None:
+        club.max_thuisteams_per_dag = data.max_thuisteams_per_dag
+    if data.max_banen is not None:
+        club.max_banen = data.max_banen
 
     await db.commit()
     await db.refresh(club)
@@ -81,6 +89,8 @@ async def update_settings(
         "telefoon": club.telefoon,
         "website": club.website,
         "status": club.status,
+        "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
+        "max_banen": club.max_banen,
     }
 
 

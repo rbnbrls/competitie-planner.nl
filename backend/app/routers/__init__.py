@@ -1,5 +1,6 @@
 from app.routers.auth import router as auth
 from app.routers.competities import router as competities
+from app.routers.dagoverzicht import router as dagoverzicht
 from app.routers.display import router as display
 from app.routers.onboarding import router as onboarding
 from app.routers.payments import router as payments

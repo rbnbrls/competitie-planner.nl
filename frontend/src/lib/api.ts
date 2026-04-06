@@ -75,6 +75,8 @@ export const tenantApi = {
     stad?: string;
     telefoon?: string;
     website?: string;
+    max_thuisteams_per_dag?: number;
+    max_banen?: number;
   }) => api.patch("/tenant/settings", data),
   getBranding: () => api.get("/tenant/branding"),
   updateBranding: (data: {
@@ -224,6 +226,10 @@ export const tenantApi = {
     }),
   validateWedstrijden: (competitieId: string) => 
     api.get(`/tenant/wedstrijden/competitie/${competitieId}/validatie`),
+  getDagoverzicht: (datum: string) => api.get("/dagoverzicht", { params: { datum } }),
+  getDagoverzichtConflicten: (datum: string) => api.get("/dagoverzicht/conflicten", { params: { datum } }),
+  planDagoverzichtBanen: (datum: string) => api.post("/dagoverzicht/plan", null, { params: { datum } }),
+  validateMaxThuisteams: (datum: string) => api.get("/dagoverzicht/validate/max-thuisteams", { params: { datum } }),
 };
 
 export const superadminApi = {

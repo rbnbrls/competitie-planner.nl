@@ -8,6 +8,7 @@ export default function TenantLayout() {
   const navItems = [
     { path: "/dashboard", label: "Dashboard" },
     { path: "/competities", label: "Competities" },
+    { path: "/dagoverzicht", label: "Dagoverzicht" },
     { path: "/instellingen", label: "Instellingen" },
     { path: "/branding", label: "Huisstijl" },
     { path: "/banen", label: "Banen" },

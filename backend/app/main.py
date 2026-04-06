@@ -10,6 +10,7 @@ from app.db import engine
 from app.routers import (
     auth,
     competities,
+    dagoverzicht,
     display,
     onboarding,
     payments,
@@ -66,6 +67,7 @@ app.include_router(teams.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
 app.include_router(payments.router, prefix="/api/v1")
 app.include_router(wedstrijden.router, prefix="/api/v1")
+app.include_router(dagoverzicht.router, prefix="/api/v1")
 
 
 @app.get("/health")

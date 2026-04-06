@@ -43,6 +43,8 @@ class Club(Base):
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     max_banen: Mapped[int] = mapped_column(SmallInteger, default=8)
     max_competities: Mapped[int] = mapped_column(SmallInteger, default=5)
+    max_thuisteams_per_dag: Mapped[int] = mapped_column(SmallInteger, default=3)
+    banen_types: Mapped[list[str]] = mapped_column(ARRAY(String(20)), default=["gravel"])
     billing_info: Mapped[str | None] = mapped_column(Text, default=None)
     payment_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
