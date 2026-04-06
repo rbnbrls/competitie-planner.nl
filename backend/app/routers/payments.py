@@ -2,14 +2,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Club, SepaMandate, Payment, CompetitionPrice
-from app.services.mollie import MollieService
-from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
+from app.models import Club, Payment, SepaMandate
 from app.routers.auth import get_current_superadmin
+from app.services.mollie import MollieService
+from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -44,9 +44,19 @@ async def get_mollie_config(
 ) -> dict:
     service = MollieService(db)
     config = await service.get_config()
+    masked_key = None
+    if config and config.api_key:
+        try:
+            api_key = await service.get_api_key()
+            if api_key and len(api_key) > 8:
+                masked_key = f"{api_key[:5]}***{api_key[-3:]}"
+            elif api_key:
+                masked_key = "***"
+        except ValueError:
+            masked_key = "invalid"
     return {
         "configured": config is not None,
-        "api_key": config.api_key[:10] + "..." if config and config.api_key else None,
+        "api_key": masked_key,
     }
 
 

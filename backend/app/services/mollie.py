@@ -1,33 +1,38 @@
 import uuid
 from datetime import datetime
-from typing import Optional
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import MollieConfig, SepaMandate, Payment, CompetitionPrice
+from app.models import CompetitionPrice, MollieConfig, Payment, SepaMandate
+from app.services.encryption import get_encryption_service
 
 
 class MollieService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_config(self) -> Optional[MollieConfig]:
+    async def get_config(self) -> MollieConfig | None:
         result = await self.db.execute(select(MollieConfig))
         return result.scalar_one_or_none()
 
-    async def get_api_key(self) -> Optional[str]:
+    async def get_api_key(self) -> str | None:
         config = await self.get_config()
-        return config.api_key if config else None
+        if not config:
+            return None
+        encryption = get_encryption_service()
+        return encryption.decrypt(config.api_key)
 
     async def save_config(self, api_key: str) -> MollieConfig:
+        encryption = get_encryption_service()
+        encrypted_key = encryption.encrypt(api_key)
         existing = await self.get_config()
         if existing:
-            existing.api_key = api_key
+            existing.api_key = encrypted_key
             existing.updated_at = datetime.utcnow()
         else:
-            existing = MollieConfig(api_key=api_key)
+            existing = MollieConfig(api_key=encrypted_key)
             self.db.add(existing)
         await self.db.commit()
         await self.db.refresh(existing)
@@ -255,7 +260,7 @@ class MollieService:
         result = await self.db.execute(select(CompetitionPrice))
         return list(result.scalars().all())
 
-    async def get_price(self, competitie_naam: str) -> Optional[CompetitionPrice]:
+    async def get_price(self, competitie_naam: str) -> CompetitionPrice | None:
         result = await self.db.execute(
             select(CompetitionPrice).where(CompetitionPrice.competitie_naam == competitie_naam)
         )
@@ -289,7 +294,7 @@ class MollieService:
         )
         return list(result.scalars().all())
 
-    async def get_club_mandate(self, club_id: uuid.UUID) -> Optional[SepaMandate]:
+    async def get_club_mandate(self, club_id: uuid.UUID) -> SepaMandate | None:
         result = await self.db.execute(
             select(SepaMandate)
             .where(SepaMandate.club_id == club_id)
