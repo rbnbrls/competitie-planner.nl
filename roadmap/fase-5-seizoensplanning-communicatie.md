@@ -5,29 +5,7 @@ Overzicht over het hele seizoen, slim planningsalgoritme, en betere communicatie
 
 ---
 
-## 5.4 Herbruikbare UI componenten
-**Prioriteit: MIDDEL** | **Geschatte omvang: Groot**
 
-De `frontend/src/components/` directory is leeg. Alle UI is inline in pagina-componenten.
-
-**Taken:**
-- [ ] Extracteer herbruikbare componenten uit bestaande pagina's:
-  - `Button` (primary, secondary, danger, disabled states)
-  - `Input` en `Select` met label en error state
-  - `Modal` (bevestigingsdialogen)
-  - `Table` (sorteerbaar, met paginering)
-  - `Card` (dashboard kaartjes)
-  - `Badge` (status indicators)
-  - `LoadingSkeleton`
-- [ ] Consistente styling via component props
-- [ ] Formulier-componenten met ingebouwde validatie
-
-**Bestanden:**
-- Nieuw: `frontend/src/components/Button.tsx`
-- Nieuw: `frontend/src/components/Input.tsx`
-- Nieuw: `frontend/src/components/Modal.tsx`
-- Nieuw: `frontend/src/components/Table.tsx`
-- Alle pagina's in `frontend/src/pages/tenant/` (refactor)
 
 ---
 

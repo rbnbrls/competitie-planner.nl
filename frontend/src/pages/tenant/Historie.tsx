@@ -1,6 +1,19 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { 
+  BarChart3, 
+  ChevronLeft, 
+  HelpCircle,
+  Star
+} from "lucide-react";
+import { showToast } from "../../components/Toast";
+import { 
+  Button, 
+  Badge, 
+  Card, 
+  LoadingSkeleton
+} from "../../components";
 
 interface HistorieTeamRow {
   team_id: string;
@@ -22,6 +35,7 @@ interface HistorieData {
 
 export default function HistoriePage() {
   const { competitieId } = useParams<{ competitieId: string }>();
+  const navigate = useNavigate();
   const [historie, setHistorie] = useState<HistorieData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,105 +46,158 @@ export default function HistoriePage() {
         .then((res: any) => {
           setHistorie(res.data);
         })
+        .catch(() => {
+          showToast.error("Fout bij laden van historie");
+        })
         .finally(() => setIsLoading(false));
     }
   }, [competitieId]);
 
   const getHeatmapClass = (value: number): string => {
-    if (value === 0) return "bg-white";
-    if (value === 1) return "bg-green-100";
-    if (value === 2) return "bg-green-200";
-    if (value === 3) return "bg-green-300";
-    if (value === 4) return "bg-green-400";
-    return "bg-green-500";
+    if (value === 0) return "bg-white text-gray-200 font-light";
+    if (value === 1) return "bg-emerald-50 text-emerald-800 font-bold border-2 border-emerald-100/50";
+    if (value === 2) return "bg-emerald-100 text-emerald-900 font-black border-2 border-emerald-200/50";
+    if (value === 3) return "bg-emerald-200 text-emerald-950 font-black border-2 border-emerald-300/50";
+    if (value === 4) return "bg-emerald-300 text-white font-black border-2 border-emerald-400/50";
+    return "bg-emerald-500 text-white font-black border-2 border-emerald-600/50";
   };
 
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={10} />;
   }
 
   if (!historie || historie.teams.length === 0) {
     return (
-      <div className="max-w-6xl">
-        <h1 className="text-2xl font-bold mb-6">Historie</h1>
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-          Nog geen historie beschikbaar. Na het publiceren van speelrondes zal de historie zichtbaar worden.
+      <div className="max-w-4xl mx-auto py-20 text-center space-y-6">
+        <div className="mx-auto h-20 w-20 rounded-full bg-gray-50 flex items-center justify-center border border-dashed border-gray-200">
+           <BarChart3 size={40} className="text-gray-200" />
         </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black text-gray-900">Geen historie beschikbaar</h2>
+          <p className="text-gray-500 max-w-sm mx-auto">Zodra speelrondes zijn gepubliceerd en toegewezen, wordt hier de baanverdeling over het seizoen inzichtelijk.</p>
+        </div>
+        <Button variant="secondary" onClick={() => navigate(-1)}>Ga terug</Button>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-6xl">
-      <h1 className="text-2xl font-bold mb-6">Historie - Baanverdeling per team</h1>
+  const sortedBanen = [...historie.banen].sort((a, b) => b.prioriteit_score - a.prioriteit_score);
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10">
-                  Team
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-blue-600 -ml-2 gap-2 font-bold" 
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={16} /> Terug
+        </Button>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-gray-900 border-none p-0 flex items-center gap-3">
+              Planning Historie
+              <Badge variant="outline" className="text-[10px] h-5 tracking-widest font-black uppercase">Heatmap</Badge>
+            </h1>
+            <p className="text-gray-500 font-medium mt-1">Overzicht van baanverdeling per team om eerlijkheid te waarborgen.</p>
+          </div>
+          <div className="p-3 bg-blue-50/50 border border-blue-100/50 rounded-xl flex items-center gap-3 max-w-sm">
+             <HelpCircle size={16} className="text-blue-500 flex-shrink-0" />
+             <p className="text-[10px] text-blue-900 font-medium leading-tight">
+               Hogere getallen betekenen dat het team vaker op die specifieke baan is ingedeeld.
+             </p>
+          </div>
+        </div>
+      </div>
+
+      <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden ring-1 ring-gray-100">
+        <div className="overflow-x-auto relative">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-gray-50/80 border-b border-gray-200 backdrop-blur-sm">
+                <th className="sticky left-0 z-20 bg-gray-50/95 p-5 text-left font-black text-gray-900 border-r border-gray-200 min-w-[220px] uppercase tracking-tighter text-xs">
+                  Teamnaam
                 </th>
-                {historie.banen
-                  .sort((a, b) => b.prioriteit_score - a.prioriteit_score)
-                  .map((baan) => (
-                    <th
-                      key={baan.id}
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase"
-                    >
-                      <div>Baan {baan.nummer}</div>
-                      {baan.naam && (
-                        <div className="text-xs text-gray-400 font-normal">{baan.naam}</div>
-                      )}
-                      <div className="text-xs text-gray-400 font-normal">
-                        (prioriteit: {baan.prioriteit_score})
+                {sortedBanen.map((baan) => (
+                  <th key={baan.id} className="p-4 text-center font-black text-gray-900 border-r border-gray-100 min-w-[120px] last:border-r-0">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] text-blue-500 uppercase tracking-widest mb-1 font-black">
+                        Baan {baan.nummer}
+                      </span>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Star size={12} className="text-amber-400 fill-amber-400" />
+                        <span className="font-black">{baan.prioriteit_score}</span>
                       </div>
-                    </th>
-                  ))}
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Totaal
+                      {baan.naam && <span className="text-[10px] text-gray-400 font-medium mt-1 truncate max-w-[100px]">{baan.naam}</span>}
+                    </div>
+                  </th>
+                ))}
+                <th className="p-4 text-center font-black text-gray-900 min-w-[100px] bg-blue-50/30">
+                   TOTAAL
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {historie.teams.map((team) => {
                 const total = Object.values(team.data).reduce((a, b) => a + b, 0);
                 return (
-                  <tr key={team.team_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium sticky left-0 bg-white z-10">
+                  <tr key={team.team_id} className="group hover:bg-gray-50 transition-colors">
+                    <td className="sticky left-0 z-10 bg-white p-5 font-bold text-gray-900 border-r border-gray-200 group-hover:bg-gray-50 transition-colors shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
                       {team.team_naam}
                     </td>
-                    {historie.banen
-                      .sort((a, b) => b.prioriteit_score - a.prioriteit_score)
-                      .map((baan) => {
-                        const value = team.data[baan.id] || 0;
-                        return (
-                          <td
-                            key={baan.id}
-                            className={`px-4 py-3 text-center ${getHeatmapClass(value)}`}
-                          >
-                            {value > 0 ? value : "-"}
-                          </td>
-                        );
-                      })}
-                    <td className="px-4 py-3 text-center font-medium">{total}</td>
+                    {sortedBanen.map((baan) => {
+                      const value = team.data[baan.id] || 0;
+                      return (
+                        <td
+                          key={baan.id}
+                          className="p-1 border-r border-gray-50 last:border-r-0"
+                        >
+                           <div className={`h-10 w-full flex items-center justify-center rounded-lg text-xs transition-all ${getHeatmapClass(value)}`}>
+                             {value > 0 ? value : "-"}
+                           </div>
+                        </td>
+                      );
+                    })}
+                    <td className="p-4 text-center font-black text-gray-500 bg-gray-50/30">
+                       {total}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
-      <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-        <span className="font-medium">Legenda:</span>
-        <span className="px-2 py-1 bg-white border rounded">0 (niet gespeeld)</span>
-        <span className="px-2 py-1 bg-green-100 border rounded">1</span>
-        <span className="px-2 py-1 bg-green-200 border rounded">2</span>
-        <span className="px-2 py-1 bg-green-300 border rounded">3</span>
-        <span className="px-2 py-1 bg-green-400 border rounded">4</span>
-        <span className="px-2 py-1 bg-green-500 border rounded text-white">5+</span>
+      <div className="flex flex-wrap items-center gap-6 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <span className="text-xs font-black text-gray-400 uppercase tracking-widest mr-2">Intensiteit:</span>
+        <div className="flex items-center gap-4 text-xs font-bold text-gray-500">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-white border border-gray-100"></div>
+            <span>0</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-emerald-50 border border-emerald-100"></div>
+            <span>1</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-emerald-100 border border-emerald-200"></div>
+            <span>2</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-emerald-200 border border-emerald-300"></div>
+            <span>3</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-emerald-300 border border-emerald-400"></div>
+            <span>4</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-emerald-500 border border-emerald-600"></div>
+            <span>5+</span>
+          </div>
+        </div>
       </div>
     </div>
   );

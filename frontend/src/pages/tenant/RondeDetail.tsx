@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useRondeDetail } from "../../hooks/useRondeDetail";
 import {
   DndContext,
@@ -19,6 +19,38 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { showToast } from "../../components/Toast";
+import { 
+  Button, 
+  Badge, 
+  Card, 
+  CardContent,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  LoadingSkeleton
+} from "../../components";
+import { 
+  ArrowLeft, 
+  Globe, 
+  Wand2, 
+  Copy, 
+  ExternalLink, 
+  ShieldAlert, 
+  Lock, 
+  Unlock, 
+  GripVertical,
+  Umbrella,
+  Sun,
+  MessageSquare,
+  Clock,
+  Users,
+  Layout,
+  Activity,
+  Trophy
+} from "lucide-react";
 
 interface Team {
   id: string;
@@ -112,6 +144,7 @@ function SortableToewijzingRow({
     }, 500);
     return () => clearTimeout(handler);
   }, [localNotitie, onUpdate, toewijzing.id, toewijzing.notitie]);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: toewijzing.id });
 
@@ -119,46 +152,49 @@ function SortableToewijzingRow({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
   };
 
   const team = teams.find((t) => t.id === toewijzing.team_id);
   const baan = allBanen.find((b) => b.id === toewijzing.baan_id);
 
   return (
-    <tr
+    <TableRow
       ref={setNodeRef}
       style={style}
-      className={`border-b ${isDragging ? "bg-blue-50" : ""}`}
+      className={isDragging ? "bg-blue-50 shadow-inner" : ""}
     >
-      <td className="px-4 py-3" {...attributes} {...listeners}>
-        {isReadOnly ? null : (
-          <span className="cursor-grab text-gray-400 hover:text-gray-600">⋮⋮</span>
+      <TableCell className="w-10">
+        {!isReadOnly && (
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded text-gray-300 hover:text-blue-600 transition-colors">
+            <GripVertical size={18} />
+          </div>
         )}
-      </td>
-      <td className="px-4 py-3 font-medium">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{baan?.nummer}</span>
-          {baan?.overdekt && (
-            <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-              Overdekt
-            </span>
-          )}
-          {baan?.verlichting_type !== "geen" && (
-            <span className="text-xs px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded">
-              {baan?.verlichting_type}
-            </span>
-          )}
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 font-black text-lg text-gray-900">
+            {baan?.nummer}
+            <div className="flex gap-1">
+              {baan?.overdekt && (
+                <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[9px] uppercase"><Umbrella size={8} className="mr-1" /> Binnen</Badge>
+              )}
+              {baan?.verlichting_type !== "geen" && (
+                <Badge variant="outline" className="px-1.5 py-0 h-4 text-[9px] uppercase border-yellow-200 text-yellow-700 bg-yellow-50"><Sun size={8} className="mr-1" /> {baan?.verlichting_type}</Badge>
+              )}
+            </div>
+          </div>
+          {baan?.naam && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{baan.naam}</span>}
         </div>
-        {baan?.naam && <div className="text-sm text-gray-500">{baan.naam}</div>}
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell className="min-w-[200px]">
         {isReadOnly ? (
-          <span>{team?.naam || "-"}</span>
+          <div className="font-bold text-gray-900">{team?.naam || "-"}</div>
         ) : (
           <select
             value={toewijzing.team_id}
             onChange={(e) => onUpdate(toewijzing.id, { team_id: e.target.value })}
-            className="border rounded px-2 py-2 min-h-[44px] w-full"
+            className="w-full h-11 px-3 rounded-lg border border-gray-200 bg-white text-sm font-semibold focus:ring-2 focus:ring-blue-600 outline-none transition-all shadow-sm"
           >
             <option value="">Geen team</option>
             {teams.map((t) => (
@@ -168,48 +204,48 @@ function SortableToewijzingRow({
             ))}
           </select>
         )}
-        {team && (
-          <div className="text-sm text-gray-500">
-            {team.captain_naam && `${team.captain_naam}`}
-          </div>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex gap-2">
+        {team?.captain_naam && <div className="text-[10px] text-gray-400 mt-1 pl-1">👤 {team.captain_naam}</div>}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
           <input
             type="time"
             value={localStart}
             onChange={(e) => setLocalStart(e.target.value)}
             disabled={isReadOnly}
-            className="border rounded px-2 py-2 min-h-[44px] w-24"
+            className="h-10 w-24 px-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-center focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-transparent disabled:border-transparent transition-all"
           />
-          <span className="self-center">-</span>
+          <span className="text-gray-300">→</span>
           <input
             type="time"
             value={localEnd}
             onChange={(e) => setLocalEnd(e.target.value)}
             disabled={isReadOnly}
-            className="border rounded px-2 py-2 min-h-[44px] w-24"
+            className="h-10 w-24 px-2 rounded-lg border border-gray-200 bg-white text-sm font-bold text-center focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-transparent disabled:border-transparent transition-all"
           />
         </div>
-      </td>
-      <td className="px-4 py-3">
-        <input
-          type="text"
-          value={localNotitie}
-          onChange={(e) => setLocalNotitie(e.target.value)}
-          disabled={isReadOnly}
-          placeholder="Notitie..."
-          maxLength={200}
-          className="border rounded px-2 py-2 min-h-[44px] w-full"
-        />
-      </td>
-    </tr>
+      </TableCell>
+      <TableCell className="min-w-[150px]">
+        <div className="relative group/notitie">
+           <MessageSquare size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within/notitie:text-blue-500 transition-colors" />
+           <input
+            type="text"
+            value={localNotitie}
+            onChange={(e) => setLocalNotitie(e.target.value)}
+            disabled={isReadOnly}
+            placeholder="Opmerking..."
+            maxLength={200}
+            className="h-10 w-full pl-9 pr-3 rounded-lg border border-gray-100 bg-gray-50/50 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-transparent disabled:border-transparent transition-all"
+          />
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
 
 export default function RondeDetailPage() {
   const { rondeId, competitieId } = useParams<{ rondeId: string; competitieId: string }>();
+  const navigate = useNavigate();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -228,17 +264,8 @@ export default function RondeDetailPage() {
   } = useRondeDetail(rondeId, competitieId);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
   const handleGenerate = async () => {
@@ -252,6 +279,7 @@ export default function RondeDetailPage() {
     const res = await publishRonde.mutateAsync();
     if (res?.data?.public_url) {
       setPublicUrl(res.data.public_url);
+      showToast.success("Ronde is nu live!");
     }
   };
 
@@ -261,6 +289,7 @@ export default function RondeDetailPage() {
     }
     await depublishRonde.mutateAsync();
     setPublicUrl(null);
+    showToast.success("Publicatie ingetrokken");
   };
 
   const handleCopyUrl = async () => {
@@ -268,6 +297,7 @@ export default function RondeDetailPage() {
     try {
       await navigator.clipboard.writeText(window.location.origin + publicUrl);
       setCopied(true);
+      showToast.success("Link gekopieerd");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       showToast.error("Kopiëren mislukt");
@@ -306,9 +336,7 @@ export default function RondeDetailPage() {
 
   const toewijzingenPerBaan = (ronde?.toewijzingen || []).reduce(
     (acc: Record<string, Toewijzing[]>, t: Toewijzing) => {
-      if (!acc[t.baan_id]) {
-        acc[t.baan_id] = [];
-      }
+      if (!acc[t.baan_id]) acc[t.baan_id] = [];
       acc[t.baan_id].push(t);
       return acc;
     },
@@ -328,371 +356,340 @@ export default function RondeDetailPage() {
   const unassignedTeams = teamsForDropdown.filter((t: Team) => !assignedTeamIds.has(t.id));
 
   if (isLoading) {
+    return <LoadingSkeleton rows={15} />;
+  }
+
+  if (!ronde) {
     return (
-      <div className="max-w-6xl p-4 space-y-6">
-        <div className="h-8 bg-gray-200 animate-pulse rounded w-1/4"></div>
-        <div className="h-40 bg-gray-200 animate-pulse rounded w-full"></div>
-        <div className="h-64 bg-gray-200 animate-pulse rounded w-full"></div>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <ShieldAlert size={48} className="text-red-500" />
+        <h2 className="text-xl font-bold">Ronde niet gevonden</h2>
+        <Button onClick={() => navigate(-1)}>Ga terug</Button>
       </div>
     );
   }
 
-  if (!ronde) {
-    return <div className="p-4">Ronde niet gevonden</div>;
-  }
-
   return (
-    <div className="max-w-6xl">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <Link
-            to={`/rondes/${competitieId}`}
-            className="text-blue-600 hover:underline mb-2 inline-block"
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-blue-600 -ml-2 gap-2 font-bold" 
+            onClick={() => navigate(`/rondes/${competitieId}`)}
           >
-            ← Terug naar speelrondes
-          </Link>
-          <h1 className="text-2xl font-bold">
-            Ronde {ronde.week_nummer} - {new Date(ronde.datum).toLocaleDateString("nl-NL")}
-          </h1>
+            <ArrowLeft size={16} /> Terug naar overzicht
+          </Button>
+          <div className="flex items-center gap-4">
+             <div className="h-14 w-14 rounded-2xl bg-blue-600 text-white flex flex-col items-center justify-center shadow-lg shadow-blue-200">
+               <span className="text-[10px] font-black uppercase leading-none opacity-80">Week</span>
+               <span className="text-2xl font-black">{ronde.week_nummer}</span>
+             </div>
+             <div>
+                <h1 className="text-3xl font-black tracking-tight text-gray-900 border-none p-0">
+                  {new Date(ronde.datum).toLocaleDateString("nl-NL", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={ronde.status === "gepubliceerd" ? "success" : "default"} className="gap-1.5">
+                    {ronde.status === "gepubliceerd" ? <Lock size={12} /> : <Unlock size={12} />}
+                    {ronde.status === "gepubliceerd" ? "Gepubliceerd" : "Concept Indeling"}
+                  </Badge>
+                  <span className="text-gray-300">|</span>
+                  <div className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                    <Users size={14} className="text-gray-300" /> {wedstrijden.length} Wedstrijden
+                  </div>
+                </div>
+             </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          {ronde.status === "gepubliceerd" ? (
-            <span className="px-3 py-1 bg-green-100 text-green-800 rounded flex items-center gap-2">
-              Gepubliceerd ✓
-            </span>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {!isReadOnly ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={handleGenerate}
+                isLoading={generateIndeling.isPending}
+                className="gap-2 h-12 shadow-sm"
+              >
+                <Wand2 size={18} />
+                Genereer Indeling
+              </Button>
+              {ronde.toewijzingen?.length > 0 && (
+                <Button
+                  onClick={handlePublish}
+                  isLoading={publishRonde.isPending}
+                  className="gap-2 h-12 shadow-md shadow-blue-100"
+                >
+                  <Globe size={18} />
+                  Publiceren
+                </Button>
+              )}
+            </>
           ) : (
-            <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded">Concept</span>
+            <>
+              <Button
+                variant="danger"
+                onClick={handleDepublish}
+                isLoading={depublishRonde.isPending}
+                className="gap-2 h-12"
+              >
+                <Lock size={18} />
+                Publicatie Intrekken
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.open(`${window.location.origin}/public/ronde/${ronde.public_token}`, '_blank')}
+                className="gap-2 h-12"
+              >
+                <ExternalLink size={18} />
+                Live Display
+              </Button>
+            </>
           )}
         </div>
       </div>
 
-      {publicUrl && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded flex items-center gap-2">
-          <span className="text-sm text-blue-800">Publieke URL:</span>
-          <code className="text-sm text-blue-600 bg-white px-2 py-1 rounded">{window.location.origin}{publicUrl}</code>
-          <button
-            onClick={handleCopyUrl}
-            className="px-3 py-2 min-h-[44px] flex items-center justify-center bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-          >
-            {copied ? "Gekopieerd!" : "Kopieer"}
-          </button>
-          <a
-            href={window.location.origin + publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-2 min-h-[44px] flex items-center justify-center bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
-          >
-            Open display
-          </a>
-        </div>
-      )}
-
-      {!isReadOnly && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            onClick={handleGenerate}
-            disabled={generateIndeling.isPending}
-            className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {generateIndeling.isPending ? "Genereren..." : "Genereer indeling"}
-          </button>
-          {ronde.toewijzingen?.length > 0 && (
-            <button
-              onClick={handlePublish}
-              disabled={publishRonde.isPending}
-              className="px-4 py-2 min-h-[44px] bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-            >
-              {publishRonde.isPending ? "Publiceren..." : "Publiceer indeling"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {isReadOnly && (
-        <div className="mb-4 flex gap-2">
-          <button
-            onClick={handleDepublish}
-            disabled={depublishRonde.isPending}
-            className="px-4 py-2 min-h-[44px] bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-          >
-            {depublishRonde.isPending ? "Depubliceren..." : "Depubliceren"}
-          </button>
-        </div>
-      )}
-
-      {wedstrijden.length > 0 && (
-        <div className="mb-6 bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-3">Wedstrijden</h2>
-          <div className="grid gap-2">
-            {wedstrijden.map((w: Wedstrijd) => (
-              <div key={w.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                  Thuis
-                </span>
-                <span className="font-medium">{w.thuisteam?.naam || "-"}</span>
-                <span className="text-gray-400">vs</span>
-                <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded">
-                  Uit
-                </span>
-                <span className="text-gray-600">{w.uitteam?.naam || "-"}</span>
-              </div>
-            ))}
+      {/* Shareable Link Bar */}
+      {ronde.status === "gepubliceerd" && (
+        <Card className="bg-gradient-to-r from-blue-600 to-indigo-700 border-none shadow-xl shadow-blue-100 p-1">
+          <div className="bg-white/10 backdrop-blur-sm rounded-[10px] p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-white">
+               <div className="p-2 bg-white/20 rounded-lg">
+                 <Copy size={20} />
+               </div>
+               <div>
+                  <p className="text-xs font-black uppercase tracking-wider opacity-70">Deel deze indeling</p>
+                  <p className="font-medium text-sm">Toon de indeling op schermen in de club of stuur de link naar captains.</p>
+               </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+               <div className="flex-1 sm:w-64 bg-black/20 text-white/90 px-3 py-2 rounded-lg text-xs font-mono truncate border border-white/10">
+                 {window.location.origin}/public/ronde/{ronde.public_token}
+               </div>
+               <Button variant="secondary" size="sm" onClick={handleCopyUrl} className="h-9">
+                 {copied ? "Gekopieerd!" : "Kopieer Link"}
+               </Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
 
-      {ronde.toewijzingen && ronde.toewijzingen.length > 0 && (
-        <div className="mb-6 bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-3">Tijdlijn per baan</h2>
-          <div className="space-y-4">
-            {banen
-              .filter((b: Baan) => toewijzingenPerBaan[b.id]?.length > 0)
-              .map((baan: Baan) => {
-                const baanToewijzingen = toewijzingenPerBaan[baan.id] || [];
-                return (
-                  <div key={baan.id} className="border rounded-lg p-3">
-                    <div className="font-medium mb-2 flex items-center gap-2">
-                      <span className="text-lg">Baan {baan.nummer}</span>
-                      {baan.naam && <span className="text-gray-500">({baan.naam})</span>}
-                      {baan.overdekt && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                          Overdekt
-                        </span>
-                      )}
-                    </div>
-                    <div className="relative h-8 bg-gray-100 rounded overflow-hidden">
-                      {baanToewijzingen.map((t: Toewijzing, idx: number) => {
-                        const startMinutes = t.tijdslot_start ? parseTimeToMinutes(t.tijdslot_start) : 19 * 60;
-                        const endMinutes = t.tijdslot_eind ? parseTimeToMinutes(t.tijdslot_eind) : 21 * 60;
-                        const team = teams.find((team: Team) => team.id === t.team_id);
-                        const width = Math.max(((endMinutes - startMinutes) / 180) * 100, 15);
-                        const left = ((startMinutes - 18 * 60) / 180) * 100;
-                        return (
-                          <div
-                            key={t.id}
-                            className="absolute h-6 top-1 rounded text-xs text-white truncate px-1 flex items-center overflow-hidden"
-                            style={{
-                              left: `${Math.max(left, 0)}%`,
-                              width: `${Math.min(width, 100 - left)}%`,
-                              backgroundColor: idx % 2 === 0 ? "#3B82F6" : "#10B981",
-                            }}
-                            title={`${team?.naam || "-"}: ${t.tijdslot_start?.slice(0, 5) || "19:00"} - ${t.tijdslot_eind?.slice(0, 5) || "21:00"}`}
-                          >
-                            {team?.naam || "-"}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Main Indeling Table */}
+          <section className="space-y-4">
+             <div className="flex items-center justify-between px-1">
+               <h3 className="font-black text-gray-900 flex items-center gap-2">
+                 <Layout size={18} className="text-blue-600" />
+                 Baanbezetting
+               </h3>
+               {unassignedTeams.length > 0 && (
+                 <Badge variant="warning" className="animate-pulse">
+                   {unassignedTeams.length} Teams over
+                 </Badge>
+               )}
+             </div>
+
+             <Card className="overflow-hidden border-gray-100">
+               <Table>
+                 <TableHeader className="bg-gray-50/50">
+                   <TableRow>
+                     <TableHead className="w-10"></TableHead>
+                     <TableHead>Baan</TableHead>
+                     <TableHead>Team (Thuis)</TableHead>
+                     <TableHead>Tijdslot</TableHead>
+                     <TableHead>Notitie</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {!isReadOnly ? (
+                     <DndContext
+                       sensors={sensors}
+                       collisionDetection={closestCenter}
+                       onDragStart={handleDragStart}
+                       onDragEnd={handleDragEnd}
+                     >
+                       <SortableContext items={toewijzingIds} strategy={verticalListSortingStrategy}>
+                         {(ronde.toewijzingen || []).map((t: Toewijzing) => (
+                           <SortableToewijzingRow
+                             key={t.id}
+                             toewijzing={t}
+                             teams={teamsForDropdown}
+                             allBanen={banen}
+                             isReadOnly={isReadOnly}
+                             onUpdate={handleUpdateToewijzing}
+                           />
+                         ))}
+                       </SortableContext>
+                       <DragOverlay>
+                         {activeId ? (
+                           <div className="bg-white p-4 rounded-xl border-2 border-blue-600 shadow-2xl flex items-center gap-4 opacity-90 scale-105 transition-transform">
+                             <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black">
+                                {ronde.toewijzingen.find((t: Toewijzing) => t.id === activeId)?.baan?.nummer}
+                             </div>
+                             <div>
+                               <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Wissel positie</p>
+                               <p className="font-bold text-gray-900">Sleep om banen te wisselen</p>
+                             </div>
+                           </div>
+                         ) : null}
+                       </DragOverlay>
+                     </DndContext>
+                   ) : (
+                    ronde.toewijzingen.map((t: Toewijzing) => (
+                      <TableRow key={t.id}>
+                         <TableCell></TableCell>
+                         <TableCell>
+                            <div className="flex items-center gap-2 font-bold text-gray-900">
+                              Baan {t.baan?.nummer}
+                              {t.baan?.overdekt && <Badge variant="secondary" className="scale-75">Binnen</Badge>}
+                            </div>
+                         </TableCell>
+                         <TableCell className="font-bold text-blue-600">{t.team?.naam || "-"}</TableCell>
+                         <TableCell className="font-mono text-xs">
+                            <Badge variant="outline" className="gap-1.5 font-bold">
+                              <Clock size={10} />
+                              {t.tijdslot_start?.slice(0, 5)} - {t.tijdslot_eind?.slice(0, 5)}
+                            </Badge>
+                         </TableCell>
+                         <TableCell className="text-xs text-gray-500 italic font-medium">
+                            {t.notitie || "-"}
+                         </TableCell>
+                      </TableRow>
+                    ))
+                   )}
+                   {ronde.toewijzingen?.length === 0 && (
+                     <TableRow>
+                       <TableCell colSpan={5} className="h-60 text-center text-gray-400">
+                          <div className="flex flex-col items-center gap-3">
+                             <div className="p-4 bg-gray-50 rounded-full">
+                               <Wand2 size={40} className="text-gray-200" />
+                             </div>
+                             <p className="font-bold">Nog geen indeling gegenereerd</p>
+                             <Button variant="secondary" size="sm" onClick={handleGenerate}>Nu genereren</Button>
                           </div>
-                        );
-                      })}
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>18:00</span>
-                      <span>19:00</span>
-                      <span>20:00</span>
-                      <span>21:00</span>
-                      <span>22:00</span>
-                      <span>23:00</span>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
+                       </TableCell>
+                     </TableRow>
+                   )}
+                 </TableBody>
+               </Table>
+             </Card>
+          </section>
         </div>
-      )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="hidden md:block">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
-                  #
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Baan
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Team
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Tijd
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Notitie
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {isReadOnly ? (
-                Object.entries(
-                  (ronde.toewijzingen || []).reduce(
-                    (acc: Record<string, Toewijzing[]>, t: Toewijzing) => {
-                      const key = `${t.baan_id}-${t.tijdslot_start || "default"}`;
-                      if (!acc[key]) {
-                        acc[key] = [];
-                      }
-                      acc[key].push(t);
-                      return acc;
-                    },
-                    {}
-                  )
-                ).map(([key, toewijzingenTuple]) => {
-                  const toewijzingen = toewijzingenTuple as Toewijzing[];
-                  const first = toewijzingen[0];
-                  const baan = banen.find((b: Baan) => b.id === first.baan_id);
-                  const startTime = first.tijdslot_start?.slice(0, 5) || "19:00";
-                  const endTime = first.tijdslot_eind?.slice(0, 5) || "";
-                  return (
-                    <tr key={key} className="border-b">
-                      <td className="px-4 py-3">
-                        <span className="text-lg">{baan?.nummer}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {baan?.naam && <span>{baan.naam}</span>}
-                          {baan?.overdekt && (
-                            <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                              Overdekt
-                            </span>
-                          )}
+        <div className="space-y-8">
+          {/* Timeline Visualization */}
+          <section className="space-y-4">
+             <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+               <Activity size={18} className="text-indigo-600" />
+               Tijdlijn
+             </h3>
+             <Card className="p-4 bg-gray-50/50">
+               <div className="space-y-4">
+                {banen
+                  .filter((b: Baan) => toewijzingenPerBaan[b.id]?.length > 0)
+                  .sort((a: Baan, b: Baan) => a.nummer - b.nummer)
+                  .map((baan: Baan) => {
+                    const baanToewijzingen = toewijzingenPerBaan[baan.id] || [];
+                    return (
+                      <div key={baan.id} className="space-y-1.5">
+                        <div className="flex justify-between items-center px-1">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Baan {baan.nummer}</span>
+                          {baan.overdekt && <Umbrella size={10} className="text-blue-400" />}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          {toewijzingen.map((t: Toewijzing) => {
+                        <div className="relative h-7 bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden p-0.5">
+                          {baanToewijzingen.map((t: Toewijzing, idx: number) => {
+                            const startMinutes = t.tijdslot_start ? parseTimeToMinutes(t.tijdslot_start) : 19 * 60;
+                            const endMinutes = t.tijdslot_eind ? parseTimeToMinutes(t.tijdslot_eind) : 21 * 60;
                             const team = teams.find((team: Team) => team.id === t.team_id);
+                            
+                            // Visualize from 18:00 to 23:00 (300 minutes)
+                            const width = Math.max(((endMinutes - startMinutes) / 300) * 100, 10);
+                            const left = ((startMinutes - 18 * 60) / 300) * 100;
+                            
                             return (
-                              <div key={t.id} className="flex items-center gap-2">
-                                <span className="font-medium">{team?.naam || "-"}</span>
-                                {t.notitie && (
-                                  <span className="text-xs text-gray-500">({t.notitie})</span>
-                                )}
+                              <div
+                                key={t.id}
+                                className={`absolute h-5 top-0.5 rounded-md text-[9px] font-black text-white px-1.5 flex items-center truncate ${idx % 2 === 0 ? 'bg-blue-500 shadow-sm shadow-blue-100' : 'bg-indigo-500 shadow-sm shadow-indigo-100'}`}
+                                style={{
+                                  left: `${Math.max(left, 0.5)}%`,
+                                  width: `${Math.min(width, 100 - left - 1)}%`,
+                                }}
+                                title={`${team?.naam || "-"}: ${t.tijdslot_start?.slice(0, 5) || "19:00"} - ${t.tijdslot_eind?.slice(0, 5) || "21:00"}`}
+                              >
+                                {team?.naam || "-"}
                               </div>
                             );
                           })}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {startTime}
-                        {endTime && ` - ${endTime}`}
-                      </td>
-                      <td className="px-4 py-3">
-                        {toewijzingen.length > 1 ? "Meerdere teams" : toewijzingen[0].notitie}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext items={toewijzingIds} strategy={verticalListSortingStrategy}>
-                    {(ronde.toewijzingen || []).map((t: Toewijzing) => (
-                      <SortableToewijzingRow
-                        key={t.id}
-                        toewijzing={t}
-                        teams={teamsForDropdown}
-                        allBanen={banen}
-                        isReadOnly={isReadOnly}
-                        onUpdate={handleUpdateToewijzing}
-                      />
-                    ))}
-                  </SortableContext>
-                  <DragOverlay>
-                    {activeId ? (
-                      <div className="bg-blue-100 p-3 rounded border-2 border-blue-400">
-                        Team wisselen
                       </div>
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    );
+                  })}
+                  <div className="flex justify-between text-[9px] font-black text-gray-300 uppercase tracking-tighter pt-2 border-t px-1">
+                    <span>18:00</span>
+                    <span>19:00</span>
+                    <span>20:00</span>
+                    <span>21:00</span>
+                    <span>22:00</span>
+                    <span>23:00</span>
+                  </div>
+               </div>
+             </Card>
+          </section>
 
-        {/* Mobile View */}
-        <div className="md:hidden divide-y divide-gray-200">
-          {isReadOnly ? (
-            Object.entries(
-              (ronde.toewijzingen || []).reduce(
-                (acc: Record<string, Toewijzing[]>, t: Toewijzing) => {
-                  const key = `${t.baan_id}-${t.tijdslot_start || "default"}`;
-                  if (!acc[key]) {
-                    acc[key] = [];
-                  }
-                  acc[key].push(t);
-                  return acc;
-                },
-                {}
-              )
-            ).map(([key, toewijzingenTuple]) => {
-              const toewijzingen = toewijzingenTuple as Toewijzing[];
-              const first = toewijzingen[0];
-              const baan = banen.find((b: Baan) => b.id === first.baan_id);
-              const startTime = first.tijdslot_start?.slice(0, 5) || "19:00";
-              const endTime = first.tijdslot_eind?.slice(0, 5) || "";
-              return (
-                <div key={key} className="p-4 bg-white flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <div className="font-bold text-lg">Baan {baan?.nummer}</div>
-                    <div className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">
-                      {startTime}{endTime && ` - ${endTime}`}
+          {/* Wedstrijd Details sidebar */}
+          <section className="space-y-4 text-gray-900">
+            <h3 className="text-lg font-black flex items-center gap-2">
+              <Trophy size={18} className="text-amber-500" />
+              Ingeroosterde Teams
+            </h3>
+            <div className="space-y-2">
+              {wedstrijden.map((w: Wedstrijd) => (
+                <Card key={w.id} className="border-gray-50 hover:border-blue-100 transition-colors">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between text-[10px] mb-2 font-black uppercase tracking-widest text-gray-400">
+                       <span>Wedstrijd</span>
+                       <Badge variant="outline" className="h-4 p-1 text-[8px]">KNLTB</Badge>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {baan?.naam && <span className="text-sm text-gray-600">{baan.naam}</span>}
-                    {baan?.overdekt && (
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                        Overdekt
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 space-y-2">
-                    {toewijzingen.map((t: Toewijzing) => {
-                      const team = teams.find((team: Team) => team.id === t.team_id);
-                      return (
-                        <div key={t.id} className="bg-gray-50 p-2 rounded">
-                          <span className="font-medium block">{team?.naam || "-"}</span>
-                          {t.notitie && (
-                            <span className="text-sm text-gray-500 block mt-1">{t.notitie}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="p-4 bg-yellow-50 text-yellow-800 text-sm">
-              Bewerkmodus is op dit moment niet geoptimaliseerd voor mobiel. Gebruik een computer of tablet in landscape modus voor drag & drop.
-            </div>
-          )}
-        </div>
-
-        {unassignedTeams.length > 0 && (
-          <div className="p-4 bg-orange-50 border-t border-orange-200">
-            <h3 className="font-medium text-orange-800 mb-2">Niet ingepland:</h3>
-            <div className="flex flex-wrap gap-2">
-              {unassignedTeams.map((t: Team) => (
-                <span
-                  key={t.id}
-                  className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm"
-                >
-                  {t.naam}
-                </span>
+                    <div className="flex items-center gap-3">
+                       <div className="flex-1 space-y-1">
+                          <div className="text-sm font-bold truncate text-gray-700">{w.thuisteam?.naam}</div>
+                          <div className="text-[10px] text-gray-300 font-bold flex items-center gap-1">VS <span className="text-gray-400 font-medium">{w.uitteam?.naam}</span></div>
+                       </div>
+                       <Badge variant="success" className="h-6">THUIS</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </div>
-        )}
+          </section>
 
-        {ronde.toewijzingen?.length === 0 && !isReadOnly && (
-          <div className="p-8 text-center text-gray-500">
-            Geen toewijzingen. Klik op "Genereer indeling" om teams automatisch te verdelen.
-          </div>
-        )}
+          {/* Unassigned Teams */}
+          {unassignedTeams.length > 0 && (
+             <section className="space-y-4">
+               <h3 className="text-lg font-black text-red-600 flex items-center gap-2">
+                 <ShieldAlert size={18} />
+                 Niet Ingepland
+               </h3>
+               <div className="p-4 bg-red-50 border border-red-100 rounded-2xl space-y-3">
+                 <p className="text-xs font-medium text-red-800">De volgende teams hebben een thuiswedstrijd maar zijn nog niet toegewezen aan een baan.</p>
+                 <div className="flex flex-wrap gap-2">
+                    {unassignedTeams.map((t: Team) => (
+                      <Badge key={t.id} variant="danger" className="py-1 px-3 border-none bg-white text-red-600 font-black shadow-sm">
+                        {t.naam}
+                      </Badge>
+                    ))}
+                 </div>
+                 <Button variant="secondary" className="w-full h-10 border-red-200 text-red-700 font-bold bg-white" onClick={handleGenerate}>
+                   Slim Proberen te Plannen
+                 </Button>
+               </div>
+             </section>
+          )}
+        </div>
       </div>
     </div>
   );

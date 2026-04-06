@@ -9,7 +9,6 @@ import {
   XCircle, 
   MessageCircle, 
   Trophy,
-  ChevronRight,
   Info,
   Send
 } from "lucide-react";
@@ -59,7 +58,6 @@ export default function CaptainPortaal() {
   const [data, setData] = useState<CaptainPortalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'planning' | 'uitslagen'>('planning');
 
   const fetchData = async () => {
@@ -90,7 +88,6 @@ export default function CaptainPortaal() {
   };
 
   const handleSubmitResult = async (wedstrijdId: string, th: number, uit: number) => {
-    setIsSubmitting(true);
     try {
       await axios.post(`${API_BASE_URL}/captain/${token}/uitslag`, {
         wedstrijd_id: wedstrijdId,
@@ -100,8 +97,6 @@ export default function CaptainPortaal() {
       fetchData();
     } catch (err) {
       alert("Fout bij het opslaan van uitslag");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

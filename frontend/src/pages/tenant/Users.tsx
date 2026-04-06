@@ -1,6 +1,22 @@
 import { useState, useEffect } from "react";
 import { tenantApi } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { UserPlus, Edit, Shield, Mail, Calendar, UserCheck, UserMinus, AlertCircle } from "lucide-react";
+import { showToast } from "../../components/Toast";
+import { 
+  Button, 
+  Input, 
+  Select, 
+  Modal, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell, 
+  Badge, 
+  LoadingSkeleton 
+} from "../../components";
 
 interface User {
   id: string;
@@ -21,7 +37,6 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -42,26 +57,28 @@ export default function UsersPage() {
   }, []);
 
   const loadUsers = () => {
+    setIsLoading(true);
     tenantApi.listUsers().then((res) => {
       setUsers(res.data.users);
+    }).catch(() => {
+      showToast.error("Fout bij laden van gebruikers");
     }).finally(() => setIsLoading(false));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setMessage("");
 
     try {
       if (editingUser) {
         await tenantApi.updateUser(editingUser.id, formData);
-        setMessage("Gebruiker bijgewerkt");
+        showToast.success("Gebruiker bijgewerkt");
       }
       loadUsers();
       setShowModal(false);
       setEditingUser(null);
     } catch {
-      setMessage("Fout bij opslaan");
+      showToast.error("Fout bij opslaan");
     } finally {
       setIsSaving(false);
     }
@@ -70,16 +87,15 @@ export default function UsersPage() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setMessage("");
 
     try {
       await tenantApi.inviteUser(inviteData);
-      setMessage("Uitnodiging verstuurd");
+      showToast.success("Uitnodiging verstuurd naar " + inviteData.email);
       setShowInviteModal(false);
       setInviteData({ email: "", role: "planner" });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij uitnodigen");
+      showToast.error(error.response?.data?.detail || "Fout bij uitnodigen");
     } finally {
       setIsSaving(false);
     }
@@ -90,10 +106,10 @@ export default function UsersPage() {
     
     try {
       await tenantApi.deactivateUser(user.id);
+      showToast.success("Gebruiker gedeactiveerd");
       loadUsers();
-      setMessage("Gebruiker gedeactiveerd");
     } catch {
-      setMessage("Fout bij deactiveren");
+      showToast.error("Fout bij deactiveren");
     }
   };
 
@@ -108,245 +124,174 @@ export default function UsersPage() {
   };
 
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={5} />;
   }
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Gebruikers</h1>
-        <button
-          onClick={() => setShowInviteModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
+    <div className="max-w-5xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">Gebruikersbeheer</h1>
+          <p className="text-gray-500 font-medium">Beheer medewerkers en hun toegangsrechten.</p>
+        </div>
+        <Button onClick={() => setShowInviteModal(true)} className="gap-2">
+          <UserPlus size={18} />
           Gebruiker uitnodigen
-        </button>
+        </Button>
       </div>
 
-      {message && !message.includes("Fout") && (
-        <div className="mb-4 p-3 rounded bg-green-100 text-green-700">
-          {message}
-        </div>
-      )}
-
-      {message.includes("Fout") && (
-        <div className="mb-4 p-3 rounded bg-red-100 text-red-700">
-          {message}
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Naam
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Rol
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Laatste login
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Acties
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {users.map((user) => (
-              <tr key={user.id} className={!user.is_active ? "bg-gray-50" : ""}>
-                <td className="px-6 py-4">{user.full_name || "-"}</td>
-                <td className="px-6 py-4">{user.email}</td>
-                <td className="px-6 py-4">
-                  {ROLES.find((r) => r.value === user.role)?.label}
-                </td>
-                <td className="px-6 py-4 text-gray-500">
-                  {user.last_login 
-                    ? new Date(user.last_login).toLocaleDateString("nl-NL")
-                    : "Nooit"}
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs rounded ${
-                      user.is_active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {user.is_active ? "Actief" : "Inactief"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => handleEdit(user)}
-                    className="text-blue-600 hover:text-blue-800 mr-3"
-                  >
-                    Bewerken
-                  </button>
-                  {user.is_active && user.id !== currentUser?.id && (
-                    <button
-                      onClick={() => handleDeactivate(user)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Deactiveren
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {users.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Nog geen gebruikers
-          </div>
-        )}
-      </div>
-
-      {showModal && editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Gebruiker bewerken</h2>
-
-            {editingUser.id === currentUser?.id && (
-              <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 text-sm rounded">
-                Je kunt je eigen account niet bewerken
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Naam
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Rol
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    disabled={editingUser.id === currentUser?.id}
-                  >
-                    {ROLES.map((role) => (
-                      <option key={role.value} value={role.value}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {editingUser.id !== currentUser?.id && (
-                  <div>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.is_active}
-                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                        className="mr-2"
-                      />
-                      <span className="text-sm font-medium text-gray-700">Actief</span>
-                    </label>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Gebruiker</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead>Laatste login</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Acties</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id} className={!user.is_active ? "bg-gray-50/50" : ""}>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold border">
+                    {(user.full_name || user.email).charAt(0).toUpperCase()}
                   </div>
-                )}
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Annuleren
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving || editingUser.id === currentUser?.id}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isSaving ? "Opslaan..." : "Opslaan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Gebruiker uitnodigen</h2>
-
-            <form onSubmit={handleInvite}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={inviteData.email}
-                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-bold text-gray-900">{user.full_name || "Nieuwe gebruiker"}</div>
+                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                      <Mail size={12} />
+                      {user.email}
+                    </div>
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Rol
-                  </label>
-                  <select
-                    value={inviteData.role}
-                    onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    {ROLES.map((role) => (
-                      <option key={role.value} value={role.value}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </select>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline" className="gap-1 font-medium">
+                  <Shield size={12} className="text-blue-600" />
+                  {ROLES.find((r) => r.value === user.role)?.label}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                 <div className="text-xs text-gray-500 flex items-center gap-1.5 font-medium">
+                    <Calendar size={12} />
+                    {user.last_login 
+                      ? new Date(user.last_login).toLocaleDateString("nl-NL", { day: 'numeric', month: 'short', year: 'numeric' })
+                      : "Nooit ingelogd"}
+                 </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={user.is_active ? "success" : "default"}>
+                  {user.is_active ? "Actief" : "Inactief"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                    <Edit size={16} />
+                  </Button>
+                  {user.is_active && user.id !== currentUser?.id && (
+                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeactivate(user)}>
+                      <UserMinus size={16} />
+                    </Button>
+                  )}
                 </div>
-              </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {users.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="h-40 text-center text-gray-500 font-medium">
+                Geen gebruikers gevonden.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Annuleren
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isSaving ? "Versturen..." : "Uitnodigen"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Gebruiker bewerken"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Annuleren</Button>
+            <Button type="submit" form="user-edit-form" isLoading={isSaving} disabled={editingUser?.id === currentUser?.id}>Opslaan</Button>
+          </>
+        }
+      >
+        {editingUser?.id === currentUser?.id ? (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-amber-800">
+             <AlertCircle size={20} className="flex-shrink-0" />
+             <div className="text-sm">
+                <p className="font-bold">Je beheert je eigen account</p>
+                <p>Wijzigingen aan je eigen profiel en rol kunnen alleen door een andere beheerder worden gedaan om te voorkomen dat je jezelf buitensluit.</p>
+             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <form id="user-edit-form" onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="Volledige naam"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              placeholder="Bijv. Jan de Vries"
+            />
+            <Select
+              label="Rol"
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              options={ROLES}
+            />
+            <div className="flex items-center gap-2 p-1 pt-2">
+               <input
+                  type="checkbox"
+                  id="user-active"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label htmlFor="user-active" className="text-sm font-bold text-gray-700 cursor-pointer flex items-center gap-2">
+                   Account is actief
+                   {formData.is_active ? <UserCheck size={14} className="text-green-500" /> : <UserMinus size={14} className="text-gray-400" />}
+                </label>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        title="Nieuwe gebruiker uitnodigen"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowInviteModal(false)}>Annuleren</Button>
+            <Button type="submit" form="invite-form" isLoading={isSaving}>Uitnodiging versturen</Button>
+          </>
+        }
+      >
+        <form id="invite-form" onSubmit={handleInvite} className="space-y-4">
+          <p className="text-sm text-gray-500 leading-relaxed">
+             Voer het e-mailadres in van de persoon die je wilt uitnodigen. Ze ontvangen een e-mail met een link om hun account in te stellen.
+          </p>
+          <Input
+            type="email"
+            label="E-mailadres"
+            value={inviteData.email}
+            onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+            placeholder="collega@vereniging.nl"
+            required
+            autoFocus
+          />
+          <Select
+            label="Toegewezen Rol"
+            value={inviteData.role}
+            onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
+            options={ROLES}
+          />
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,9 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
-import { Loader2 } from "lucide-react";
+import { Search, Plus, Upload, User, Mail, Shield, Edit, ToggleLeft, ToggleRight } from "lucide-react";
 import { showToast } from "../../components/Toast";
-import { Pagination } from "../../components/Pagination";
+import { 
+  Button, 
+  Input, 
+  Modal, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell, 
+  Card,
+  Badge,
+  Pagination,
+  LoadingSkeleton,
+} from "../../components";
 
 interface Team {
   id: string;
@@ -225,7 +239,7 @@ export default function TeamsPage() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedTeamIds(filteredTeams().map(t => t.id));
+      setSelectedTeamIds(teams.map(t => t.id));
     } else {
       setSelectedTeamIds([]);
     }
@@ -255,251 +269,253 @@ export default function TeamsPage() {
     }
   };
 
-  const filteredTeams = () => teams;
-
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={15} />;
   }
 
   return (
-    <div className="max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-6xl space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-extrabold tracking-tight">
             Teams {competitie ? `- ${competitie.naam}` : ""}
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-500 font-medium">
             Totaal: {totalTeams} teams
           </p>
         </div>
-        <div className="flex gap-3">
-          <button
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
             onClick={() => setShowImportModal(true)}
-            className="px-4 py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            className="gap-2"
           >
+            <Upload size={16} />
             CSV Import
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => {
               resetForm();
               setShowModal(true);
             }}
-            className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="gap-2"
           >
+            <Plus size={16} />
             Team toevoegen
-          </button>
+          </Button>
         </div>
       </div>
 
       {isBulkOperationProgress.inProgress && (
-        <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-          <span className="text-indigo-800 font-medium">{isBulkOperationProgress.text}</span>
-        </div>
+        <Badge variant="secondary" className="w-full py-3 flex justify-center gap-2 animate-pulse">
+          {isBulkOperationProgress.text}
+        </Badge>
       )}
 
-      <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
-        <input
-          type="text"
-          placeholder="Zoeken op naam..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 min-h-[44px] border border-gray-300 rounded-md w-full max-w-xs"
-        />
+      <Card className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Zoeken op naam..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 pr-4 py-2 w-full rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
+          />
+        </div>
         
         {selectedTeamIds.length > 0 && (
-          <div className="flex flex-wrap gap-2 items-center bg-blue-50 px-4 py-2 rounded-md w-full sm:w-auto">
-            <span className="text-sm font-medium mr-2">{selectedTeamIds.length} geselecteerd</span>
-            <button
+          <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 shadow-sm animate-in fade-in zoom-in-95">
+            <span className="text-sm font-bold text-blue-700">{selectedTeamIds.length} geselecteerd</span>
+            <div className="h-4 w-[1px] bg-blue-200 mx-2" />
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => handleBulkActivate(true)}
               disabled={isBulkOperationProgress.inProgress}
-              className="text-sm px-3 py-2 min-h-[44px] bg-white border border-gray-300 rounded hover:bg-gray-50"
             >
               Activeer
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => handleBulkActivate(false)}
               disabled={isBulkOperationProgress.inProgress}
-              className="text-sm px-3 py-2 min-h-[44px] bg-white border border-gray-300 rounded hover:bg-gray-50"
             >
               Deactiveer
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="hidden md:block">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left w-12">
-                  <input 
-                    type="checkbox" 
-                    className="rounded border-gray-300 w-5 h-5"
-                    checked={selectedTeamIds.length > 0 && selectedTeamIds.length === filteredTeams().length}
-                    onChange={handleSelectAll}
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Teamnaam
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Captain
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Speelklasse
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Acties
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredTeams().map((team) => (
-                <tr key={team.id} className={!team.actief ? "bg-gray-50" : ""}>
-                  <td className="px-6 py-4">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-gray-300 w-5 h-5"
-                      checked={selectedTeamIds.includes(team.id)}
-                      onChange={(e) => handleSelectTeam(e, team.id)}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{team.naam}</td>
-                  <td className="px-6 py-4">
-                    {team.captain_naam && (
-                      <div>
-                        <div>{team.captain_naam}</div>
-                        {team.captain_email && (
-                          <div className="text-sm text-gray-500">
-                            {team.captain_email}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {team.speelklasse || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs rounded ${
-                        team.actief
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {team.actief ? "Actief" : "Inactief"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button
-                      onClick={() => handleEdit(team)}
-                      className="text-blue-600 hover:text-blue-800 mr-4 min-h-[44px]"
-                    >
-                      Bewerken
-                    </button>
-                    {team.actief ? (
-                      <button
-                        onClick={() => handleDeactivate(team)}
-                        className="text-red-600 hover:text-red-800 min-h-[44px]"
-                      >
-                        Deactiveren
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleActivate(team)}
-                        className="text-green-600 hover:text-green-800 min-h-[44px]"
-                      >
-                        Activeren
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile View */}
-        <div className="md:hidden divide-y divide-gray-200">
-          <div className="p-4 bg-gray-50 flex items-center border-b">
-            <input 
-              type="checkbox" 
-              className="rounded border-gray-300 w-6 h-6 mr-3"
-              checked={selectedTeamIds.length > 0 && selectedTeamIds.length === filteredTeams().length}
-              onChange={handleSelectAll}
-            />
-            <span className="text-sm font-medium text-gray-700">Selecteer alle teams</span>
-          </div>
-          {filteredTeams().map((team) => (
-            <div key={team.id} className={`p-4 flex gap-3 ${!team.actief ? "bg-gray-50" : ""}`}>
-              <div className="pt-1">
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
                 <input 
                   type="checkbox" 
-                  className="rounded border-gray-300 w-6 h-6"
+                  className="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-600"
+                  checked={selectedTeamIds.length > 0 && selectedTeamIds.length === teams.length}
+                  onChange={handleSelectAll}
+                />
+              </TableHead>
+              <TableHead>Teamnaam</TableHead>
+              <TableHead>Captain</TableHead>
+              <TableHead>Speelklasse</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Acties</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {teams.map((team) => (
+              <TableRow key={team.id} className={!team.actief ? "bg-gray-50/50" : ""}>
+                <TableCell>
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-600"
+                    checked={selectedTeamIds.includes(team.id)}
+                    onChange={(e) => handleSelectTeam(e, team.id)}
+                  />
+                </TableCell>
+                <TableCell className="font-semibold text-gray-900">{team.naam}</TableCell>
+                <TableCell>
+                  {team.captain_naam ? (
+                    <div className="space-y-0.5">
+                      <div className="text-sm font-medium flex items-center gap-1.5">
+                        <User size={13} className="text-gray-400" />
+                        {team.captain_naam}
+                      </div>
+                      {team.captain_email && (
+                        <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                          <Mail size={13} className="text-gray-400" />
+                          {team.captain_email}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">Geen captain</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {team.speelklasse ? (
+                    <Badge variant="outline" className="font-normal">{team.speelklasse}</Badge>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={team.actief ? "success" : "default"}>
+                    {team.actief ? "Actief" : "Inactief"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(team)}
+                    >
+                      <Edit size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={team.actief ? "text-red-500 hover:text-red-600 hover:bg-red-50" : "text-green-500 hover:text-green-600 hover:bg-green-50"}
+                      onClick={() => team.actief ? handleDeactivate(team) : handleActivate(team)}
+                    >
+                      {team.actief ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {teams.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="h-40 text-center text-gray-500">
+                  Nog geen teams toegevoegd.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile View */}
+      <div className="md:hidden space-y-4">
+        <div className="flex items-center gap-2 px-1">
+          <input 
+            type="checkbox" 
+            id="mobile-select-all"
+            className="rounded border-gray-300 w-5 h-5 text-blue-600"
+            checked={selectedTeamIds.length > 0 && selectedTeamIds.length === teams.length}
+            onChange={handleSelectAll}
+          />
+          <label htmlFor="mobile-select-all" className="text-sm font-medium text-gray-700">Selecteer alle teams</label>
+        </div>
+        {teams.map((team) => (
+          <Card key={team.id} className={!team.actief ? "bg-gray-50/80" : ""}>
+            <div className="p-4 flex gap-4">
+              <div className="pt-0.5">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-gray-300 w-5 h-5 text-blue-600"
                   checked={selectedTeamIds.includes(team.id)}
                   onChange={(e) => handleSelectTeam(e, team.id)}
                 />
               </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start mb-1">
-                  <div className="font-bold text-lg">{team.naam}</div>
-                  <span
-                    className={`px-2 py-1 text-xs rounded ${
-                      team.actief
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
+              <div className="flex-1 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-lg text-gray-900">{team.naam}</h3>
+                    {team.speelklasse && (
+                      <Badge variant="outline" className="mt-1 font-normal">{team.speelklasse}</Badge>
+                    )}
+                  </div>
+                  <Badge variant={team.actief ? "success" : "default"}>
                     {team.actief ? "Actief" : "Inactief"}
-                  </span>
+                  </Badge>
                 </div>
-                {team.speelklasse && (
-                  <div className="text-sm text-gray-600 mb-2">Klasse: {team.speelklasse}</div>
-                )}
+
                 {team.captain_naam && (
-                  <div className="text-sm bg-gray-100 p-2 rounded mb-3">
-                    <span className="font-medium text-gray-700">👤 {team.captain_naam}</span>
+                  <div className="space-y-1 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                    <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                       <User size={14} className="text-gray-400" />
+                       {team.captain_naam}
+                    </div>
                     {team.captain_email && (
-                      <div className="text-gray-500 mt-1">✉️ {team.captain_email}</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <Mail size={14} className="text-gray-400" />
+                        {team.captain_email}
+                      </div>
                     )}
                   </div>
                 )}
-                <div className="flex gap-3 mt-2 border-t pt-3">
-                  <button
+
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    variant="secondary"
+                    className="flex-1 h-11"
                     onClick={() => handleEdit(team)}
-                    className="flex-1 text-center py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium active:bg-blue-100"
                   >
                     Bewerken
-                  </button>
-                  {team.actief ? (
-                    <button
-                      onClick={() => handleDeactivate(team)}
-                      className="flex-1 text-center py-2 bg-red-50 text-red-700 rounded-md text-sm font-medium active:bg-red-100"
-                    >
-                      Deactiveren
-                    </button>
-                   ) : (
-                    <button
-                      onClick={() => handleActivate(team)}
-                      className="flex-1 text-center py-2 bg-green-50 text-green-700 rounded-md text-sm font-medium active:bg-green-100"
-                    >
-                      Activeren
-                    </button>
-                  )}
+                  </Button>
+                  <Button
+                    variant={team.actief ? "danger" : "primary"}
+                    className="flex-1 h-11"
+                    onClick={() => team.actief ? handleDeactivate(team) : handleActivate(team)}
+                  >
+                    {team.actief ? "Deactiveer" : "Activeer"}
+                  </Button>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          </Card>
+        ))}
         {teams.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Nog geen teams toegevoegd. Voeg teams toe of importeer ze via CSV.
+          <div className="py-12 text-center text-gray-500">
+            Nog geen teams toegevoegd.
           </div>
         )}
       </div>
@@ -511,171 +527,153 @@ export default function TeamsPage() {
         isDisabled={isLoading} 
       />
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
-              {editingTeam ? "Team bewerken" : "Team toevoegen"}
-            </h2>
+      <Modal
+        isOpen={showModal}
+        onClose={() => { setShowModal(false); resetForm(); }}
+        title={editingTeam ? "Team bewerken" : "Team toevoegen"}
+        footer={
+          <>
+            <Button 
+              variant="secondary" 
+              onClick={() => { setShowModal(false); resetForm(); }}
+            >
+              Annuleren
+            </Button>
+            <Button 
+              type="submit" 
+              form="team-form" 
+              isLoading={isSaving}
+            >
+              {editingTeam ? "Opslaan" : "Toevoegen"}
+            </Button>
+          </>
+        }
+      >
+        <form id="team-form" onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Teamnaam"
+            value={formData.naam}
+            onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+            required
+            placeholder="Bijv. Heren 1 Zaterdag"
+          />
+          <Input
+            label="Captain naam"
+            value={formData.captain_naam}
+            onChange={(e) => setFormData({ ...formData, captain_naam: e.target.value })}
+            placeholder="Naam van de teamleider"
+          />
+          <Input
+            type="email"
+            label="Captain email"
+            value={formData.captain_email}
+            onChange={(e) => setFormData({ ...formData, captain_email: e.target.value })}
+            placeholder="email@voorbeeld.nl"
+          />
+          <Input
+            label="Speelklasse"
+            value={formData.speelklasse}
+            onChange={(e) => setFormData({ ...formData, speelklasse: e.target.value })}
+            placeholder="Bijv. 3e klasse heren"
+          />
+        </form>
+      </Modal>
 
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Teamnaam *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.naam}
-                    onChange={(e) =>
-                      setFormData({ ...formData, naam: e.target.value })
-                    }
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Captain naam
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.captain_naam}
-                    onChange={(e) =>
-                      setFormData({ ...formData, captain_naam: e.target.value })
-                    }
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Captain email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.captain_email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, captain_email: e.target.value })
-                    }
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Speelklasse
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.speelklasse}
-                    onChange={(e) =>
-                      setFormData({ ...formData, speelklasse: e.target.value })
-                    }
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                    placeholder="Bijv. 3e klasse heren"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2 min-h-[44px] text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 w-full sm:w-auto"
-                >
-                  Annuleren
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
-                >
-                  {isSaving ? "Opslaan..." : "Opslaan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">Teams importeren (CSV)</h2>
-
-            <div className="mb-4">
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Teams importeren"
+        maxWidth="lg"
+        footer={
+          <>
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                setShowImportModal(false);
+                setSelectedFile(null);
+                setImportPreview([]);
+              }}
+            >
+              Annuleren
+            </Button>
+            <Button 
+              onClick={handleImport}
+              isLoading={isSaving}
+              disabled={importPreview.length === 0}
+            >
+              Importeren
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Selecteer CSV bestand</label>
+            <div 
+              className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/10 transition-all cursor-pointer group"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2 group-hover:text-blue-500 transition-colors" />
+              <p className="text-sm text-gray-600 font-medium">
+                {selectedFile ? selectedFile.name : "Klik om te uploaden of sleep een bestand hierheen"}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Enkel .csv bestanden</p>
               <input
                 type="file"
                 ref={fileInputRef}
                 accept=".csv"
                 onChange={handleFileChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="hidden"
               />
-              <p className="text-sm text-gray-500 mt-2">
-                Kolommen: naam, captain_naam, captain_email, speelklasse
-              </p>
             </div>
-
-            {importErrors.length > 0 && (
-              <div className="mb-4 p-3 rounded bg-red-100 text-red-700">
-                {importErrors.map((err, i) => (
-                  <div key={i}>{err}</div>
-                ))}
-              </div>
-            )}
-
-            {importPreview.length > 0 && (
-              <div className="mb-4 max-h-60 overflow-y-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs">Teamnaam</th>
-                      <th className="px-3 py-2 text-left text-xs">Captain</th>
-                      <th className="px-3 py-2 text-left text-xs">Klasse</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {importPreview.map((team, i) => (
-                      <tr key={i}>
-                        <td className="px-3 py-2">{team.naam}</td>
-                        <td className="px-3 py-2">{team.captain_naam || "-"}</td>
-                        <td className="px-3 py-2">{team.speelklasse || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowImportModal(false);
-                  setSelectedFile(null);
-                  setImportPreview([]);
-                }}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Annuleren
-              </button>
-              <button
-                type="button"
-                onClick={handleImport}
-                disabled={isSaving || importPreview.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSaving ? "Importeren..." : "Importeren"}
-              </button>
+            <div className="bg-gray-50 border rounded-lg p-3">
+               <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Verwachte kolommen:</h4>
+               <div className="flex flex-wrap gap-2">
+                 {["naam", "captain_naam", "captain_email", "speelklasse"].map(c => (
+                   <code key={c} className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-blue-600">{c}</code>
+                 ))}
+               </div>
             </div>
           </div>
+
+          {importErrors.length > 0 && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-700 space-y-1">
+              <div className="font-bold flex items-center gap-2">
+                 <Shield size={14} /> Fouten gevonden:
+              </div>
+              {importErrors.map((err, i) => (
+                <div key={i} className="pl-6 text-xs">• {err}</div>
+              ))}
+            </div>
+          )}
+
+          {importPreview.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-bold text-gray-900 px-1">Voorvertoning ({importPreview.length} teams)</h4>
+              <div className="max-h-60 overflow-y-auto border border-gray-100 rounded-lg shadow-inner bg-gray-50/50">
+                <Table className="bg-transparent">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Team</TableHead>
+                      <TableHead>Captain</TableHead>
+                      <TableHead>Klasse</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importPreview.map((team, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="py-2.5 font-medium">{team.naam}</TableCell>
+                        <TableCell className="py-2.5 text-xs text-gray-600">{team.captain_naam || "-"}</TableCell>
+                        <TableCell className="py-2.5 text-xs text-gray-600">{team.speelklasse || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

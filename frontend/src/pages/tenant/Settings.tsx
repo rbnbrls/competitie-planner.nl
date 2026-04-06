@@ -1,6 +1,19 @@
 import { useState, useEffect } from "react";
 import { tenantApi, onboardingApi } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { Save, RefreshCw, Building2, MapPin, Globe, Phone, ShieldCheck, AlertCircle, Users, Activity } from "lucide-react";
+import { showToast } from "../../components/Toast";
+import { 
+  Button, 
+  Input, 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent,
+  LoadingSkeleton,
+  Badge
+} from "../../components";
 
 interface ClubSettings {
   id: string;
@@ -17,12 +30,11 @@ interface ClubSettings {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { } = useAuth();
   const [settings, setSettings] = useState<ClubSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [resetMessage, setResetMessage] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
 
   const [formData, setFormData] = useState({
     naam: "",
@@ -48,19 +60,20 @@ export default function SettingsPage() {
         max_thuisteams_per_dag: res.data.max_thuisteams_per_dag || 3,
         max_banen: res.data.max_banen || 8,
       });
+    }).catch(() => {
+      showToast.error("Fout bij laden van instellingen");
     }).finally(() => setIsLoading(false));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setMessage("");
 
     try {
       await tenantApi.updateSettings(formData);
-      setMessage("Instellingen opgeslagen");
+      showToast.success("Instellingen succesvol opgeslagen");
     } catch (err) {
-      setMessage("Fout bij opslaan");
+      showToast.error("Fout bij opslaan van instellingen");
     } finally {
       setIsSaving(false);
     }
@@ -70,189 +83,227 @@ export default function SettingsPage() {
     if (!confirm("Weet je zeker dat je de onboarding opnieuw wilt doorlopen? Alle ingestelde gegevens blijven behouden.")) {
       return;
     }
+    setIsResetting(true);
     try {
       await onboardingApi.reset();
-      setResetMessage("Je kunt nu de onboarding opnieuw doorlopen. Je wordt doorgestuurd naar de onboarding pagina.");
+      showToast.success("Onboarding gereset. Je wordt doorgestuurd...");
       setTimeout(() => {
         window.location.href = "/onboarding";
-      }, 2000);
+      }, 1500);
     } catch (err) {
-      setResetMessage("Fout bij resetten van onboarding");
+      showToast.error("Fout bij resetten van onboarding");
+      setIsResetting(false);
     }
   };
 
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={10} />;
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Verenigingsinstellingen</h1>
-
-      {message && (
-        <div className={`mb-4 p-3 rounded ${message.includes("Fout") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-          {message}
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 border-none p-0">Instellingen</h1>
+          <p className="text-gray-500 font-medium">Beheer je verenigingsgegevens en algemene configuratie.</p>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+           <Badge variant={settings?.status === 'actief' ? 'success' : 'default'} className="px-3 py-1">
+             {settings?.status === 'actief' ? 'Club Status: Actief' : 'Club Status: Concept'}
+           </Badge>
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Verenigingsnaam
-            </label>
-            <input
-              type="text"
-              value={formData.naam}
-              onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-1">
+             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+               <Building2 size={20} className="text-blue-600" />
+               Clubprofiel
+             </h3>
+             <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+               De basisgegevens van je vereniging. Deze informatie wordt gebruikt in e-mails en op de publieke display.
+             </p>
           </div>
+          
+          <div className="md:col-span-2">
+            <Card className="border-none shadow-sm ring-1 ring-gray-100">
+              <CardContent className="p-6 space-y-6">
+                <Input
+                  label="Verenigingsnaam"
+                  value={formData.naam}
+                  onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+                  required
+                  placeholder="Bijv. T.V. De Meppers"
+                />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Subdomein (URL)
-            </label>
-            <input
-              type="text"
-              value={settings?.slug || ""}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Dit kan niet gewijzigd worden
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Adres
-            </label>
-            <input
-              type="text"
-              value={formData.adres}
-              onChange={(e) => setFormData({ ...formData, adres: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Postcode
-              </label>
-              <input
-                type="text"
-                value={formData.postcode}
-                onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stad
-              </label>
-              <input
-                type="text"
-                value={formData.stad}
-                onChange={(e) => setFormData({ ...formData, stad: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Telefoon
-            </label>
-            <input
-              type="tel"
-              value={formData.telefoon}
-              onChange={(e) => setFormData({ ...formData, telefoon: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Website
-            </label>
-            <input
-              type="url"
-              value={formData.website}
-              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="https://example.com"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max. thuisteams per dag
-              </label>
-              <input
-                type="number"
-                value={formData.max_thuisteams_per_dag}
-                onChange={(e) => setFormData({ ...formData, max_thuisteams_per_dag: parseInt(e.target.value) || 3 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                min="1"
-                max="10"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Maximum aantal thuiswedstrijden op één dag
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Aantal banen
-              </label>
-              <input
-                type="number"
-                value={formData.max_banen}
-                onChange={(e) => setFormData({ ...formData, max_banen: parseInt(e.target.value) || 8 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                min="1"
-                max="20"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Totaal beschikbare banen
-              </p>
-            </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Display URL (Subdomein)</label>
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm font-mono text-gray-500">
+                    <Globe size={14} className="text-gray-400" />
+                    {settings?.slug}.competitie-planner.nl
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-medium italic pl-1">Deze URL is uniek voor jouw club en kan niet worden gewijzigd.</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        <div className="mt-6">
-          <button
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-1">
+             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+               <MapPin size={20} className="text-indigo-600" />
+               Contactgegevens
+             </h3>
+             <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+               Zorg dat leden en captains contact kunnen opnemen met het bestuur of de parkbeheerder.
+             </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <Card className="border-none shadow-sm ring-1 ring-gray-100">
+              <CardContent className="p-6 space-y-6">
+                <Input
+                  label="Adres"
+                  value={formData.adres}
+                  onChange={(e) => setFormData({ ...formData, adres: e.target.value })}
+                  placeholder="Straatnaam en nummer"
+                  icon={<MapPin size={16} />}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Postcode"
+                    value={formData.postcode}
+                    onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
+                    placeholder="1234 AB"
+                  />
+                  <Input
+                    label="Stad"
+                    value={formData.stad}
+                    onChange={(e) => setFormData({ ...formData, stad: e.target.value })}
+                    placeholder="Woonplaats"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Telefoon"
+                    type="tel"
+                    value={formData.telefoon}
+                    onChange={(e) => setFormData({ ...formData, telefoon: e.target.value })}
+                    icon={<Phone size={16} />}
+                  />
+                  <Input
+                    label="Website"
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    placeholder="https://www.clubsite.nl"
+                    icon={<Globe size={16} />}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-1">
+             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+               <ShieldCheck size={20} className="text-green-600" />
+               Planningsregels
+             </h3>
+             <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+               Stel de globale limieten in die het planningsalgoritme gebruikt om conflicten te voorkomen.
+             </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <Card className="border-none shadow-sm ring-1 ring-gray-100">
+              <CardContent className="p-6 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                   <div className="space-y-4 p-4 bg-blue-50/30 rounded-xl border border-blue-100/50">
+                      <div className="flex items-center gap-2 text-blue-800 font-bold text-xs uppercase tracking-widest">
+                         <Users size={14} /> Thuisbezetting
+                      </div>
+                      <Input
+                        type="number"
+                        label="Max. thuisteams per dag"
+                        value={formData.max_thuisteams_per_dag}
+                        onChange={(e) => setFormData({ ...formData, max_thuisteams_per_dag: parseInt(e.target.value) || 3 })}
+                        min="1"
+                        max="20"
+                        helperText="Maximum aantal thuiswedstrijden per competitie-dag."
+                      />
+                   </div>
+                   <div className="space-y-4 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
+                      <div className="flex items-center gap-2 text-indigo-800 font-bold text-xs uppercase tracking-widest">
+                         <Activity size={14} /> Park Capaciteit
+                      </div>
+                      <Input
+                        type="number"
+                        label="Aantal banen"
+                        value={formData.max_banen}
+                        onChange={(e) => setFormData({ ...formData, max_banen: parseInt(e.target.value) || 8 })}
+                        min="1"
+                        max="50"
+                        helperText="Het totaal aantal fysieke banen dat de club beschikbaar heeft."
+                      />
+                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-4 gap-4 border-t border-gray-100">
+          <Button
             type="submit"
-            disabled={isSaving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            isLoading={isSaving}
+            className="gap-2 min-w-[160px] h-12 shadow-md shadow-blue-100"
           >
-            {isSaving ? "Opslaan..." : "Opslaan"}
-          </button>
+            <Save size={18} />
+            Instellingen Opslaan
+          </Button>
         </div>
       </form>
 
-      <div className="mt-8 pt-8 border-t">
-        <h2 className="text-xl font-bold mb-4">Onboarding</h2>
-        {user && !user.onboarding_completed && (
-          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4">
-            <p className="text-yellow-800">Je hebt de onboarding nog niet voltooid.</p>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={handleResetOnboarding}
-          className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-        >
-          Onboarding opnieuw doorlopen
-        </button>
-        {resetMessage && (
-          <div className={`mt-4 p-3 rounded ${resetMessage.includes("Fout") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-            {resetMessage}
-          </div>
-        )}
+      {/* Advanced / Dangerous section */}
+      <div className="space-y-4 pt-12 border-t">
+        <h2 className="text-xl font-black text-gray-900 border-none p-0">Geavanceerd</h2>
+        <Card className="border-amber-100 bg-amber-50/20">
+          <CardHeader>
+            <CardTitle className="text-amber-900 flex items-center gap-2">
+              <RefreshCw size={18} />
+              Onboarding Herstellen
+            </CardTitle>
+            <CardDescription className="text-amber-700">
+              Als je de park-instellingen of teams opnieuw wilt configureren met de visuele wizard, kun je de onboarding resetten.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                   <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                      <AlertCircle size={20} />
+                   </div>
+                   <div className="text-xs text-amber-700 font-medium max-w-md">
+                      Je huidige gegevens blijven behouden, maar je wordt teruggestuurd naar de eerste stappen van de club-configuratie.
+                   </div>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleResetOnboarding}
+                  isLoading={isResetting}
+                  className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50 whitespace-nowrap"
+                >
+                  Start Onboarding Opnieuw
+                </Button>
+             </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

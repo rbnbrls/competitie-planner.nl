@@ -1,5 +1,22 @@
 import { useState, useEffect } from "react";
 import { tenantApi } from "../../lib/api";
+import { Plus, Edit, Trash2, Sun, Umbrella, Star } from "lucide-react";
+import { showToast } from "../../components/Toast";
+import { 
+  Button, 
+  Input, 
+  Select, 
+  Modal, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell, 
+  Badge, 
+  Card,
+  LoadingSkeleton 
+} from "../../components";
 
 interface Baan {
   id: string;
@@ -23,7 +40,6 @@ export default function BanenPage() {
   const [banen, setBanen] = useState<Baan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingBaan, setEditingBaan] = useState<Baan | null>(null);
 
@@ -40,39 +56,45 @@ export default function BanenPage() {
   }, []);
 
   const loadBanen = () => {
+    setIsLoading(true);
     tenantApi.listBanen().then((res) => {
       setBanen(res.data.banen);
+    }).catch(() => {
+      showToast.error("Fout bij laden van banen");
     }).finally(() => setIsLoading(false));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setMessage("");
 
     try {
       if (editingBaan) {
         await tenantApi.updateBaan(editingBaan.id, formData);
-        setMessage("Baan bijgewerkt");
+        showToast.success("Baan bijgewerkt");
       } else {
         await tenantApi.createBaan(formData);
-        setMessage("Baan toegevoegd");
+        showToast.success("Baan toegevoegd");
       }
       loadBanen();
       setShowModal(false);
-      setEditingBaan(null);
-      setFormData({
-        nummer: banen.length + 1,
-        naam: "",
-        verlichting_type: "geen",
-        overdekt: false,
-        prioriteit_score: 5,
-      });
+      resetForm();
     } catch {
-      setMessage("Fout bij opslaan");
+      showToast.error("Fout bij opslaan");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const resetForm = () => {
+    setEditingBaan(null);
+    setFormData({
+      nummer: banen.length + 1,
+      naam: "",
+      verlichting_type: "geen",
+      overdekt: false,
+      prioriteit_score: 5,
+    });
   };
 
   const handleEdit = (baan: Baan) => {
@@ -92,283 +114,219 @@ export default function BanenPage() {
     
     try {
       await tenantApi.deleteBaan(baan.id);
+      showToast.success("Baan gedeactiveerd");
       loadBanen();
-      setMessage("Baan gedeactiveerd");
     } catch {
-      setMessage("Fout bij deactiveren");
+      showToast.error("Fout bij deactiveren");
     }
   };
 
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={8} />;
   }
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Banen</h1>
-        <button
+    <div className="max-w-5xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">Tennisbanen</h1>
+          <p className="text-gray-500 font-medium">Beheer de beschikbare banen van de club.</p>
+        </div>
+        <Button
           onClick={() => {
-            setEditingBaan(null);
-            setFormData({
-              nummer: banen.length + 1,
-              naam: "",
-              verlichting_type: "geen",
-              overdekt: false,
-              prioriteit_score: 5,
-            });
+            resetForm();
             setShowModal(true);
           }}
-          className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="gap-2"
         >
+          <Plus size={18} />
           Baan toevoegen
-        </button>
+        </Button>
       </div>
 
-      {message && !message.includes("Fout") && (
-        <div className="mb-4 p-3 rounded bg-green-100 text-green-700">
-          {message}
-        </div>
-      )}
-
-      {message.includes("Fout") && (
-        <div className="mb-4 p-3 rounded bg-red-100 text-red-700">
-          {message}
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="hidden md:block">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Nr.
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Naam
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Verlichting
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Overdekt
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Prioriteit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Acties
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {banen.map((baan) => (
-                <tr key={baan.id} className={!baan.actief ? "bg-gray-50" : ""}>
-                  <td className="px-6 py-4 whitespace-nowrap">{baan.nummer}</td>
-                  <td className="px-6 py-4">{baan.naam || "-"}</td>
-                  <td className="px-6 py-4">
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-16">Nr.</TableHead>
+              <TableHead>Naam</TableHead>
+              <TableHead>Verlichting</TableHead>
+              <TableHead>Overdekt</TableHead>
+              <TableHead>Prioriteit</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Acties</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {banen.map((baan) => (
+              <TableRow key={baan.id} className={!baan.actief ? "bg-gray-50/50" : ""}>
+                <TableCell className="font-bold text-gray-900">{baan.nummer}</TableCell>
+                <TableCell className="font-medium">{baan.naam || "-"}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Sun size={14} className={baan.verlichting_type !== 'geen' ? "text-amber-500" : "text-gray-300"} />
                     {VERLICHTING_TYPES.find((v) => v.value === baan.verlichting_type)?.label}
-                  </td>
-                  <td className="px-6 py-4">{baan.overdekt ? "Ja" : "Nee"}</td>
-                  <td className="px-6 py-4">{baan.prioriteit_score}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 text-xs rounded ${
-                        baan.actief
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {baan.actief ? "Actief" : "Inactief"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleEdit(baan)}
-                      className="text-blue-600 hover:text-blue-800 mr-4 min-h-[44px]"
-                    >
-                      Bewerken
-                    </button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                   {baan.overdekt ? (
+                     <Badge variant="secondary" className="gap-1">
+                       <Umbrella size={12} /> Ja
+                     </Badge>
+                   ) : "Nee"}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <Star size={14} className="text-amber-400 fill-amber-400" />
+                    <span className="font-bold">{baan.prioriteit_score}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={baan.actief ? "success" : "default"}>
+                    {baan.actief ? "Actief" : "Inactief"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(baan)}>
+                      <Edit size={16} />
+                    </Button>
                     {baan.actief && (
-                      <button
-                        onClick={() => handleDeactivate(baan)}
-                        className="text-red-600 hover:text-red-800 min-h-[44px]"
-                      >
-                        Deactiveren
-                      </button>
+                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeactivate(baan)}>
+                        <Trash2 size={16} />
+                      </Button>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {banen.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="h-40 text-center text-gray-500 font-medium">
+                  Geen banen geconfigureerd.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-        {/* Mobile View */}
-        <div className="md:hidden divide-y divide-gray-200">
-          {banen.map((baan) => (
-            <div key={baan.id} className={`p-4 ${!baan.actief ? "bg-gray-50" : ""}`}>
-              <div className="flex justify-between items-start mb-2">
-                <div className="font-bold text-lg">Baan {baan.nummer}</div>
-                <span
-                  className={`px-2 py-1 text-xs rounded ${
-                    baan.actief
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {baan.actief ? "Actief" : "Inactief"}
-                </span>
+      {/* Mobile View */}
+      <div className="md:hidden space-y-4">
+        {banen.map((baan) => (
+          <Card key={baan.id} className={!baan.actief ? "bg-gray-50/80" : ""}>
+            <div className="p-4 space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg border border-blue-200">
+                    {baan.nummer}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{baan.naam || `Baan ${baan.nummer}`}</h3>
+                    <div className="flex gap-2 mt-1">
+                       {baan.overdekt && <Badge variant="outline" className="text-[10px] h-4">Overdekt</Badge>}
+                       <Badge variant="outline" className="text-[10px] h-4">{VERLICHTING_TYPES.find(v => v.value === baan.verlichting_type)?.label} verlichting</Badge>
+                    </div>
+                  </div>
+                </div>
+                <Badge variant={baan.actief ? "success" : "default"}>
+                  {baan.actief ? "Actief" : "In"}
+                </Badge>
               </div>
-              {baan.naam && (
-                <div className="text-gray-700 mb-2">{baan.naam}</div>
-              )}
-              <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-4 bg-white p-3 rounded border">
-                <div>
-                  <span className="block text-gray-400 text-xs uppercase">Verlichting</span>
-                  {VERLICHTING_TYPES.find((v) => v.value === baan.verlichting_type)?.label}
-                </div>
-                <div>
-                  <span className="block text-gray-400 text-xs uppercase">Overdekt</span>
-                  {baan.overdekt ? "Ja" : "Nee"}
-                </div>
-                <div className="col-span-2">
-                  <span className="block text-gray-400 text-xs uppercase">Prioriteit Score</span>
-                  {baan.prioriteit_score}/10
-                </div>
+
+              <div className="grid grid-cols-2 gap-3 pb-2">
+                 <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Prioriteit</span>
+                    <span className="font-black text-gray-700">{baan.prioriteit_score}</span>
+                 </div>
               </div>
-              
-              <div className="flex gap-3 border-t pt-3">
-                <button
-                  onClick={() => handleEdit(baan)}
-                  className="flex-1 text-center py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium active:bg-blue-100"
-                >
+
+              <div className="flex gap-2 pt-2 border-t">
+                <Button variant="secondary" className="flex-1 h-11" onClick={() => handleEdit(baan)}>
                   Bewerken
-                </button>
+                </Button>
                 {baan.actief && (
-                  <button
-                    onClick={() => handleDeactivate(baan)}
-                    className="flex-1 text-center py-2 bg-red-50 text-red-700 rounded-md text-sm font-medium active:bg-red-100"
-                  >
-                    Deactiveren
-                  </button>
+                  <Button variant="ghost" className="text-red-500 h-11" onClick={() => handleDeactivate(baan)}>
+                    <Trash2 size={18} />
+                  </Button>
                 )}
               </div>
             </div>
-          ))}
-        </div>
-        {banen.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Nog geen banen toegevoegd
-          </div>
-        )}
+          </Card>
+        ))}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
-              {editingBaan ? "Baan bewerken" : "Baan toevoegen"}
-            </h2>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingBaan ? "Baan bewerken" : "Baan toevoegen"}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Annuleren</Button>
+            <Button type="submit" form="baan-form" isLoading={isSaving}>Opslaan</Button>
+          </>
+        }
+      >
+        <form id="baan-form" onSubmit={handleSubmit} className="space-y-4">
+           <div className="grid grid-cols-2 gap-4">
+              <Input
+                type="number"
+                label="Baannummer"
+                value={formData.nummer}
+                onChange={(e) => setFormData({ ...formData, nummer: parseInt(e.target.value) })}
+                required
+                min="1"
+              />
+              <Select
+                label="Verlichting"
+                value={formData.verlichting_type}
+                onChange={(e) => setFormData({ ...formData, verlichting_type: e.target.value })}
+                options={VERLICHTING_TYPES}
+              />
+           </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Baannummer
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.nummer}
-                    onChange={(e) => setFormData({ ...formData, nummer: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                    required
-                    min="1"
-                  />
-                </div>
+          <Input
+            label="Naam (optioneel)"
+            value={formData.naam}
+            onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+            placeholder="Bijv. Baan 1 - Centre"
+          />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Naam (optioneel)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.naam}
-                    onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                    placeholder="Bijv. Baan 1 - Centre"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Verlichting
-                  </label>
-                  <select
-                    value={formData.verlichting_type}
-                    onChange={(e) => setFormData({ ...formData, verlichting_type: e.target.value })}
-                    className="w-full px-3 py-2 min-h-[44px] border border-gray-300 rounded-md"
-                  >
-                    {VERLICHTING_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.overdekt}
-                      onChange={(e) => setFormData({ ...formData, overdekt: e.target.checked })}
-                      className="mr-3 w-5 h-5 rounded border-gray-300"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Overdekt</span>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Prioriteit score (1-10)
-                  </label>
-                  <input
-                    type="range"
-                    value={formData.prioriteit_score}
-                    onChange={(e) => setFormData({ ...formData, prioriteit_score: parseInt(e.target.value) })}
-                    className="w-full h-8"
-                    min="1"
-                    max="10"
-                  />
-                  <div className="text-sm text-gray-500 text-center">{formData.prioriteit_score}</div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 min-h-[44px] text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 w-full sm:w-auto"
-                >
-                  Annuleren
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
-                >
-                  {isSaving ? "Opslaan..." : "Opslaan"}
-                </button>
-              </div>
-            </form>
+          <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex items-center justify-between">
+             <div className="space-y-0.5">
+                <span className="text-sm font-medium text-blue-900">Overdekte baan</span>
+                <p className="text-xs text-blue-700">Is deze baan binnen of overkapt?</p>
+             </div>
+             <input
+                type="checkbox"
+                checked={formData.overdekt}
+                onChange={(e) => setFormData({ ...formData, overdekt: e.target.checked })}
+                className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
           </div>
-        </div>
-      )}
+
+          <div className="space-y-3 pt-2">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-semibold text-gray-700">Prioriteit score (1-10)</label>
+              <Badge variant="primary" className="font-black h-6 w-8 justify-center">{formData.prioriteit_score}</Badge>
+            </div>
+            <p className="text-xs text-gray-500 italic">Hogere scores krijgen voorkeur bij automatische planning.</p>
+            <input
+              type="range"
+              value={formData.prioriteit_score}
+              onChange={(e) => setFormData({ ...formData, prioriteit_score: parseInt(e.target.value) })}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              min="1"
+              max="10"
+            />
+            <div className="flex justify-between text-[10px] font-bold text-gray-400">
+               <span>LAAG</span>
+               <span>HOOG</span>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

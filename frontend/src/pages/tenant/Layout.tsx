@@ -1,5 +1,18 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { 
+  BarChart3, 
+  Settings, 
+  Palette, 
+  LayoutDashboard, 
+  Trophy, 
+  Calendar, 
+  Users, 
+  CreditCard,
+  Target,
+  LogOut,
+  Layers
+} from "lucide-react";
 
 export default function TenantLayout() {
   const { club, logout } = useAuth();
@@ -9,84 +22,122 @@ export default function TenantLayout() {
   let competitieId = null;
   if (parts[1] === "ronde" && parts.length >= 4) {
     competitieId = parts[3];
-  } else if (["teams", "rondes", "historie", "seizoensoverzicht"].includes(parts[1]) && parts.length >= 3) {
+  } else if (["teams", "rondes", "historie", "seizoensoverzicht", "wedstrijden"].includes(parts[1]) && parts.length >= 3) {
     competitieId = parts[2];
   }
 
   const navItems = [
-    { path: "/dashboard", label: "Dashboard" },
-    { path: "/competities", label: "Competities" },
-    ...(competitieId ? [{ path: `/seizoensoverzicht/${competitieId}`, label: "Seizoen" }] : []),
-    { path: "/dagoverzicht", label: "Dagoverzicht" },
-    { path: "/instellingen", label: "Instellingen" },
-    { path: "/branding", label: "Huisstijl" },
-    { path: "/banen", label: "Banen" },
-    { path: "/gebruikers", label: "Gebruikers" },
-    { path: "/checkout", label: "Betalingen" },
+    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/competities", label: "Competities", icon: Trophy },
+    ...(competitieId ? [
+      { path: `/seizoensoverzicht/${competitieId}`, label: "Seizoen", icon: BarChart3 },
+      { path: `/rondes/${competitieId}`, label: "Planning", icon: Calendar },
+    ] : []),
+    { path: "/dagoverzicht", label: "Dagoverzicht", icon: Target },
+    { path: "/instellingen", label: "Instellingen", icon: Settings },
+    { path: "/branding", label: "Huisstijl", icon: Palette },
+    { path: "/banen", label: "Banen", icon: Layers },
+    { path: "/gebruikers", label: "Gebruikers", icon: Users },
+    { path: "/checkout", label: "Betalingen", icon: CreditCard },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {club?.logo_url && (
-              <img src={club.logo_url} alt="Logo" className="h-10 w-10 object-contain" />
-            )}
-            <h1 className="text-xl font-bold text-gray-900">
-              {club?.naam || "Vereniging"}
-            </h1>
-          </div>
-          <nav className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => (
+    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row pb-16 md:pb-0 overflow-x-hidden">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 sticky top-0 h-screen z-40 shrink-0">
+        <div className="p-6 flex items-center gap-3 border-b border-gray-50">
+           <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center p-2 shadow-lg shadow-blue-100">
+             {club?.logo_url ? (
+               <img src={club.logo_url} alt="Logo" className="h-full w-full object-contain filter invert brightness-0 invert" />
+             ) : (
+               <div className="text-white font-black text-xl">A</div>
+             )}
+           </div>
+           <div>
+              <h2 className="text-sm font-black text-gray-900 leading-tight truncate w-36">
+                 {club?.naam || "Vereniging"}
+              </h2>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Systeem Actief</span>
+              </div>
+           </div>
+        </div>
+
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname.startsWith(item.path.split('/').slice(0, 2).join('/'));
+            return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`text-sm font-medium min-h-[44px] flex items-center ${
-                  location.pathname === item.path
-                    ? "text-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
+                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-xl shadow-blue-100 ring-2 ring-blue-100"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
                 }`}
               >
+                <Icon size={18} className={isActive ? "text-blue-100" : "text-gray-400 group-hover:text-blue-600 transition-colors"} />
                 {item.label}
               </Link>
-            ))}
-            <button
-              onClick={logout}
-              className="text-sm text-gray-600 hover:text-gray-900 min-h-[44px] flex items-center"
-            >
-              Uitloggen
-            </button>
-          </nav>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-gray-50">
+           <button
+             onClick={logout}
+             className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
+           >
+             <LogOut size={18} className="text-red-300 group-hover:text-red-500" />
+             Uitloggen
+           </button>
         </div>
-      </header>
+      </aside>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex overflow-x-auto z-50">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`min-w-[80px] min-h-[64px] flex items-center justify-center px-4 text-sm font-medium whitespace-nowrap ${
-              location.pathname === item.path
-                ? "text-blue-600 bg-blue-50 border-t-2 border-blue-600"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-        <button
-          onClick={logout}
-          className="min-w-[80px] min-h-[64px] flex items-center justify-center px-4 text-sm font-medium text-gray-600 whitespace-nowrap hover:bg-gray-50"
-        >
-          Uitloggen
-        </button>
+      {/* Main Content */}
+      <div className="flex-1 min-w-0 flex flex-col">
+          {/* Mobile Header */}
+          <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-white/80">
+             <div className="flex items-center gap-3">
+               <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center p-1.5">
+                 <div className="w-full h-full bg-white rounded-[2px]" />
+               </div>
+               <span className="font-black text-gray-900 tracking-tight">{club?.naam || "App"}</span>
+             </div>
+             <button onClick={logout} className="p-2 text-gray-400">
+                <LogOut size={20} />
+             </button>
+          </header>
+
+          <main className="flex-1 w-full p-4 md:p-8 lg:p-12 overflow-y-auto">
+            <Outlet />
+          </main>
+      </div>
+
+      {/* Mobile Bottom Navigation - More premium feel */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex overflow-x-auto z-50 p-2 gap-1 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+        {navItems.slice(0, 5).map((item) => {
+          const Icon = item.icon;
+          const isActive = location.pathname.startsWith(item.path.split('/').slice(0, 2).join('/'));
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex-1 flex flex-col items-center justify-center min-w-[70px] py-1.5 rounded-xl transition-all ${
+                isActive
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                  : "text-gray-400"
+              }`}
+            >
+              <Icon size={20} className={isActive ? "text-white" : "text-gray-400"} />
+              <span className="text-[10px] font-black uppercase mt-1 tracking-tighter">{item.label}</span>
+            </Link>
+          );
+        })}
+        {/* Toggle butten for 'More' could be added here if many items */}
       </nav>
-
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <Outlet />
-      </main>
     </div>
   );
 }

@@ -1,6 +1,32 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { 
+  Trophy, 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  XSquare, 
+  Upload, 
+  Plus, 
+  FileSearch, 
+  Info,
+  ChevronRight,
+  MapPin,
+  MessageSquare,
+  UserPlus,
+  Activity
+} from "lucide-react";
+import { showToast } from "../../components/Toast";
+import { 
+  Button, 
+  Select, 
+  Modal, 
+  Badge, 
+  Card,
+  CardContent,
+  LoadingSkeleton 
+} from "../../components";
 
 interface Team {
   id: string;
@@ -45,13 +71,13 @@ interface Competitie {
   naam: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  gepland: "bg-gray-100 text-gray-800",
-  bevestigd: "bg-blue-100 text-blue-800",
-  gaande: "bg-yellow-100 text-yellow-800",
-  voltooid: "bg-green-100 text-green-800",
-  uitgesteld: "bg-orange-100 text-orange-800",
-  afgelast: "bg-red-100 text-red-800",
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "primary" | "success" | "warning" | "danger" | "outline"; icon: any }> = {
+  gepland: { label: "Gepland", variant: "default", icon: Calendar },
+  bevestigd: { label: "Bevestigd", variant: "primary", icon: CheckCircle2 },
+  gaande: { label: "Gaande", variant: "warning", icon: Clock },
+  voltooid: { label: "Voltooid", variant: "success", icon: Trophy },
+  uitgesteld: { label: "Uitgesteld", variant: "outline", icon: Clock },
+  afgelast: { label: "Afgelast", variant: "danger", icon: XSquare },
 };
 
 export default function WedstrijdenPage() {
@@ -59,9 +85,8 @@ export default function WedstrijdenPage() {
   const [wedstrijden, setWedstrijden] = useState<Wedstrijd[]>([]);
   const [competitie, setCompetitie] = useState<Competitie | null>(null);
   const [rondes, setRondes] = useState<Speelronde[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState("");
   const [filterRonde, setFilterRonde] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [showDetail, setShowDetail] = useState<Wedstrijd | null>(null);
@@ -74,15 +99,6 @@ export default function WedstrijdenPage() {
     overgeslagen: number;
     fouten: { rij: number; fout: string }[];
   } | null>(null);
-  const [formData, setFormData] = useState({
-    thuisteam_id: "",
-    uitteam_id: "",
-    ronde_id: "",
-    status: "gepland",
-    speeldatum: "",
-    speeltijd: "",
-    notitie: "",
-  });
 
   useEffect(() => {
     if (competitieId) {
@@ -108,6 +124,7 @@ export default function WedstrijdenPage() {
       setWedstrijden(wedRes.data.wedstrijden || []);
     } catch (err) {
       console.error("Error loading data:", err);
+      showToast.error("Fout bij laden van gegevens");
     } finally {
       setIsLoading(false);
     }
@@ -121,56 +138,12 @@ export default function WedstrijdenPage() {
       const result = await tenantApi.importWedstrijden(competitieId, selectedFile);
       setImportResult(result.data);
       if (result.data.succes) {
-        setMessage(`Succesvol ${result.data.geimporteerd} wedstrijden geïmporteerd`);
+        showToast.success(`Succesvol ${result.data.geimporteerd} wedstrijden geïmporteerd`);
         loadData();
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij importeren");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setImportResult(null);
-    }
-  };
-
-  // @ts-expect-error - function exists but form modal not yet implemented
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!competitieId) return;
-
-    setIsSaving(true);
-    try {
-      await tenantApi.createWedstrijd({
-        competitie_id: competitieId,
-        thuisteam_id: formData.thuisteam_id,
-        uitteam_id: formData.uitteam_id,
-        ronde_id: formData.ronde_id,
-        status: formData.status,
-        speeldatum: formData.speeldatum || undefined,
-        speeltijd: formData.speeltijd || undefined,
-        notitie: formData.notitie || undefined,
-      });
-      setMessage("Wedstrijd toegevoegd");
-      loadData();
-      setFormData({
-        thuisteam_id: "",
-        uitteam_id: "",
-        ronde_id: "",
-        status: "gepland",
-        speeldatum: "",
-        speeltijd: "",
-        notitie: "",
-      });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij opslaan");
+      showToast.error(error.response?.data?.detail || "Fout bij importeren");
     } finally {
       setIsSaving(false);
     }
@@ -179,11 +152,14 @@ export default function WedstrijdenPage() {
   const handleUpdateStatus = async (wedstrijdId: string, newStatus: string) => {
     try {
       await tenantApi.updateWedstrijd(wedstrijdId, { status: newStatus });
-      setMessage("Status bijgewerkt");
+      showToast.success("Status bijgewerkt");
       loadData();
+      if (showDetail?.id === wedstrijdId) {
+        setShowDetail(prev => prev ? { ...prev, status: newStatus } : null);
+      }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij bijwerken");
+      showToast.error(error.response?.data?.detail || "Fout bij bijwerken");
     }
   };
 
@@ -198,291 +174,332 @@ export default function WedstrijdenPage() {
     if (!acc[key]) {
       acc[key] = {
         ronde: w.ronde,
-        thuis: [] as Wedstrijd[],
+        wedstrijden: [] as Wedstrijd[],
       };
     }
-    acc[key].thuis.push(w);
+    acc[key].wedstrijden.push(w);
     return acc;
-  }, {} as Record<string, { ronde: Speelronde | null; thuis: Wedstrijd[] }>);
+  }, {} as Record<string, { ronde: Speelronde | null; wedstrijden: Wedstrijd[] }>);
+
+  const sortedRondeIds = Object.keys(groupedByRonde).sort((a, b) => {
+    const rondeA = groupedByRonde[a].ronde;
+    const rondeB = groupedByRonde[b].ronde;
+    if (!rondeA || !rondeB) return 0;
+    return new Date(rondeA.datum).getTime() - new Date(rondeB.datum).getTime();
+  });
 
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={10} />;
   }
 
   return (
-    <div className="max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-extrabold tracking-tight">
             Wedstrijden {competitie ? `- ${competitie.naam}` : ""}
           </h1>
-          <p className="text-gray-600 mt-1">
-            Totaal: {wedstrijden.length} wedstrijden
+          <p className="text-gray-500 font-medium">
+            Totaaloverzicht van {wedstrijden.length} geplande en gespeelde wedstrijden.
           </p>
         </div>
-        <div className="flex gap-3">
-          <button
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
             onClick={() => setShowImport(true)}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            className="gap-2"
           >
+            <Upload size={16} />
             Import KNLTB
-          </button>
-          <button
-            onClick={() => {
-              setFormData({
-                thuisteam_id: "",
-                uitteam_id: "",
-                ronde_id: "",
-                status: "gepland",
-                speeldatum: "",
-                speeltijd: "",
-                notitie: "",
-              });
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Wedstrijd toevoegen
-          </button>
+          </Button>
+          <Button className="gap-2">
+            <Plus size={16} />
+            Nieuwe Wedstrijd
+          </Button>
         </div>
       </div>
 
-      {message && (
-        <div className={`mb-4 p-3 rounded ${message.includes("Fout") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-          {message}
-        </div>
-      )}
-
-      <div className="mb-4 flex gap-4">
-        <select
+      <Card className="p-4 flex flex-col md:flex-row gap-4 items-center bg-gray-50/50">
+        <Select
           value={filterRonde}
           onChange={(e) => setFilterRonde(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">Alle speelrondes</option>
-          {rondes.map((r) => (
-            <option key={r.id} value={r.id}>
-              Ronde {r.week_nummer} - {r.datum}
-            </option>
-          ))}
-        </select>
+          className="max-w-xs"
+          options={[
+            { value: "", label: "Alle speelrondes" },
+            ...rondes.map((r) => ({
+              value: r.id,
+              label: `Ronde ${r.week_nummer} - ${new Date(r.datum).toLocaleDateString("nl-NL")}`,
+            })),
+          ]}
+        />
 
-        <select
+        <Select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">Alle statussen</option>
-          <option value="gepland">Gepland</option>
-          <option value="bevestigd">Bevestigd</option>
-          <option value="gaande">Gaande</option>
-          <option value="voltooid">Voltooid</option>
-          <option value="uitgesteld">Uitgesteld</option>
-          <option value="afgelast">Afgelast</option>
-        </select>
-      </div>
+          className="max-w-xs"
+          options={[
+            { value: "", label: "Alle statussen" },
+            ...Object.entries(STATUS_CONFIG).map(([val, cfg]) => ({
+              value: val,
+              label: cfg.label,
+            })),
+          ]}
+        />
+      </Card>
 
-      <div className="space-y-6">
-        {Object.entries(groupedByRonde).map(([rondeId, data]) => (
-          <div key={rondeId} className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="bg-gray-50 px-6 py-3 border-b">
-              <h2 className="font-semibold">
-                Speelronde {data.ronde?.week_nummer} - {data.ronde?.datum}
-              </h2>
-            </div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data.thuis.map((w) => (
-                  <div
-                    key={w.id}
-                    onClick={() => setShowDetail(w)}
-                    className={`p-4 rounded-lg border cursor-pointer transition ${
-                      w.status === "voltooid"
-                        ? "bg-green-50 border-green-200"
-                        : w.status === "gaande"
-                        ? "bg-yellow-50 border-yellow-200"
-                        : "bg-white border-gray-200 hover:border-blue-300"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span
-                        className={`px-2 py-1 text-xs rounded ${
-                          STATUS_COLORS[w.status] || "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {w.status}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {w.thuisteam?.naam === teams.find((t) => t.id === w.thuisteam_id)?.naam
-                          ? "Thuis"
-                          : "Uit"}
-                      </span>
-                    </div>
-                    <div className="font-medium">
-                      {w.thuisteam?.naam} - {w.uitteam?.naam}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      {w.speeldatum && (
-                        <>
-                          {w.speeldatum}
-                          {w.speeltijd && ` om ${w.speeltijd}`}
-                        </>
-                      )}
-                      {w.baan && ` - Baan ${w.baan.nummer}`}
-                    </div>
-                    {w.uitslag_thuisteam !== null && (
-                      <div className="text-sm font-semibold mt-2">
-                        {w.uitslag_thuisteam} - {w.uitslag_uitteam}
-                      </div>
-                    )}
-                  </div>
-                ))}
+      <div className="space-y-12">
+        {sortedRondeIds.map((rondeId) => {
+          const data = groupedByRonde[rondeId];
+          return (
+            <section key={rondeId} className="space-y-4">
+              <div className="flex items-center gap-3 px-1">
+                 <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black">
+                   {data.ronde?.week_nummer}
+                 </div>
+                 <h2 className="text-xl font-black text-gray-900">
+                    Speelronde {data.ronde?.week_nummer}
+                    <span className="ml-3 text-gray-400 font-medium text-sm italic">
+                      {data.ronde && new Date(data.ronde.datum).toLocaleDateString("nl-NL", { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </span>
+                 </h2>
               </div>
-              {data.thuis.length === 0 && (
-                <div className="text-gray-500 text-center py-4">
-                  Geen wedstrijden in deze ronde
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {data.wedstrijden.map((w) => {
+                  const status = STATUS_CONFIG[w.status] || STATUS_CONFIG.gepland;
+                  const StatusIcon = status.icon;
+                  
+                  return (
+                    <Card 
+                      key={w.id} 
+                      onClick={() => setShowDetail(w)}
+                      className={`group cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all ${
+                        w.status === "voltooid" ? "bg-gray-50/50" : "bg-white"
+                      }`}
+                    >
+                      <CardContent className="p-5 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <Badge variant={status.variant} className="gap-1.5 py-1 px-2.5">
+                            <StatusIcon size={12} />
+                            {status.label}
+                          </Badge>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 uppercase tracking-tighter">
+                             {w.baan ? (
+                               <><MapPin size={12} className="text-blue-500" /> Baan {w.baan.nummer}</>
+                             ) : "Geen baan"}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                           <div className="flex items-center justify-between">
+                              <span className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{w.thuisteam?.naam}</span>
+                              {w.status === "voltooid" && <span className="font-black text-lg">{w.uitslag_thuisteam}</span>}
+                           </div>
+                           <div className="h-[1px] bg-gray-100 w-full relative">
+                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[10px] font-black text-gray-300">VS</div>
+                           </div>
+                           <div className="flex items-center justify-between">
+                              <span className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{w.uitteam?.naam}</span>
+                              {w.status === "voltooid" && <span className="font-black text-lg">{w.uitslag_uitteam}</span>}
+                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                           <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                              <Clock size={10} />
+                              {w.speeltijd || "Tijd n.n.b."}
+                           </div>
+                           <ChevronRight size={14} className="text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+        
         {filteredWedstrijden.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-            Nog geen wedstrijden. Importeer het KNLTB-speelschema of voeg handmatig toe.
-          </div>
+          <Card className="py-20 text-center border-dashed flex flex-col items-center gap-4 bg-gray-50/30">
+            <div className="p-4 bg-white rounded-full shadow-sm border">
+               <FileSearch size={32} className="text-gray-300" />
+            </div>
+            <div className="space-y-1">
+               <h3 className="font-bold text-gray-900">Geen wedstrijden gevonden</h3>
+               <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                 Pas je filters aan of importeer een speelschema om resultaten te zien.
+               </p>
+            </div>
+          </Card>
         )}
       </div>
 
-      {showDetail && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">Wedstrijd Details</h2>
+      <Modal
+        isOpen={!!showDetail}
+        onClose={() => setShowDetail(null)}
+        title="Wedstrijd Details"
+        maxWidth="md"
+      >
+        {showDetail && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl relative overflow-hidden">
+                <div className="absolute -right-2 -bottom-2 opacity-10">
+                  <Trophy size={60} />
+                </div>
+                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1 block">Thuisteam</label>
+                <div className="font-black text-lg text-blue-900 leading-tight">{showDetail.thuisteam?.naam}</div>
+                {showDetail.thuisteam?.speelklasse && <Badge variant="outline" className="mt-1 text-[10px] py-0 border-blue-200 text-blue-700 bg-white">{showDetail.thuisteam.speelklasse}</Badge>}
+              </div>
+              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl relative overflow-hidden">
+                <div className="absolute -right-2 -bottom-2 opacity-10 text-indigo-600">
+                  <UserPlus size={60} />
+                </div>
+                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 block">Uitteam</label>
+                <div className="font-black text-lg text-indigo-900 leading-tight">{showDetail.uitteam?.naam}</div>
+                {showDetail.uitteam?.speelklasse && <Badge variant="outline" className="mt-1 text-[10px] py-0 border-indigo-200 text-indigo-700 bg-white">{showDetail.uitteam.speelklasse}</Badge>}
+              </div>
+            </div>
 
             <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-500">Thuisteam</div>
-                <div className="font-medium">{showDetail.thuisteam?.naam}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Uitteam</div>
-                <div className="font-medium">{showDetail.uitteam?.naam}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Speelronde</div>
-                <div className="font-medium">
-                  {showDetail.ronde?.datum} (week {showDetail.ronde?.week_nummer})
+              <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="p-2 bg-white rounded-lg border shadow-sm">
+                   <Calendar size={18} className="text-gray-400" />
                 </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Status</div>
-                <select
-                  value={showDetail.status}
-                  onChange={(e) => handleUpdateStatus(showDetail.id, e.target.value)}
-                  className="mt-1 px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="gepland">Gepland</option>
-                  <option value="bevestigd">Bevestigd</option>
-                  <option value="gaande">Gaande</option>
-                  <option value="voltooid">Voltooid</option>
-                  <option value="uitgesteld">Uitgesteld</option>
-                  <option value="afgelast">Afgelast</option>
-                </select>
-              </div>
-              {showDetail.speeldatum && (
                 <div>
-                  <div className="text-sm text-gray-500">Datum</div>
-                  <div className="font-medium">{showDetail.speeldatum}</div>
+                   <div className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Speeldatum</div>
+                   <div className="font-bold text-gray-900">
+                      {showDetail.ronde?.datum ? new Date(showDetail.ronde.datum).toLocaleDateString("nl-NL", { weekday: 'long', day: 'numeric', month: 'long' }) : "-"}
+                   </div>
                 </div>
-              )}
-              {showDetail.baan && (
+              </div>
+
+              <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="p-2 bg-white rounded-lg border shadow-sm">
+                   <MapPin size={18} className="text-gray-400" />
+                </div>
                 <div>
-                  <div className="text-sm text-gray-500">Baan</div>
-                  <div className="font-medium">
-                    Baan {showDetail.baan.nummer} {showDetail.baan.naam && `(${showDetail.baan.naam})`}
-                  </div>
+                   <div className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Locatie / Baan</div>
+                   <div className="font-bold text-gray-900">
+                      {showDetail.baan ? `Baan ${showDetail.baan.nummer} ${showDetail.baan.naam ? `(${showDetail.baan.naam})` : ""}` : "Baan n.n.b."}
+                   </div>
                 </div>
-              )}
-              {showDetail.notitie && (
-                <div>
-                  <div className="text-sm text-gray-500">Notitie</div>
-                  <div className="font-medium">{showDetail.notitie}</div>
-                </div>
-              )}
+              </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setShowDetail(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-              >
-                Sluiten
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showImport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">Import KNLTB Speelschema</h2>
-
-            <div className="mb-4">
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              />
-              <p className="text-sm text-gray-500 mt-2">
-                Kolommen: datum, thuisteam, uitteam, thuis/uit (optioneel)
-              </p>
+            <div className="space-y-3">
+              <label className="text-sm font-black text-gray-700 flex items-center gap-2">
+                 <Activity size={16} className="text-blue-600" />
+                 Wijzig Status
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {Object.entries(STATUS_CONFIG).map(([val, cfg]) => {
+                  const Icon = cfg.icon;
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => handleUpdateStatus(showDetail.id, val)}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-center ${
+                        showDetail.status === val 
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
+                        : 'bg-white border-gray-100 text-gray-600 hover:border-blue-400'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span className="text-xs font-bold">{cfg.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {importResult && (
-              <div className={`mb-4 p-3 rounded ${importResult.succes ? "bg-green-100" : "bg-red-100"}`}>
-                <p className="font-medium">
-                  {importResult.succes ? "Import succesvol" : "Import met fouten"}
+            {showDetail.notitie && (
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-1">
+                <div className="flex items-center gap-2 text-amber-700 font-bold text-xs uppercase tracking-widest">
+                   <MessageSquare size={14} /> Notitie
+                </div>
+                <p className="text-sm text-amber-900 leading-relaxed font-medium italic">
+                   "{showDetail.notitie}"
                 </p>
-                <p className="text-sm">
-                  Geïmporteerd: {importResult.geimporteerd}, Overgeslagen: {importResult.overgeslagen}
-                </p>
-                {importResult.fouten.length > 0 && (
-                  <div className="mt-2 text-sm">
-                    {importResult.fouten.slice(0, 5).map((e, i) => (
-                      <div key={i}>
-                        Rij {e.rij}: {e.fout}
-                      </div>
-                    ))}
-                    {importResult.fouten.length > 5 && (
-                      <div>...en {importResult.fouten.length - 5} meer</div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
+          </div>
+        )}
+      </Modal>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowImport(false);
-                  setSelectedFile(null);
-                  setImportResult(null);
+      <Modal
+        isOpen={showImport}
+        onClose={() => { setShowImport(false); setImportResult(null); }}
+        title="Import KNLTB Speelschema"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowImport(false)}>Annuleren</Button>
+            <Button onClick={handleImport} isLoading={isSaving} disabled={!selectedFile}>Importeren</Button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex gap-3 text-blue-800">
+             <Info size={20} className="flex-shrink-0" />
+             <div className="text-xs space-y-1 font-medium">
+                <p className="font-bold text-sm">KNLTB Import Instructies</p>
+                <p>Upload het CSV bestand zoals gedownload uit MijnKNLTB.</p>
+                <p>Vereiste kolommen: <code className="bg-white/50 px-1 rounded">datum</code>, <code className="bg-white/50 px-1 rounded">thuisteam</code>, <code className="bg-white/50 px-1 rounded">uitteam</code>.</p>
+             </div>
+          </div>
+
+          <div className="space-y-2">
+            <div 
+              className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/10 transition-all cursor-pointer group"
+              onClick={() => document.getElementById('knltb-upload')?.click()}
+            >
+              <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2 group-hover:text-blue-500 transition-colors" />
+              <p className="text-sm text-gray-600 font-bold">
+                {selectedFile ? selectedFile.name : "Klik om te uploaden of sleep .csv bestand"}
+              </p>
+              <input
+                id="knltb-upload"
+                type="file"
+                accept=".csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedFile(file);
+                    setImportResult(null);
+                  }
                 }}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Annuleren
-              </button>
-              <button
-                onClick={handleImport}
-                disabled={!selectedFile || isSaving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSaving ? "Importeren..." : "Importeren"}
-              </button>
+                className="hidden"
+              />
             </div>
           </div>
+
+          {importResult && (
+            <div className={`p-4 rounded-xl border space-y-4 ${importResult.succes ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+              <div className="flex items-center gap-3">
+                 <div className={`p-2 rounded-lg ${importResult.succes ? "bg-green-500" : "bg-red-500"} text-white font-black`}>
+                    {importResult.geimporteerd}
+                 </div>
+                 <div>
+                    <p className={`font-bold text-sm ${importResult.succes ? "text-green-900" : "text-red-900"}`}>
+                       {importResult.succes ? "Import voltooid" : "Import met waarschuwingen"}
+                    </p>
+                    <p className="text-xs text-gray-500 font-medium">{importResult.overgeslagen} rijen overgeslagen</p>
+                 </div>
+              </div>
+              
+              {importResult.fouten.length > 0 && (
+                <div className="space-y-1 pt-2 border-t border-gray-200/50">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Foutlogboek (eerste 3):</p>
+                  {importResult.fouten.slice(0, 3).map((e, i) => (
+                    <div key={i} className="text-[10px] text-red-700 bg-white/50 p-1 rounded">Rij {e.rij}: {e.fout}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

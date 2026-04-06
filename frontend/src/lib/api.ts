@@ -245,6 +245,7 @@ export const tenantApi = {
     standaard_starttijden?: string[];
     eerste_datum?: string;
     hergebruik_configuratie?: boolean;
+    reminder_days_before?: number;
   }) => api.put(`/tenant/competities/${competitieId}/tijdslot-config`, data),
   bulkGenerateRondes: (competitieId: string, rondeIds: string[]) =>
     api.post(`/tenant/rondes/bulk-generate`, { ronde_ids: rondeIds }, { params: { competitie_id: competitieId } }),

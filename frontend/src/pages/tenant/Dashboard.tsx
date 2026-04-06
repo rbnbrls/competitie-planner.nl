@@ -1,6 +1,35 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { tenantApi, onboardingApi } from "../../lib/api";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Calendar, 
+  Settings, 
+  CheckCircle2, 
+  AlertTriangle, 
+  ArrowRight,
+  TrendingUp,
+  Activity,
+  Trophy,
+  ClipboardList
+} from "lucide-react";
+import { 
+  Button, 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
+  Badge, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell,
+  LoadingSkeleton 
+} from "../../components";
 
 interface DashboardRonde {
   id: string;
@@ -71,44 +100,6 @@ interface DashboardData {
   };
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("nl-NL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
-
-function getStatusBadge(status: string) {
-  const styles: Record<string, string> = {
-    concept: "bg-amber-100 text-amber-800 border-amber-300",
-    gepubliceerd: "bg-green-100 text-green-800 border-green-300",
-  };
-  const labels: Record<string, string> = {
-    concept: "Concept",
-    gepubliceerd: "Gepubliceerd",
-  };
-  return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium border ${styles[status] || "bg-gray-100 text-gray-800"}`}>
-      {labels[status] || status}
-    </span>
-  );
-}
-
-function getPriorityColor(prioriteit: string) {
-  switch (prioriteit) {
-    case "hoog":
-      return "text-red-600";
-    case "medium":
-      return "text-amber-600";
-    case "laag":
-      return "text-gray-500";
-    default:
-      return "text-gray-500";
-  }
-}
-
 export default function TenantDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,6 +110,7 @@ export default function TenantDashboard() {
     step3_completed: boolean;
     step4_completed: boolean;
   } | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([
@@ -137,279 +129,272 @@ export default function TenantDashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="text-xl">Dashboard wordt geladen...</div>
-      </div>
-    );
+    return <LoadingSkeleton rows={15} />;
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="text-xl">{error || "Kon dashboard niet laden"}</div>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <AlertTriangle className="h-12 w-12 text-red-500" />
+        <h2 className="text-xl font-bold">{error || "Kon dashboard niet laden"}</h2>
+        <Button onClick={() => window.location.reload()}>Opnieuw proberen</Button>
       </div>
     );
   }
 
   const openstaandeTaken = [];
   if (!onboardingStatus?.step1_completed) {
-    openstaandeTaken.push({ label: "Club-informatie invullen", url: "/onboarding" });
+    openstaandeTaken.push({ label: "Club-informatie invullen", url: "/onboarding", icon: <Settings size={16} /> });
   }
   if (!onboardingStatus?.step2_completed) {
-    openstaandeTaken.push({ label: "Tennisbanen toevoegen", url: "/onboarding" });
+    openstaandeTaken.push({ label: "Tennisbanen toevoegen", url: "/onboarding", icon: <Activity size={16} /> });
   }
   if (!onboardingStatus?.step3_completed) {
-    openstaandeTaken.push({ label: "Eerste competitie aanmaken", url: "/onboarding" });
+    openstaandeTaken.push({ label: "Eerste competitie aanmaken", url: "/onboarding", icon: <Trophy size={16} /> });
   }
   if (!onboardingStatus?.step4_completed) {
-    openstaandeTaken.push({ label: "Teams toevoegen", url: "/onboarding" });
+    openstaandeTaken.push({ label: "Teams toevoegen", url: "/onboarding", icon: <Users size={16} /> });
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="p-6 max-w-7xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            Welkom, {data.gebruiker.full_name || data.gebruiker.email}
+    <div className="max-w-7xl mx-auto space-y-8">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <Badge variant="primary" className="mb-2 px-3 py-1">Dashboard</Badge>
+          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 border-none p-0">
+            Welkom, {data.gebruiker.full_name || data.gebruiker.email.split('@')[0]}
           </h1>
-          <p className="text-lg text-gray-300">
-            Overzicht van {data.club.naam}
+          <p className="text-lg text-gray-500 font-medium">
+             Beheer de competities voor <span className="text-blue-600 font-bold">{data.club.naam}</span>
           </p>
-        </header>
+        </div>
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
+           <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+           Systeem online
+        </div>
+      </header>
 
-        {openstaandeTaken.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Openstaande taken</h2>
-            <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-4">
-              <ul className="space-y-2">
-                {openstaandeTaken.map((taak, idx) => (
-                  <li key={idx} className="flex items-center justify-between">
-                    <span className="text-lg">• {taak.label}</span>
-                    <Link
-                      to={taak.url}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Doen
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: "Banen", value: data.statistieken.totaal_banen, icon: <Activity className="text-blue-600" />, color: "bg-blue-50" },
+          { label: "Teams", value: data.statistieken.totaal_teams, icon: <Users className="text-indigo-600" />, color: "bg-indigo-50" },
+          { label: "Gebruikers", value: data.statistieken.totaal_gebruikers, icon: <Users className="text-green-600" />, color: "bg-green-50" },
+          { label: "Competities", value: data.statistieken.aantal_competities, icon: <Trophy className="text-purple-600" />, color: "bg-purple-50" },
+          { label: "Open acties", value: data.statistieken.open_acties, icon: <ClipboardList className={data.statistieken.open_acties > 0 ? "text-amber-600" : "text-gray-400"} />, color: data.statistieken.open_acties > 0 ? "bg-amber-50" : "bg-gray-50" },
+        ].map((stat, i) => (
+          <Card key={i} className="border-none shadow-none bg-white ring-1 ring-gray-100">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-2">
+                <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
+                <TrendingUp size={14} className="text-gray-300" />
+              </div>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
+              <p className="text-3xl font-black text-gray-900 leading-none mt-1">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        {data.waarschuwingen.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Let op</h2>
-            <div className="space-y-3">
-              {data.waarschuwingen.map((waarschuwing, idx) => (
-                <div
-                  key={idx}
-                  className={`p-4 rounded-lg border ${
-                    waarschuwing.prioriteit === "hoog"
-                      ? "bg-red-900/30 border-red-600"
-                      : waarschuwing.prioriteit === "medium"
-                      ? "bg-amber-900/30 border-amber-600"
-                      : "bg-blue-900/30 border-blue-600"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">{waarschuwing.titel}</h3>
-                      <p className="text-base mt-1">{waarschuwing.bericht}</p>
-                    </div>
-                    {waarschuwing.url && (
-                      <Link
-                        to={waarschuwing.url}
-                        className="ml-4 px-4 py-2 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
-                      >
-                        Bekijk
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Main Actions / Onboarding */}
+          {openstaandeTaken.length > 0 && (
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white overflow-hidden">
+               <div className="absolute top-0 right-0 p-4 opacity-10">
+                 <LayoutDashboard size={120} />
+               </div>
+               <CardHeader>
+                 <CardTitle className="text-blue-900 flex items-center gap-2">
+                   <div className="h-6 w-1 bg-blue-600 rounded-full" />
+                   Nog even geduld...
+                 </CardTitle>
+                 <CardDescription className="text-blue-700">
+                   Voltooi de volgende stappen om je club volledig in te richten.
+                 </CardDescription>
+               </CardHeader>
+               <CardContent>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                   {openstaandeTaken.map((taak, idx) => (
+                     <Link key={idx} to={taak.url} className="group">
+                       <div className="flex items-center justify-between p-3 bg-white border border-blue-100 rounded-xl group-hover:border-blue-400 group-hover:shadow-sm transition-all">
+                         <div className="flex items-center gap-3">
+                           <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                             {taak.icon}
+                           </div>
+                           <span className="text-sm font-bold text-gray-700">{taak.label}</span>
+                         </div>
+                         <ArrowRight size={14} className="text-gray-300 group-hover:text-blue-600 translate-x-0 group-hover:translate-x-1 transition-all" />
+                       </div>
+                     </Link>
+                   ))}
+                 </div>
+               </CardContent>
+            </Card>
+          )}
 
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Statistieken</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-gray-800 p-5 rounded-lg border border-gray-700">
-              <p className="text-gray-400 text-base mb-1">Banen</p>
-              <p className="text-3xl font-bold">{data.statistieken.totaal_banen}</p>
+          {/* Incoming Rounds */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                 <Calendar className="text-blue-600" size={20} />
+                 Aankomende speelrondes
+              </h2>
+              <Link to="/competities" className="text-blue-600 hover:underline text-sm font-bold flex items-center gap-1">
+                Bekijk alles <ArrowRight size={14}/>
+              </Link>
             </div>
-            <div className="bg-gray-800 p-5 rounded-lg border border-gray-700">
-              <p className="text-gray-400 text-base mb-1">Teams</p>
-              <p className="text-3xl font-bold">{data.statistieken.totaal_teams}</p>
-            </div>
-            <div className="bg-gray-800 p-5 rounded-lg border border-gray-700">
-              <p className="text-gray-400 text-base mb-1">Gebruikers</p>
-              <p className="text-3xl font-bold">{data.statistieken.totaal_gebruikers}</p>
-            </div>
-            <div className="bg-gray-800 p-5 rounded-lg border border-gray-700">
-              <p className="text-gray-400 text-base mb-1">Competities</p>
-              <p className="text-3xl font-bold">{data.statistieken.aantal_competities}</p>
-            </div>
-            <div className="bg-gray-800 p-5 rounded-lg border border-gray-700">
-              <p className="text-gray-400 text-base mb-1">Open acties</p>
-              <p className={`text-3xl font-bold ${data.statistieken.open_acties > 0 ? "text-amber-400" : ""}`}>
-                {data.statistieken.open_acties}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {data.competities_voortgang.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Competitievoortgang</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.competities_voortgang.map((comp) => (
-                <div key={comp.id} className="bg-gray-800 p-5 rounded-lg border border-gray-700">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-xl font-semibold">{comp.naam}</h3>
-                      <p className="text-gray-400 text-base">{comp.speeldag}</p>
-                    </div>
-                    <span className="text-2xl font-bold text-green-400">{comp.percentage}%</span>
-                  </div>
-                  <div className="mb-3">
-                    <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-green-500 transition-all duration-300"
-                        style={{ width: `${comp.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-base text-gray-300">
-                    {comp.gepubliceerde_rondes} van {comp.totaal_rondes} speelrondes gepubliceerd
-                  </p>
-                  <Link
-                    to={`/competities/${comp.id}`}
-                    className="mt-4 block w-full text-center px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
-                  >
-                    Bekijk competitie
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {data.komende_rondes.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Aankomende speelrondes</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left border-b border-gray-700">
-                    <th className="pb-3 text-lg font-semibold text-gray-300 pr-4">Datum</th>
-                    <th className="pb-3 text-lg font-semibold text-gray-300 pr-4">Competitie</th>
-                    <th className="pb-3 text-lg font-semibold text-gray-300 pr-4">Status</th>
-                    <th className="pb-3 text-lg font-semibold text-gray-300 pr-4">Teams zonder baan</th>
-                    <th className="pb-3 text-lg font-semibold text-gray-300">Acties</th>
-                  </tr>
-                </thead>
-                <tbody>
+            
+            {data.komende_rondes.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Datum</TableHead>
+                    <TableHead>Competitie</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Teams zonder baan</TableHead>
+                    <TableHead className="text-right">Actie</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {data.komende_rondes.map((ronde) => (
-                    <tr key={ronde.id} className="border-b border-gray-800">
-                      <td className="py-4 pr-4">
-                        <div className="text-lg font-medium">{formatDate(ronde.datum)}</div>
-                        {ronde.week_nummer && (
-                          <div className="text-base text-gray-400">Week {ronde.week_nummer}</div>
-                        )}
-                        {ronde.is_inhaalronde && (
-                          <span className="inline-block mt-1 px-2 py-0.5 bg-purple-900 text-purple-200 text-sm rounded">
-                            Inhaalronde
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 pr-4 text-lg">{ronde.competitie_naam}</td>
-                      <td className="py-4 pr-4">{getStatusBadge(ronde.status)}</td>
-                      <td className="py-4 pr-4">
-                        {ronde.teams_zonder_baan > 0 ? (
-                          <span className="text-amber-400 font-semibold text-lg">
-                            {ronde.teams_zonder_baan} van {ronde.totaal_teams}
-                          </span>
-                        ) : (
-                          <span className="text-green-400 font-semibold text-lg">
-                            Alle teams toegewezen
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4">
-                        <div className="flex flex-wrap gap-2">
-                          {ronde.status === "concept" && (
-                            <Link
-                              to={`/competities/${ronde.competitie_id}/planning/${ronde.id}`}
-                              className="px-4 py-3 bg-amber-600 hover:bg-amber-500 rounded-lg font-medium transition-colors text-center min-w-[120px]"
-                            >
-                              Toewijzen
-                            </Link>
-                          )}
-                          <Link
-                            to={`/competities/${ronde.competitie_id}/rondes/${ronde.id}`}
-                            className="px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-center min-w-[100px]"
-                          >
-                            Bekijken
-                          </Link>
+                    <TableRow key={ronde.id} className="group">
+                      <TableCell>
+                        <div className="font-bold text-gray-900">
+                          {new Date(ronde.datum).toLocaleDateString("nl-NL", { day: 'numeric', month: 'short' })}
                         </div>
-                      </td>
-                    </tr>
+                        <div className="text-xs text-gray-400 font-medium uppercase">Week {ronde.week_nummer}</div>
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-700">
+                        {ronde.competitie_naam}
+                        {ronde.is_inhaalronde && <Badge variant="warning" className="ml-2 scale-75 origin-left">Inhaal</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={ronde.status === "gepubliceerd" ? "success" : "default"}>
+                          {ronde.status === "gepubliceerd" ? "Live" : "Concept"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {ronde.teams_zonder_baan > 0 ? (
+                          <div className="flex items-center gap-1.5 text-amber-600 font-bold text-sm">
+                            <AlertTriangle size={14} />
+                            {ronde.teams_zonder_baan} over
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-green-600 font-bold text-sm">
+                            <CheckCircle2 size={14} />
+                            Compleet
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant={ronde.status === "concept" ? "primary" : "secondary"} 
+                          size="sm"
+                          onClick={() => navigate(ronde.status === "concept" 
+                            ? `/competities/${ronde.competitie_id}/planning/${ronde.id}` 
+                            : `/ronde/${ronde.id}/${ronde.competitie_id}`)}
+                        >
+                          {ronde.status === "concept" ? "Plannen" : "Bekijk"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            ) : (
+              <Card className="border-dashed flex items-center justify-center py-12 bg-gray-50/30">
+                <p className="text-gray-400 font-medium">Geen speelrondes gepland.</p>
+              </Card>
+            )}
           </section>
-        )}
+        </div>
 
-        {data.acties.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Openstaande acties</h2>
-            <div className="space-y-3">
-              {data.acties.map((actie) => (
-                <div
-                  key={actie.id}
-                  className="bg-gray-800 p-5 rounded-lg border border-gray-700"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`text-base font-medium ${getPriorityColor(actie.prioriteit)}`}>
-                          {actie.prioriteit === "hoog" && "⚠️ "}
-                          {actie.prioriteit === "medium" && "⏰ "}
-                          {actie.titel}
-                        </span>
+        <div className="space-y-8">
+          {/* Warnings / Notifications */}
+          {data.waarschuwingen.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <AlertTriangle className="text-amber-500" size={18} />
+                Meldingen
+              </h3>
+              {data.waarschuwingen.map((w, idx) => (
+                <Card key={idx} className={w.prioriteit === "hoog" ? "border-red-200 bg-red-50/30" : "border-amber-200 bg-amber-50/30"}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-1 p-1 rounded-full ${w.prioriteit === "hoog" ? "bg-red-500" : "bg-amber-500"}`}>
+                        <AlertTriangle size={12} className="text-white" />
                       </div>
-                      <p className="text-base text-gray-300">{actie.beschrijving}</p>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-sm text-gray-900">{w.titel}</h4>
+                        <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{w.bericht}</p>
+                      </div>
                     </div>
-                    {actie.url && (
-                      <Link
-                        to={actie.url}
-                        className="ml-4 px-5 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors whitespace-nowrap min-h-[48px] flex items-center"
+                    {w.url && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full h-8 text-xs border-gray-200 bg-white" 
+                        onClick={() => navigate(w.url!)}
                       >
-                        Actie ondernemen
-                      </Link>
+                        Los dit op
+                      </Button>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        {data.komende_rondes.length === 0 && data.acties.length === 0 && (
-          <section className="mb-8">
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <h2 className="text-2xl font-semibold mb-3">Alles up-to-date!</h2>
-              <p className="text-lg text-gray-300">
-                Er zijn geen openstaande acties. U kunt rustig achterover leunen.
-              </p>
-            </div>
+          {/* Quick Actions */}
+          <section className="space-y-4 text-gray-900">
+            <h3 className="text-lg font-bold">Competitie voortgang</h3>
+            {data.competities_voortgang.map((comp) => (
+              <Card key={comp.id} className="overflow-hidden group hover:ring-blue-400">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h4 className="font-black text-gray-900 group-hover:text-blue-600 transition-colors">{comp.naam}</h4>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{comp.speeldag}</p>
+                    </div>
+                    <div className="text-right">
+                       <span className="text-2xl font-black text-gray-900">{comp.percentage}%</span>
+                    </div>
+                  </div>
+                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className="absolute left-0 top-0 h-full bg-blue-600 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${comp.percentage}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                    <span>{comp.gepubliceerde_rondes} / {comp.totaal_rondes} RONDERS</span>
+                    <Link to={`/competities/${comp.id}`} className="text-blue-600 hover:underline">Details {'>'}</Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </section>
-        )}
+
+          {/* Action Tasks */}
+          {data.acties.length > 0 && (
+             <section className="space-y-4">
+               <h3 className="text-lg font-bold">Actielijst</h3>
+               <div className="space-y-2">
+                 {data.acties.map((actie) => (
+                   <div key={actie.id} className="flex gap-3 p-3 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all cursor-pointer group" onClick={() => actie.url && navigate(actie.url)}>
+                      <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${actie.prioriteit === 'hoog' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-gray-900 leading-tight mb-1 group-hover:text-blue-600">{actie.titel}</div>
+                        <p className="text-xs text-gray-500 line-clamp-2">{actie.beschrijving}</p>
+                      </div>
+                      <ArrowRight size={14} className="text-gray-300 group-hover:text-blue-600 self-center" />
+                   </div>
+                 ))}
+               </div>
+             </section>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
-import { Clock, Calendar, Settings, Copy, Loader2 } from "lucide-react";
+import { Clock, Calendar, Settings, Copy, X } from "lucide-react";
 import { useCompetities } from "../../hooks/useCompetities";
-import { Pagination } from "../../components/Pagination";
+import { 
+  Button, 
+  Input, 
+  Modal, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell, 
+  Card,
+  Badge,
+  Select,
+  Pagination,
+  LoadingSkeleton,
+} from "../../components";
 
 interface Competitie {
   id: string;
@@ -89,6 +104,7 @@ export default function CompetitiesPage() {
         standaard_starttijden: [],
         eerste_datum: null,
         hergebruik_configuratie: true,
+        reminder_days_before: 3,
       });
     }
   };
@@ -195,186 +211,173 @@ export default function CompetitiesPage() {
   };
 
   if (isLoading) {
-    return <div className="p-4">Laden...</div>;
+    return <LoadingSkeleton rows={10} />;
   }
 
   const activeComp = getActiveCompetition();
 
   return (
-    <div className="max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Competities</h1>
+    <div className="max-w-6xl space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-extrabold tracking-tight">Competities</h1>
         <div className="flex gap-3">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => setActiefOnly(!actiefOnly)}
-            className={`px-4 py-2 rounded-md border transition-colors ${
-              actiefOnly 
-                ? "bg-gray-100 border-gray-300 text-gray-700" 
-                : "bg-blue-50 border-blue-200 text-blue-700"
-            }`}
           >
             {actiefOnly ? "Toon gearchiveerd" : "Verberg gearchiveerd"}
-          </button>
+          </Button>
           {!activeComp && (
-            <button
+            <Button
               onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Competitie aanmaken
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {isBulkOperationProgress.inProgress && (
-        <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-          <span className="text-indigo-800 font-medium">{isBulkOperationProgress.text}</span>
-        </div>
+        <Badge variant="secondary" className="w-full py-3 flex justify-center gap-2 animate-pulse">
+          {isBulkOperationProgress.text}
+        </Badge>
       )}
 
       {activeComp && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm text-blue-600 font-medium">Actieve competitie</span>
+        <Card className="border-blue-200 bg-blue-50/50">
+          <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="space-y-1">
+              <Badge variant="primary" className="mb-1">Actieve competitie</Badge>
               <h2 className="text-xl font-bold">{activeComp.naam}</h2>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="text-sm text-gray-600 flex items-center gap-2">
+                <Calendar size={14} />
                 {DAGEN.find((d) => d.value === activeComp.speeldag)?.label} •{" "}
                 {new Date(activeComp.start_datum).toLocaleDateString("nl-NL")} t/m{" "}
                 {new Date(activeComp.eind_datum).toLocaleDateString("nl-NL")}
               </div>
               {activeComp.standaard_starttijden && activeComp.standaard_starttijden.length > 0 && (
-                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                <div className="text-xs text-gray-500 flex items-center gap-2">
                   <Clock size={12} />
                   Standaardtijden: {activeComp.standaard_starttijden.join(", ")}
                 </div>
               )}
             </div>
-            <div className="flex gap-3">
-              <button
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => handleOpenTijdslotConfig(activeComp)}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-2"
+                className="gap-2"
               >
                 <Settings size={16} />
                 Tijdslotconfig
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => navigate(`/historie/${activeComp.id}`)}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
                 Historie
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleViewRondes(activeComp.id)}
-                className="px-4 py-2 bg-white border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50"
               >
                 Speelrondes
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => handleViewTeams(activeComp.id)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Teams
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Naam
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Speeldag
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Start - Eind
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Standaardtijden
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Acties
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {competities.map((comp: Competitie) => (
-              <tr key={comp.id} className={!comp.actief ? "bg-gray-50" : ""}>
-                <td className="px-6 py-4 whitespace-nowrap">{comp.naam}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {DAGEN.find((d) => d.value === comp.speeldag)?.label}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {new Date(comp.start_datum).toLocaleDateString("nl-NL")} -{" "}
-                  {new Date(comp.eind_datum).toLocaleDateString("nl-NL")}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {comp.standaard_starttijden && comp.standaard_starttijden.length > 0 ? (
-                    <span className="text-sm text-gray-600">
-                      {comp.standaard_starttijden.join(", ")}
-                    </span>
-                  ) : (
-                    <span className="text-sm text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs rounded ${
-                      comp.actief
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {comp.actief ? "Actief" : "Inactief"}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Naam</TableHead>
+            <TableHead>Speeldag</TableHead>
+            <TableHead>Start - Eind</TableHead>
+            <TableHead>Standaardtijden</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Acties</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {competities.map((comp: Competitie) => (
+            <TableRow key={comp.id} className={!comp.actief ? "bg-gray-50/50 overflow-hidden" : ""}>
+              <TableCell className="font-medium">{comp.naam}</TableCell>
+              <TableCell>
+                {DAGEN.find((d) => d.value === comp.speeldag)?.label}
+              </TableCell>
+              <TableCell>
+                {new Date(comp.start_datum).toLocaleDateString("nl-NL")} -{" "}
+                {new Date(comp.eind_datum).toLocaleDateString("nl-NL")}
+              </TableCell>
+              <TableCell>
+                {comp.standaard_starttijden && comp.standaard_starttijden.length > 0 ? (
+                  <span className="text-sm text-gray-600">
+                    {comp.standaard_starttijden.join(", ")}
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <button
+                ) : (
+                  <span className="text-sm text-gray-400">-</span>
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge variant={comp.actief ? "success" : "default"}>
+                  {comp.actief ? "Actief" : "Inactief"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleOpenDuplicate(comp)}
-                    className="text-gray-600 hover:text-gray-800 mr-3"
-                    title="Kopieer competitie"
+                    title="Kopieer"
                   >
                     <Copy size={16} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleOpenTijdslotConfig(comp)}
-                    className="text-gray-600 hover:text-gray-800 mr-3"
-                    title="Tijdslotconfiguratie"
+                    title="Tijdslotconfig"
                   >
                     <Clock size={16} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="link"
+                    size="sm"
                     onClick={() => handleViewRondes(comp.id)}
-                    className="text-blue-600 hover:text-blue-800 mr-3"
                   >
                     Rondes
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="link"
+                    size="sm"
                     onClick={() => handleViewTeams(comp.id)}
-                    className="text-blue-600 hover:text-blue-800"
                   >
                     Teams
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {competities.length === 0 && activeComp === null && (
-          <div className="p-8 text-center text-gray-500">
-            Nog geen competities aangemaakt. Klik op "Competitie aanmaken" om te beginnen.
-          </div>
-        )}
-      </div>
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {competities.length === 0 && !activeComp && (
+            <TableRow>
+              <TableCell colSpan={6} className="h-40 text-center text-gray-500">
+                Nog geen competities aangemaakt. Klik op "Competitie aanmaken" om te beginnen.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
       <Pagination 
         currentPage={page} 
@@ -383,295 +386,197 @@ export default function CompetitiesPage() {
         isDisabled={isLoading} 
       />
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Nieuwe competitie</h2>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Nieuwe competitie"
+        description="Maak een nieuwe competitie aan voor een nieuw seizoen."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Annuleren</Button>
+            <Button type="submit" form="create-competition-form" isLoading={isCreating}>Aanmaken</Button>
+          </>
+        }
+      >
+        <form id="create-competition-form" onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Naam competitie"
+            placeholder="Bijv. Zomercompetitie 2025"
+            value={formData.naam}
+            onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+            required
+          />
+          <Select
+            label="Speeldag"
+            value={formData.speeldag}
+            onChange={(e) => setFormData({ ...formData, speeldag: e.target.value })}
+            options={DAGEN}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              type="date"
+              label="Startdatum"
+              value={formData.start_datum}
+              onChange={(e) => setFormData({ ...formData, start_datum: e.target.value })}
+              required
+            />
+            <Input
+              type="date"
+              label="Einddatum"
+              value={formData.eind_datum}
+              onChange={(e) => setFormData({ ...formData, eind_datum: e.target.value })}
+              required
+            />
+          </div>
+          <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded border">
+            Na het aanmaken worden alle speelrondes automatisch gegenereerd op de gekozen speeldag.
+          </p>
+        </form>
+      </Modal>
 
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Naam competitie
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.naam}
-                    onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Bijv. Zomercompetitie 2025"
-                    required
+      <Modal
+        isOpen={showTijdslotModal}
+        onClose={() => setShowTijdslotModal(false)}
+        title={`Tijdslotconfiguratie - ${selectedCompetitie?.naam}`}
+        maxWidth="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowTijdslotModal(false)}>Annuleren</Button>
+            <Button onClick={handleSaveTijdslotConfig} isLoading={isCreating || isDuplicating}>Opslaan</Button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900">Standaard aanvangstijden</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {tijdslotConfig.standaard_starttijden.map((tijd, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    type="time"
+                    value={tijd}
+                    onChange={(e) => updateTijdslot(index, e.target.value)}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Speeldag
-                  </label>
-                  <select
-                    value={formData.speeldag}
-                    onChange={(e) => setFormData({ ...formData, speeldag: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeTijdslot(index)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
                   >
-                    {DAGEN.map((dag) => (
-                      <option key={dag.value} value={dag.value}>
-                        {dag.label}
-                      </option>
-                    ))}
-                  </select>
+                    <X size={16} />
+                  </Button>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Startdatum
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.start_datum}
-                    onChange={(e) => setFormData({ ...formData, start_datum: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Einddatum
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.eind_datum}
-                    onChange={(e) => setFormData({ ...formData, eind_datum: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-              </div>
-
-              <p className="mt-3 text-sm text-gray-500">
-                Na het aanmaken worden alle speelrondes automatisch gegenereerd op de gekozen speeldag.
-              </p>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Annuleren
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreating}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isCreating ? "Aanmaken..." : "Aanmaken"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showTijdslotModal && selectedCompetitie && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">
-              Tijdslotconfiguratie - {selectedCompetitie.naam}
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Standaard aanvangstijden
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Definieer de standaardtijden die automatisch worden toegepast bij nieuwe rondes.
-                </p>
-                <div className="space-y-2">
-                  {tijdslotConfig.standaard_starttijden.map((tijd, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="time"
-                        value={tijd}
-                        onChange={(e) => updateTijdslot(index, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeTijdslot(index)}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
-                      >
-                        Verwijder
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={addTijdslot}
-                  className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  + Tijd toevoegen
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Calendar size={14} className="inline mr-1" />
-                  Eerste speeldatum (optioneel)
-                </label>
-                <input
-                  type="date"
-                  value={tijdslotConfig.eerste_datum || ""}
-                  onChange={(e) =>
-                    setTijdslotConfig({
-                      ...tijdslotConfig,
-                      eerste_datum: e.target.value || null,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tijdslotConfig.hergebruik_configuratie}
-                    onChange={(e) =>
-                      setTijdslotConfig({
-                        ...tijdslotConfig,
-                        hergebruik_configuratie: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                  />
-                  <span className="text-sm text-gray-700">
-                    Configuratie hergebruiken bij nieuwe seizoensplanning
-                  </span>
-                </label>
-              </div>
-
-              <div className="pt-4 border-t">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reminder email
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Aantal dagen voor de speeldag om herinneringsmail naar captains te sturen.
-                </p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min="1"
-                    max="14"
-                    value={tijdslotConfig.reminder_days_before}
-                    onChange={(e) => setTijdslotConfig({...tijdslotConfig, reminder_days_before: parseInt(e.target.value)})}
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                  <span className="text-sm text-gray-600">dagen voor de wedstrijd</span>
-                </div>
-              </div>
+              ))}
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addTijdslot}
+              className="w-full border-dashed"
+            >
+              + Tijd toevoegen
+            </Button>
+          </div>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowTijdslotModal(false)}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Annuleren
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveTijdslotConfig}
-                disabled={isCreating || isDuplicating}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isCreating || isDuplicating ? "Opslaan..." : "Opslaan"}
-              </button>
+          <Input
+            type="date"
+            label="Eerste speeldatum (optioneel)"
+            helperText="Gebruik dit om de startdatum van de eerste ronde expliciet vast te leggen."
+            value={tijdslotConfig.eerste_datum || ""}
+            onChange={(e) =>
+              setTijdslotConfig({
+                ...tijdslotConfig,
+                eerste_datum: e.target.value || null,
+              })
+            }
+          />
+
+          <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tijdslotConfig.hergebruik_configuratie}
+                onChange={(e) =>
+                  setTijdslotConfig({
+                    ...tijdslotConfig,
+                    hergebruik_configuratie: e.target.checked,
+                  })
+                }
+                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <div className="space-y-0.5">
+                <span className="text-sm font-medium text-blue-900">Configuratie hergebruiken</span>
+                <p className="text-xs text-blue-700">Pas deze tijden automatisch toe bij nieuwe seizoensplanningen.</p>
+              </div>
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-900">Reminder email</h4>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min="1"
+                max="14"
+                className="w-24"
+                value={tijdslotConfig.reminder_days_before}
+                onChange={(e) => setTijdslotConfig({...tijdslotConfig, reminder_days_before: parseInt(e.target.value)})}
+              />
+              <span className="text-sm text-gray-600">dagen voor de wedstrijd</span>
             </div>
           </div>
         </div>
-      )}
+      </Modal>
 
-      {showDuplicateModal && selectedCompetitie && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Competitie Kopiëren</h2>
-            <form onSubmit={handleDuplicate}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nieuwe naam
-                  </label>
-                  <input
-                    type="text"
-                    value={duplicateData.new_naam}
-                    onChange={(e) => setDuplicateData({ ...duplicateData, new_naam: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nieuwe startdatum
-                  </label>
-                  <input
-                    type="date"
-                    value={duplicateData.nieuwe_start_datum}
-                    onChange={(e) => setDuplicateData({ ...duplicateData, nieuwe_start_datum: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nieuwe einddatum
-                  </label>
-                  <input
-                    type="date"
-                    value={duplicateData.nieuwe_eind_datum}
-                    onChange={(e) => setDuplicateData({ ...duplicateData, nieuwe_eind_datum: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={duplicateData.copy_teams}
-                      onChange={(e) => setDuplicateData({ ...duplicateData, copy_teams: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700"> Neem teams over (zonder status/resultaten)</span>
-                  </label>
-                </div>
-              </div>
-              <p className="mt-3 text-sm text-gray-500">
-                Hiermee kopieer je de algemene instellingen en (optioneel) de teams naar een nieuw seizoen.
-              </p>
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDuplicateModal(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Annuleren
-                </button>
-                <button
-                  type="submit"
-                  disabled={isDuplicating}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isDuplicating ? "Bezig..." : "Kopiëren"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        title="Competitie Kopiëren"
+        description="Hiermee kopieer je de algemene instellingen en teams naar een nieuw seizoen."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowDuplicateModal(false)}>Annuleren</Button>
+            <Button type="submit" form="duplicate-form" isLoading={isDuplicating}>Kopiëren</Button>
+          </>
+        }
+      >
+        <form id="duplicate-form" onSubmit={handleDuplicate} className="space-y-4">
+          <Input
+            label="Nieuwe naam"
+            value={duplicateData.new_naam}
+            onChange={(e) => setDuplicateData({ ...duplicateData, new_naam: e.target.value })}
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              type="date"
+              label="Nieuwe startdatum"
+              value={duplicateData.nieuwe_start_datum}
+              onChange={(e) => setDuplicateData({ ...duplicateData, nieuwe_start_datum: e.target.value })}
+              required
+            />
+            <Input
+              type="date"
+              label="Nieuwe einddatum"
+              value={duplicateData.nieuwe_eind_datum}
+              onChange={(e) => setDuplicateData({ ...duplicateData, nieuwe_eind_datum: e.target.value })}
+              required
+            />
           </div>
-        </div>
-      )}
+          <div className="flex items-center gap-2 py-2">
+            <input
+              type="checkbox"
+              id="copy_teams"
+              checked={duplicateData.copy_teams}
+              onChange={(e) => setDuplicateData({ ...duplicateData, copy_teams: e.target.checked })}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="copy_teams" className="text-sm font-medium text-gray-700 cursor-pointer">
+              Neem teams over (zonder status/resultaten)
+            </label>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
