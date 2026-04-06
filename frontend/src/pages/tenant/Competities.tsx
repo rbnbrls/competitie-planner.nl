@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { Clock, Calendar, Settings, Copy, Loader2 } from "lucide-react";
 import { useCompetities } from "../../hooks/useCompetities";
+import { Pagination } from "../../components/Pagination";
 
 interface Competitie {
   id: string;
@@ -36,15 +37,21 @@ const DAGEN = [
 ];
 
 export default function CompetitiesPage() {
+  const [page, setPage] = useState(1);
+  const [actiefOnly, setActiefOnly] = useState(true);
+  const PAGE_SIZE = 10;
+
   const { 
     competities, 
+    total,
+    totalPages,
     isLoading, 
     createCompetitie, 
     duplicateCompetitie, 
     updateTijdslotConfig,
     isCreating,
     isDuplicating
-  } = useCompetities();
+  } = useCompetities({ page, size: PAGE_SIZE, actiefOnly });
 
   const [showModal, setShowModal] = useState(false);
   const [showTijdslotModal, setShowTijdslotModal] = useState(false);
@@ -195,14 +202,26 @@ export default function CompetitiesPage() {
     <div className="max-w-6xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Competities</h1>
-        {!activeComp && (
+        <div className="flex gap-3">
           <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            onClick={() => setActiefOnly(!actiefOnly)}
+            className={`px-4 py-2 rounded-md border transition-colors ${
+              actiefOnly 
+                ? "bg-gray-100 border-gray-300 text-gray-700" 
+                : "bg-blue-50 border-blue-200 text-blue-700"
+            }`}
           >
-            Competitie aanmaken
+            {actiefOnly ? "Toon gearchiveerd" : "Verberg gearchiveerd"}
           </button>
-        )}
+          {!activeComp && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Competitie aanmaken
+            </button>
+          )}
+        </div>
       </div>
 
       {isBulkOperationProgress.inProgress && (
@@ -354,6 +373,13 @@ export default function CompetitiesPage() {
           </div>
         )}
       </div>
+
+      <Pagination 
+        currentPage={page} 
+        totalPages={totalPages} 
+        onPageChange={(p) => setPage(p)} 
+        isDisabled={isLoading} 
+      />
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

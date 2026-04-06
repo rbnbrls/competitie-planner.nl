@@ -30,18 +30,21 @@ export default function SpeelrondesPage() {
   const [message, setMessage] = useState("");
   const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
 
+  const [lazy, setLazy] = useState(true);
+  
   useEffect(() => {
     if (competitieId) {
       loadData();
     }
-  }, [competitieId]);
+  }, [competitieId, lazy]);
 
   const loadData = () => {
     if (!competitieId) return;
+    setIsLoading(true);
     
     Promise.all([
       tenantApi.getCompetition(competitieId),
-      tenantApi.listSpeelrondes(competitieId),
+      tenantApi.listSpeelrondes(competitieId, { lazy }),
     ]).then(([compRes, rondesRes]) => {
       setCompetitie(compRes.data.competitie);
       setRondes(rondesRes.data.rondes || []);
@@ -184,12 +187,18 @@ export default function SpeelrondesPage() {
           >
             Concept ({rondes.filter((r) => r.status === "concept").length})
           </button>
-          <button
-            onClick={() => setFilter("gepubliceerd")}
-            className={`px-3 py-1 rounded ${filter === "gepubliceerd" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          >
-            Gepubliceerd ({rondes.filter((r) => r.status === "gepubliceerd").length})
-          </button>
+            <button
+              onClick={() => setFilter("gepubliceerd")}
+              className={`px-3 py-1 rounded ${filter === "gepubliceerd" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            >
+              Gepubliceerd ({rondes.filter((r) => r.status === "gepubliceerd").length})
+            </button>
+            <button
+              onClick={() => setLazy(!lazy)}
+              className={`px-3 py-1 rounded border ${lazy ? "bg-blue-50 border-blue-200 text-blue-700 font-medium" : "bg-gray-100 border-gray-300 text-gray-700"}`}
+            >
+              {lazy ? "Toon alles" : "Alleen komende"}
+            </button>
         </div>
         <div className="flex gap-3">
             <button

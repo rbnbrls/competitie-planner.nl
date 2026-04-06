@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { Loader2 } from "lucide-react";
 import { showToast } from "../../components/Toast";
+import { Pagination } from "../../components/Pagination";
 
 interface Team {
   id: string;
@@ -27,6 +28,12 @@ export default function TeamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 20;
+  const [totalTeams, setTotalTeams] = useState(0);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importPreview, setImportPreview] = useState<Team[]>([]);
@@ -44,21 +51,47 @@ export default function TeamsPage() {
   });
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     if (competitieId) {
-      loadData();
+      setPage(1);
+      loadData(1, debouncedSearch);
+    }
+  }, [competitieId, debouncedSearch]);
+
+  const loadData = (pageNum = page, search = debouncedSearch) => {
+    if (!competitieId) return;
+    setIsLoading(true);
+
+    tenantApi.listTeams(competitieId, { 
+      page: pageNum, 
+      size: PAGE_SIZE,
+      search: search || undefined
+    }).then((teamsRes) => {
+      setTeams(teamsRes.data.items || []);
+      setTotalPages(teamsRes.data.pages || 1);
+      setTotalTeams(teamsRes.data.total || 0);
+    }).catch(err => {
+      console.error("Error loading teams:", err);
+      showToast.error("Fout bij laden van teams");
+    }).finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (competitieId) {
+       tenantApi.getCompetition(competitieId).then(res => setCompetitie(res.data.competitie));
     }
   }, [competitieId]);
 
-  const loadData = () => {
-    if (!competitieId) return;
-
-    Promise.all([
-      tenantApi.getCompetition(competitieId),
-      tenantApi.listTeams(competitieId),
-    ]).then(([compRes, teamsRes]) => {
-      setCompetitie(compRes.data.competitie);
-      setTeams(teamsRes.data.teams || []);
-    }).finally(() => setIsLoading(false));
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    loadData(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,15 +255,7 @@ export default function TeamsPage() {
     }
   };
 
-  const filteredTeams = () => {
-    if (!searchTerm) return teams;
-    const term = searchTerm.toLowerCase();
-    return teams.filter(
-      (t) =>
-        t.naam.toLowerCase().includes(term) ||
-        t.captain_naam?.toLowerCase().includes(term)
-    );
-  };
+  const filteredTeams = () => teams;
 
   if (isLoading) {
     return <div className="p-4">Laden...</div>;
@@ -244,7 +269,7 @@ export default function TeamsPage() {
             Teams {competitie ? `- ${competitie.naam}` : ""}
           </h1>
           <p className="text-gray-600 mt-1">
-            Totaal: {teams.length} teams
+            Totaal: {totalTeams} teams
           </p>
         </div>
         <div className="flex gap-3">
@@ -478,6 +503,13 @@ export default function TeamsPage() {
           </div>
         )}
       </div>
+
+      <Pagination 
+        currentPage={page} 
+        totalPages={totalPages} 
+        onPageChange={handlePageChange} 
+        isDisabled={isLoading} 
+      />
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

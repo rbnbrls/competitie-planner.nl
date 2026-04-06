@@ -4,14 +4,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
+from app.schemas import TeamCreate, TeamUpdate, TeamResponse, PaginatedResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Club, Team
-from app.schemas import TeamCreate, TeamUpdate, TeamResponse
 from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/tenant/teams", tags=["teams"])
 
@@ -27,33 +26,55 @@ class BulkActivateRequest(BaseModel):
 @router.get("")
 async def list_teams(
     competitie_id: str | None = None,
+    search: str | None = None,
+    page: int = 1,
+    size: int = 20,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    from sqlalchemy import or_
     user, club = current
+    
+    if page < 1: page = 1
+    if size < 1: size = 20
+    if size > 100: size = 100
+    
+    offset = (page - 1) * size
 
+    base_query = select(Team).where(Team.club_id == club.id)
     if competitie_id:
         try:
             competitie_uuid = UUID(competitie_id)
+            base_query = base_query.where(Team.competitie_id == competitie_uuid)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid competitie ID",
             )
-        result = await db.execute(
-            select(Team)
-            .where(
-                Team.club_id == club.id,
-                Team.competitie_id == competitie_uuid,
-            )
-            .order_by(Team.naam)
-        )
-    else:
-        result = await db.execute(select(Team).where(Team.club_id == club.id).order_by(Team.naam))
 
+    if search:
+        base_query = base_query.where(
+            or_(
+                Team.naam.ilike(f"%{search}%"),
+                Team.captain_naam.ilike(f"%{search}%")
+            )
+        )
+
+    # Count total
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Get page results
+    result = await db.execute(
+        base_query.order_by(Team.naam).offset(offset).limit(size)
+    )
     teams = result.scalars().all()
+    
+    pages = (total + size - 1) // size
+
     return {
-        "teams": [
+        "items": [
             {
                 "id": str(t.id),
                 "competitie_id": str(t.competitie_id),
@@ -65,7 +86,11 @@ async def list_teams(
                 "actief": t.actief,
             }
             for t in teams
-        ]
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 

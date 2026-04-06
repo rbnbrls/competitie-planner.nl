@@ -127,7 +127,8 @@ export const tenantApi = {
     api.post("/tenant/forgot-password", { email, slug }),
   resetPassword: (token: string, newPassword: string) =>
     api.post("/tenant/reset-password", { token, new_password: newPassword }),
-  listCompetities: () => api.get("/tenant/competities"),
+  listCompetities: (params?: { actief_only?: boolean; page?: number; size?: number }) => 
+    api.get("/tenant/competities", { params }),
   getCompetition: (id: string) => api.get(`/tenant/competities/${id}`),
   createCompetition: (data: {
     naam: string;
@@ -145,14 +146,16 @@ export const tenantApi = {
     inhaal_datums?: string[];
   }) => api.patch(`/tenant/competities/${id}`, data),
   deleteCompetition: (id: string) => api.delete(`/tenant/competities/${id}`),
-  listSpeelrondes: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/rondes`),
+  listSpeelrondes: (competitieId: string, params?: { lazy?: boolean }) => 
+    api.get(`/tenant/competities/${competitieId}/rondes`, { params }),
   updateSpeelronde: (rondeId: string, data: {
     datum?: string;
     status?: string;
     is_inhaalronde?: boolean;
   }) => api.patch(`/tenant/rondes/${rondeId}`, data),
   publishSpeelronde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/publish`),
-  listTeams: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/teams`),
+  listTeams: (competitieId: string, params?: { page?: number; size?: number }) => 
+    api.get(`/tenant/competities/${competitieId}/teams`, { params }),
   createTeam: (competitieId: string, data: {
     naam: string;
     captain_naam?: string;

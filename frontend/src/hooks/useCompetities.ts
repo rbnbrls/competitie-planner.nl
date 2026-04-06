@@ -2,13 +2,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tenantApi } from "../lib/api";
 import { showToast } from "../components/Toast";
 
-export function useCompetities() {
+export function useCompetities(params: { 
+  page?: number; 
+  size?: number; 
+  actiefOnly?: boolean 
+} = { page: 1, size: 20, actiefOnly: true }) {
   const queryClient = useQueryClient();
 
   // Queries
   const { data: competitiesData, isLoading } = useQuery({
-    queryKey: ["competities"],
-    queryFn: () => tenantApi.listCompetities(),
+    queryKey: ["competities", params],
+    queryFn: () => tenantApi.listCompetities({
+      page: params.page,
+      size: params.size,
+      actief_only: params.actiefOnly
+    }),
   });
 
   // Mutations
@@ -49,7 +57,9 @@ export function useCompetities() {
   });
 
   return {
-    competities: competitiesData?.data?.competities || [],
+    competities: competitiesData?.data?.items || [],
+    total: competitiesData?.data?.total || 0,
+    totalPages: competitiesData?.data?.pages || 1,
     isLoading,
     createCompetitie: createMutation.mutateAsync,
     duplicateCompetitie: duplicateMutation.mutateAsync,

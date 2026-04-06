@@ -1,8 +1,19 @@
 from datetime import date, datetime, time
 from uuid import UUID
-
 from enum import Enum
+from typing import Generic, TypeVar, List
 from pydantic import BaseModel, ConfigDict, EmailStr
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    total: int
+    page: int
+    size: int
+    pages: int
 
 
 class WedstrijdStatus(str, Enum):

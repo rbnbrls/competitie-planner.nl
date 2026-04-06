@@ -3,12 +3,13 @@ from datetime import time, date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
+from app.schemas import CompetitieCreate, CompetitieUpdate, CompetitieResponse, PaginatedResponse
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Club, Competitie, Team, Baan
-from app.schemas import CompetitieCreate, CompetitieUpdate, CompetitieResponse
+from app.models import Club, Competitie, Team, Baan, Speelronde
 from app.services.tenant_auth import get_current_tenant_user, get_current_tenant_admin
 from app.services import planning as planning_service
 
@@ -20,18 +21,41 @@ CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
 
 @router.get("")
 async def list_competities(
+    actief_only: bool = True,
+    page: int = 1,
+    size: int = 20,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    
+    if page < 1: page = 1
+    if size < 1: size = 20
+    if size > 100: size = 100
+    
+    offset = (page - 1) * size
+
+    base_query = select(Competitie).where(Competitie.club_id == club.id)
+    if actief_only:
+        base_query = base_query.where(Competitie.actief == True)
+
+    # Count total
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Get page results
     result = await db.execute(
-        select(Competitie)
-        .where(Competitie.club_id == club.id)
-        .order_by(Competitie.start_datum.desc())
+        base_query.order_by(Competitie.start_datum.desc())
+        .offset(offset)
+        .limit(size)
     )
     competities = result.scalars().all()
+    
+    pages = (total + size - 1) // size
+
     return {
-        "competities": [
+        "items": [
             {
                 "id": str(c.id),
                 "naam": c.naam,
@@ -45,7 +69,11 @@ async def list_competities(
                 "hergebruik_configuratie": c.hergebruik_configuratie,
             }
             for c in competities
-        ]
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 
@@ -83,13 +111,60 @@ async def get_competitie(
         "speeldag": competitie.speeldag,
         "start_datum": competitie.start_datum.isoformat(),
         "eind_datum": competitie.eind_datum.isoformat(),
-        "feestdagen": competitie.feestdagen,
-        "inhaal_datums": competitie.inhaal_datums,
+        "feestdagen": [d.isoformat() for d in (competitie.feestdagen or [])],
+        "inhaal_datums": [d.isoformat() for d in (competitie.inhaal_datums or [])],
         "actief": competitie.actief,
         "email_notifications_enabled": competitie.email_notifications_enabled,
         "standaard_starttijden": [t.isoformat() for t in (competitie.standaard_starttijden or [])],
         "eerste_datum": competitie.eerste_datum.isoformat() if competitie.eerste_datum else None,
         "hergebruik_configuratie": competitie.hergebruik_configuratie,
+    }
+
+
+@router.get("/{competitie_id}/rondes")
+async def list_rondes(
+    competitie_id: str,
+    lazy: bool = False,
+    current: tuple = CURRENT_TENANT_DEP,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    query = select(Speelronde).where(
+        Speelronde.competitie_id == competitie_uuid,
+        Speelronde.club_id == club.id,
+    )
+
+    if lazy:
+        from datetime import date as date_lib
+        today = date_lib.today()
+        # Toon alleen rondes van vandaag en later
+        query = query.where(Speelronde.datum >= today)
+
+    result = await db.execute(query.order_by(Speelronde.datum))
+    rondes = result.scalars().all()
+
+    return {
+        "rondes": [
+            {
+                "id": str(r.id),
+                "competitie_id": str(r.competitie_id),
+                "datum": r.datum.isoformat(),
+                "week_nummer": r.week_nummer,
+                "is_inhaalronde": r.is_inhaalronde,
+                "status": r.status,
+                "gepubliceerd_op": r.gepubliceerd_op.isoformat() if r.gepubliceerd_op else None,
+                "public_token": r.public_token,
+            }
+            for r in rondes
+        ]
     }
 
 
