@@ -14,6 +14,7 @@ from app.services.planning import (
     genereer_indeling,
     get_historie_heatmap,
     update_planning_historie,
+    plan_competitie,
 )
 from app.services.auth import get_password_hash
 from app.services.email import EmailService
@@ -800,3 +801,89 @@ async def bulk_publish_rondes(
         "results": results,
         "email_notifications_sent": email_notifications_sent,
     }
+
+
+class PlanningPreviewRequest(BaseModel):
+    ronde_ids: list[str] | None = None
+
+
+@router.post("/competities/{competitie_id}/planning/preview")
+async def preview_planning(
+    competitie_id: str,
+    data: PlanningPreviewRequest,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    ronde_uuids = None
+    if data.ronde_ids:
+        try:
+            ronde_uuids = [UUID(rid) for rid in data.ronde_ids]
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid ronde ID(s)",
+            )
+
+    result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
+    competitie = result.scalar_one_or_none()
+    if not competitie or competitie.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    return await plan_competitie(competitie_uuid, db, ronde_ids=ronde_uuids, apply=False)
+
+
+@router.post("/competities/{competitie_id}/planning/apply")
+async def apply_planning(
+    competitie_id: str,
+    data: PlanningPreviewRequest,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user, club = current
+    try:
+        competitie_uuid = UUID(competitie_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competitie ID",
+        )
+
+    ronde_uuids = None
+    if data.ronde_ids:
+        try:
+            ronde_uuids = [UUID(rid) for rid in data.ronde_ids]
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid ronde ID(s)",
+            )
+
+    result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
+    competitie = result.scalar_one_or_none()
+    if not competitie or competitie.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitie not found",
+        )
+
+    mollie_service = MollieService(db)
+    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
+    if not is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
+        )
+
+    return await plan_competitie(competitie_uuid, db, ronde_ids=ronde_uuids, apply=True)

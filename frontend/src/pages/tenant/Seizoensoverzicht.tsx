@@ -31,7 +31,7 @@ interface SeizoensoverzichtData {
 
 export default function Seizoensoverzicht() {
   const { competitieId } = useParams<{ competitieId: string }>();
-  const { club } = useAuth();
+  useAuth();
   const [data, setData] = useState<SeizoensoverzichtData | null>(null);
   const [competitie, setCompetitie] = useState<{ id: string; naam: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -4,28 +4,6 @@ Overzicht over het hele seizoen, slim planningsalgoritme, en betere communicatie
 
 ---
 
-## 5.1 Seizoensoverzicht
-**Prioriteit: HOOG** | **Geschatte omvang: Groot**
-
-De planner moet een heel seizoen in een keer kunnen overzien en plannen, niet ronde per ronde.
-
-**Taken:**
-- [ ] Backend: endpoint dat alle rondes + toewijzingen van een competitie retourneert
-- [ ] Frontend: matrix-view van rondes (kolommen) x teams (rijen) met thuis/uit/baan status
-- [ ] Kleurcodering: groen=gepubliceerd, geel=concept, grijs=leeg
-- [ ] Klik op een cel om direct naar die ronde-detail te gaan
-- [ ] Export naar Excel (CSV) van het hele seizoen
-- [ ] Export naar PDF van het hele seizoen (hergebruik bestaande PDF-service)
-
-**Bestanden:**
-- Nieuw: `frontend/src/pages/tenant/Seizoensoverzicht.tsx`
-- `backend/app/routers/competities.py`
-- `backend/app/services/pdf.py`
-- `frontend/src/lib/api.ts`
-- `frontend/src/pages/tenant/Layout.tsx` (navigatie)
-
----
-
 ## 5.2 Slim planningsalgoritme
 **Prioriteit: HOOG** | **Geschatte omvang: Groot**
 
