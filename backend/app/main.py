@@ -1,3 +1,5 @@
+import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,20 +9,33 @@ from app.config import settings
 from app.db import engine
 from app.routers import (
     auth,
-    superadmin,
-    tenant,
-    tenant_settings,
-    planning,
-    display,
     competities,
-    teams,
+    display,
     onboarding,
     payments,
+    planning,
+    superadmin,
+    teams,
+    tenant,
+    tenant_settings,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not os.getenv("TEST_MODE") and not os.getenv("TESTING"):
+        if settings.SECRET_KEY == "changeme" or len(settings.SECRET_KEY) < 64:
+            raise RuntimeError(
+                "SECRET_KEY is insecure: using default value or shorter than 64 characters. "
+                "Please set a secure SECRET_KEY environment variable."
+            )
+        if "*" in settings.CORS_ORIGINS:
+            logger.warning(
+                "CORS_ORIGINS contains wildcard '*'. This allows requests from any origin. "
+                "Consider restricting to specific domains in production."
+            )
     yield
     await engine.dispose()
 
