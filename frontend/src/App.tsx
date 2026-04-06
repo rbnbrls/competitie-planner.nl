@@ -26,6 +26,7 @@ import HistoriePage from "./pages/tenant/Historie";
 import CheckoutPage from "./pages/tenant/Checkout";
 import DisplayPage from "./pages/Display";
 import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
+import OnboardingPage from "./pages/Onboarding";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { authApi, paymentApi } from "./lib/api";
@@ -40,7 +41,7 @@ function TenantRoutes() {
     if (!user) {
       return;
     }
-    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password"];
+    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding"];
     if (publicPaths.some(p => location.pathname.startsWith(p))) {
       setIsLoading(false);
       return;
@@ -61,10 +62,16 @@ function TenantRoutes() {
   }
 
   const isCheckoutPage = location.pathname === "/checkout";
+  const isOnboardingPage = location.pathname === "/onboarding";
   const hasAccess = paymentStatus?.has_active_mandate && paymentStatus.paid_competitions.length > 0;
+  const allowedWithoutPayment = ["/instellingen", "/branding", "/banen", "/gebruikers", "/onboarding"].some(p => location.pathname.startsWith(p));
 
-  if (!hasAccess && !isCheckoutPage && location.pathname !== "/instellingen" && location.pathname !== "/branding" && location.pathname !== "/banen" && location.pathname !== "/gebruikers") {
+  if (!hasAccess && !isCheckoutPage && !allowedWithoutPayment) {
     return <Navigate to="/checkout" replace />;
+  }
+
+  if (isOnboardingPage && user.onboarding_completed) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
@@ -178,6 +185,7 @@ function AppRoutes() {
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route element={<TenantLayout />}>
           <Route element={<TenantRoutes />}>
+            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/dashboard" element={<TenantDashboard />} />
             <Route path="/instellingen" element={<SettingsPage />} />
             <Route path="/branding" element={<BrandingPage />} />

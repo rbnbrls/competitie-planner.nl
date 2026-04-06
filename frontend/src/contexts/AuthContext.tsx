@@ -20,6 +20,7 @@ interface User {
   is_superadmin: boolean;
   club_id?: string;
   club_slug?: string;
+  onboarding_completed?: boolean;
 }
 
 interface AuthContextType {

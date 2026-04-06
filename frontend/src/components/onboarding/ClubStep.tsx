@@ -1,0 +1,221 @@
+import { useState } from "react";
+import { onboardingApi } from "../../lib/api";
+
+interface ClubStepProps {
+  onNext: () => void;
+  initialData?: {
+    naam?: string;
+    adres?: string;
+    postcode?: string;
+    stad?: string;
+    telefoon?: string;
+    email?: string;
+  };
+}
+
+export default function ClubStep({ onNext, initialData }: ClubStepProps) {
+  const [formData, setFormData] = useState({
+    naam: initialData?.naam || "",
+    adres: initialData?.adres || "",
+    postcode: initialData?.postcode || "",
+    stad: initialData?.stad || "",
+    telefoon: initialData?.telefoon || "",
+    email: initialData?.email || "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.naam || formData.naam.trim().length < 2) {
+      newErrors.naam = "Clubnaam moet minimaal 2 karakters bevatten";
+    }
+    
+    if (formData.postcode && !/^\d{4}[A-Z]{2}$/i.test(formData.postcode)) {
+      newErrors.postcode = "Voer een geldige Nederlandse postcode in (bijv. 1234AB)";
+    }
+    
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Voer een geldig e-mailadres in";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validate()) return;
+
+    setIsLoading(true);
+    try {
+      await onboardingApi.saveClub({
+        naam: formData.naam.trim(),
+        adres: formData.adres.trim() || undefined,
+        postcode: formData.postcode.trim() || undefined,
+        stad: formData.stad.trim() || undefined,
+        telefoon: formData.telefoon.trim() || undefined,
+        email: formData.email.trim() || undefined,
+      });
+      onNext();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } } };
+      if (err.response?.data?.detail) {
+        setErrors({ algemeen: err.response.data.detail });
+      } else {
+        setErrors({ algemeen: "Er is iets misgegaan. Probeer het opnieuw." });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold text-gray-800 mb-2">Stap 1: Club-informatie</h2>
+      <p className="text-gray-600 mb-6">
+        Vertel ons meer over je tennisvereniging. Deze informatie wordt getoond op je clubpagina.
+      </p>
+
+      {errors.algemeen && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-lg">
+          {errors.algemeen}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="naam" className="block text-lg font-semibold text-gray-700 mb-2">
+            Clubnaam <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="naam"
+            value={formData.naam}
+            onChange={(e) => handleChange("naam", e.target.value)}
+            className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+              errors.naam 
+                ? "border-red-400 bg-red-50" 
+                : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            }`}
+            placeholder="Bijvoorbeeld: Tennisvereniging example"
+          />
+          {errors.naam && (
+            <p className="mt-2 text-lg text-red-600 font-medium">{errors.naam}</p>
+          )}
+          <p className="mt-1 text-sm text-gray-500">Dit is de naam die zichtbaar is voor alle gebruikers</p>
+        </div>
+
+        <div>
+          <label htmlFor="adres" className="block text-lg font-semibold text-gray-700 mb-2">
+            Adres
+          </label>
+          <input
+            type="text"
+            id="adres"
+            value={formData.adres}
+            onChange={(e) => handleChange("adres", e.target.value)}
+            className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+            placeholder="Straat en huisnummer"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="postcode" className="block text-lg font-semibold text-gray-700 mb-2">
+              Postcode
+            </label>
+            <input
+              type="text"
+              id="postcode"
+              value={formData.postcode}
+              onChange={(e) => handleChange("postcode", e.target.value.toUpperCase())}
+              className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+                errors.postcode 
+                  ? "border-red-400 bg-red-50" 
+                  : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              }`}
+              placeholder="1234AB"
+              maxLength={6}
+            />
+            {errors.postcode && (
+              <p className="mt-2 text-lg text-red-600 font-medium">{errors.postcode}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="stad" className="block text-lg font-semibold text-gray-700 mb-2">
+              Plaats
+            </label>
+            <input
+              type="text"
+              id="stad"
+              value={formData.stad}
+              onChange={(e) => handleChange("stad", e.target.value)}
+              className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+              placeholder="Amsterdam"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="telefoon" className="block text-lg font-semibold text-gray-700 mb-2">
+              Telefoonnummer
+            </label>
+            <input
+              type="tel"
+              id="telefoon"
+              value={formData.telefoon}
+              onChange={(e) => handleChange("telefoon", e.target.value)}
+              className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+              placeholder="06-12345678"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="email" className="block text-lg font-semibold text-gray-700 mb-2">
+              E-mailadres
+            </label>
+            <div className="relative">
+              <input
+                type="email"
+                id="email"
+                value={formData.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+                  errors.email 
+                    ? "border-red-400 bg-red-50" 
+                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                }`}
+                placeholder="info@vereniging.nl"
+              />
+              {errors.email && (
+                <p className="mt-2 text-lg text-red-600 font-medium">{errors.email}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "Opslaan..." : "Volgende stap"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

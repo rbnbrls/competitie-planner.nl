@@ -2,51 +2,7 @@
 
 De primaire gebruikers zijn vrijwilligers bij tennisverenigingen in de leeftijdscategorie 50+. De UX moet hier volledig op afgestemd zijn: groot, duidelijk, begeleidend, en foutbestendig.
 
----
 
-## 3.1 Dashboard verbeteren
-**Prioriteit: HOOG** | **Geschatte omvang: Middel**
-
-Het tenant dashboard (`Dashboard.tsx`) toont alleen naam, status en rol. Geen overzicht van aankomende speeldagen, openstaande acties, of competitiestatus.
-
-**Taken:**
-- [ ] Backend: dashboard-endpoint met samengevatte data (komende rondes, openstaande acties)
-- [ ] Komende speelrondes tonen met status (concept/gepubliceerd)
-- [ ] Aantal teams zonder baantoewijzing per ronde
-- [ ] Quick-actions: "Genereer volgende ronde", "Publiceer concept"
-- [ ] Overzicht van alle competities met voortgang (X van Y rondes gepubliceerd)
-- [ ] Waarschuwingen: feestdag volgende week, onvolledige teams, verlopen trial
-
-**Bestanden:**
-- `frontend/src/pages/tenant/Dashboard.tsx`
-- Nieuw: `backend/app/routers/tenant_dashboard.py`
-- `frontend/src/lib/api.ts`
-
----
-
-## 3.2 Onboarding-wizard
-**Prioriteit: HOOG** | **Geschatte omvang: Groot**
-
-Nieuwe gebruikers moeten zelf uitvinden hoe ze banen toevoegen, competities aanmaken, teams importeren, etc. Er is geen begeleiding.
-
-**Taken:**
-- [ ] Stapsgewijze onboarding flow na eerste login:
-  - Stap 1: Club-informatie controleren/aanvullen
-  - Stap 2: Banen toevoegen (met uitleg wat prioriteit_score betekent)
-  - Stap 3: Eerste competitie aanmaken (met uitleg speeldag, datums)
-  - Stap 4: Teams importeren of handmatig toevoegen
-- [ ] Contextual help/tooltips bij complexe velden
-- [ ] Checklist op dashboard wat nog moet gebeuren
-- [ ] "Opnieuw doorlopen" optie in instellingen
-- [ ] Markeer `onboarding_completed` in User model na voltooiing
-
-**Bestanden:**
-- Nieuw: `frontend/src/pages/tenant/Onboarding.tsx`
-- `frontend/src/pages/tenant/Dashboard.tsx`
-- `frontend/src/App.tsx` (routing)
-- `backend/app/routers/tenant.py` (onboarding status)
-
----
 
 ## 3.3 Bulkacties
 **Prioriteit: MIDDEL** | **Geschatte omvang: Middel**

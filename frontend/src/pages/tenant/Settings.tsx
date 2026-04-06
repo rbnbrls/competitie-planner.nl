@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, onboardingApi } from "../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface ClubSettings {
   id: string;
@@ -16,10 +17,12 @@ interface ClubSettings {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<ClubSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
   const [formData, setFormData] = useState({
     naam: "",
@@ -60,6 +63,21 @@ export default function SettingsPage() {
       setMessage("Fout bij opslaan");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleResetOnboarding = async () => {
+    if (!confirm("Weet je zeker dat je de onboarding opnieuw wilt doorlopen? Alle ingestelde gegevens blijven behouden.")) {
+      return;
+    }
+    try {
+      await onboardingApi.reset();
+      setResetMessage("Je kunt nu de onboarding opnieuw doorlopen. Je wordt doorgestuurd naar de onboarding pagina.");
+      setTimeout(() => {
+        window.location.href = "/onboarding";
+      }, 2000);
+    } catch (err) {
+      setResetMessage("Fout bij resetten van onboarding");
     }
   };
 
@@ -215,6 +233,27 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <div className="mt-8 pt-8 border-t">
+        <h2 className="text-xl font-bold mb-4">Onboarding</h2>
+        {user && !user.onboarding_completed && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4">
+            <p className="text-yellow-800">Je hebt de onboarding nog niet voltooid.</p>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleResetOnboarding}
+          className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+        >
+          Onboarding opnieuw doorlopen
+        </button>
+        {resetMessage && (
+          <div className={`mt-4 p-3 rounded ${resetMessage.includes("Fout") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+            {resetMessage}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

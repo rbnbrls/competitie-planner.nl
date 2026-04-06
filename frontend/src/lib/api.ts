@@ -282,3 +282,40 @@ export const paymentApi = {
   createPayment: (competitieNaam: string, webhookUrl: string) =>
     api.post("/payments/payments", { competitie_naam: competitieNaam }, { params: { webhook_url: webhookUrl } }),
 };
+
+export const onboardingApi = {
+  getStatus: () => api.get("/tenant/onboarding/status"),
+  saveClub: (data: {
+    naam: string;
+    adres?: string;
+    postcode?: string;
+    stad?: string;
+    telefoon?: string;
+    email?: string;
+  }) => api.post("/tenant/onboarding/club", data),
+  saveCourts: (data: {
+    banen: {
+      naam: string;
+      ondergrond: string;
+      prioriteit_score: number;
+      nummer?: number;
+    }[];
+  }) => api.post("/tenant/onboarding/courts", data),
+  saveCompetition: (data: {
+    naam: string;
+    speeldag: string;
+    start_datum: string;
+    eind_datum: string;
+  }) => api.post("/tenant/onboarding/competition", data),
+  saveTeams: (competitieId: string, data: {
+    teams: {
+      naam: string;
+      captain_naam?: string;
+      captain_email?: string;
+      speelklasse?: string;
+    }[];
+  }) => api.post(`/tenant/onboarding/teams?competitie_id=${competitieId}`, data),
+  complete: () => api.post("/tenant/onboarding/complete"),
+  skip: () => api.post("/tenant/onboarding/skip"),
+  reset: () => api.post("/tenant/onboarding/reset"),
+};

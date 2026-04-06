@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, onboardingApi } from "../../lib/api";
 
 interface DashboardRonde {
   id: string;
@@ -113,12 +113,21 @@ export default function TenantDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [onboardingStatus, setOnboardingStatus] = useState<{
+    step1_completed: boolean;
+    step2_completed: boolean;
+    step3_completed: boolean;
+    step4_completed: boolean;
+  } | null>(null);
 
   useEffect(() => {
-    tenantApi
-      .getDashboard()
-      .then((res) => {
-        setData(res.data);
+    Promise.all([
+      tenantApi.getDashboard(),
+      onboardingApi.getStatus()
+    ])
+      .then(([dashboardRes, statusRes]) => {
+        setData(dashboardRes.data);
+        setOnboardingStatus(statusRes.data);
         setLoading(false);
       })
       .catch(() => {
@@ -138,9 +147,23 @@ export default function TenantDashboard() {
   if (error || !data) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="text-red-400 text-xl">{error || "Kon dashboard niet laden"}</div>
+        <div className="text-xl">{error || "Kon dashboard niet laden"}</div>
       </div>
     );
+  }
+
+  const openstaandeTaken = [];
+  if (!onboardingStatus?.step1_completed) {
+    openstaandeTaken.push({ label: "Club-informatie invullen", url: "/onboarding" });
+  }
+  if (!onboardingStatus?.step2_completed) {
+    openstaandeTaken.push({ label: "Tennisbanen toevoegen", url: "/onboarding" });
+  }
+  if (!onboardingStatus?.step3_completed) {
+    openstaandeTaken.push({ label: "Eerste competitie aanmaken", url: "/onboarding" });
+  }
+  if (!onboardingStatus?.step4_completed) {
+    openstaandeTaken.push({ label: "Teams toevoegen", url: "/onboarding" });
   }
 
   return (
@@ -154,6 +177,27 @@ export default function TenantDashboard() {
             Overzicht van {data.club.naam}
           </p>
         </header>
+
+        {openstaandeTaken.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">Openstaande taken</h2>
+            <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-4">
+              <ul className="space-y-2">
+                {openstaandeTaken.map((taak, idx) => (
+                  <li key={idx} className="flex items-center justify-between">
+                    <span className="text-lg">• {taak.label}</span>
+                    <Link
+                      to={taak.url}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Doen
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         {data.waarschuwingen.length > 0 && (
           <section className="mb-8">
