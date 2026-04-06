@@ -15,10 +15,25 @@ Dit verbeterplan is opgesplitst in 8 fasen. Elke fase heeft een eigen bestand me
 | 7 | [fase-7-nice-to-haves.md](fase-7-nice-to-haves.md) | KNLTB-koppeling, weer, invallers, undo |
 | 8 | [fase-8-deployment-operations.md](fase-8-deployment-operations.md) | Coolify, backups, zero-downtime, observability |
 
+## Prioritering
+
+| Fase | Taken | Focus |
+|------|-------|-------|
+| **1** | 6 taken | Bugs fixen, secrets beveiligen, tests + migraties opzetten |
+| **2** | 5 taken | KNLTB thuis/uit, tegenstanders, tijdslots, cross-competitie |
+| **3** | 5 taken | Dashboard, onboarding, bulk, mobiel, foutmeldingen |
+| **4** | 6 taken | N+1 queries, TanStack Query, rate limiting, IBAN, CORS |
+| **5** | 5 taken | Seizoensoverzicht, slim algoritme, captains, componenten, print |
+| **6** | 5 taken | CI verbeteren, structured logging, health checks, kalender |
+| **7** | 5 taken | KNLTB-koppeling, weer, invallers, undo, competitie-types |
+| **8** | 8 taken | Backups, zero-downtime, staging, Sentry, HTTPS, Docker |
+
+**Totaal: 45 taken verdeeld over 8 fasen.**
+
 ## Ontwikkelomgeving
 
 - **IDE**: VS Code met Kilo Code AI agent
 - **Repository**: https://github.com/rbnbrls/competitie-planner.nl/
-- **Deployment**: Elke push naar `main` triggert een build in Coolify v4.0.0-beta.470
+- **CD**: Elke push naar `main` triggert een build in Coolify v4.0.0-beta.470
 - **Productie URL**: http://competitie-planner.nl
 - **CI**: GitHub Actions (lint + typecheck op PRs)
