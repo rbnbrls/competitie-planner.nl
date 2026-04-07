@@ -406,3 +406,31 @@ class ResultSubmission(BaseModel):
     uitslag_thuisteam: int
     uitslag_uitteam: int
     notitie: str | None = None
+
+
+# --- Auth Schemas ---
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class LogoutResponse(BaseModel):
+    message: str
+
+
+class AdminExistsResponse(BaseModel):
+    exists: bool
+
+
+class RegisterAdminRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str

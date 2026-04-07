@@ -1,12 +1,13 @@
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.db import get_db
+from app.exceptions import ResourceNotFoundError
 from app.models import BaanToewijzing, Competitie, Speelronde, Team, Wedstrijd
 
 router = APIRouter(tags=["calendar"])
@@ -98,7 +99,7 @@ async def get_competition_calendar(
     )
     competitie = result.scalar_one_or_none()
     if not competitie:
-        raise HTTPException(status_code=404, detail="Competitie niet gevonden")
+        raise ResourceNotFoundError("Competitie niet gevonden")
 
     # Fetch all published rounds
     result = await db.execute(
@@ -198,7 +199,7 @@ async def get_team_calendar(
     )
     team = result.scalar_one_or_none()
     if not team:
-        raise HTTPException(status_code=404, detail="Team niet gevonden")
+        raise ResourceNotFoundError("Team niet gevonden")
 
     # Fetch all matches for this team (home and away)
     result = await db.execute(

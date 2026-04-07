@@ -1,6 +1,8 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Optional
 
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -12,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import engine, get_db
+from app.exceptions import BaseAPIException, RateLimitError
 from app.limiter import limiter
 from app.middleware.logging import LoggingMiddleware
 from app.routers import (
@@ -124,6 +127,105 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
 
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+
+def get_language_from_request(request: Request) -> str:
+    """Extract language from Accept-Language header, default to 'nl'."""
+    accept_language = request.headers.get("Accept-Language", "")
+    if accept_language.startswith("nl"):
+        return "nl"
+    # Could extend for other languages if needed
+    return "nl"
+
+
+def get_user_id_from_request(request: Request) -> Optional[str]:
+    """Extract user_id from request state if available."""
+    return getattr(request.state, "user_id", None)
+
+
+async def base_api_exception_handler(request: Request, exc: BaseAPIException):
+    """Handler for custom API exceptions."""
+    # Determine language
+    language = get_language_from_request(request)
+
+    # Get user_id if available
+    user_id = get_user_id_from_request(request)
+
+    # Determine log level: WARNING for client errors (4xx), ERROR for server errors (5xx)
+    log_level = logging.WARNING if 400 <= exc.status_code < 500 else logging.ERROR
+
+    # Log the exception
+    logger.log(
+        log_level,
+        "api_exception",
+        exception_type=type(exc).__name__,
+        error_code=exc.error_code,
+        status_code=exc.status_code,
+        user_id=user_id,
+        path=request.url.path,
+        method=request.method,
+        field_info=exc.field_info if exc.field_info else None,
+        context_data=exc.context_data if exc.context_data else None,
+    )
+
+    # Prepare response
+    response_content = {
+        "error": {
+            "code": exc.error_code,
+            "message": exc.message,
+            "details": exc.field_info,
+            "timestamp": exc.timestamp,
+        }
+    }
+
+    # Add Retry-After header for RateLimitError if retry_after is set
+    response = JSONResponse(
+        status_code=exc.status_code,
+        content=response_content,
+    )
+    if isinstance(exc, RateLimitError) and exc.retry_after:
+        response.headers["Retry-After"] = str(exc.retry_after)
+
+    return response
+
+
+async def unexpected_exception_handler(request: Request, exc: Exception):
+    """Handler for unexpected exceptions."""
+    # Determine language
+    language = get_language_from_request(request)
+
+    # Get user_id if available
+    user_id = get_user_id_from_request(request)
+
+    # Log as CRITICAL with full stack trace
+    logger.critical(
+        "unexpected_exception",
+        exception_type=type(exc).__name__,
+        user_id=user_id,
+        path=request.url.path,
+        method=request.method,
+        exc_info=True,
+    )
+
+    # Safe generic error response
+    response_content = {
+        "error": {
+            "code": "INTERNAL_SERVER_ERROR",
+            "message": "Er is een interne fout opgetreden. Probeer het later opnieuw.",
+            "details": {},
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    }
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=response_content,
+    )
+
+
+# Register exception handlers
+app.add_exception_handler(BaseAPIException, base_api_exception_handler)
+app.add_exception_handler(Exception, unexpected_exception_handler)
 
 
 @app.middleware("http")

@@ -2,12 +2,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.exceptions import ResourceNotFoundError
 from app.models import Club, User
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
@@ -106,61 +107,7 @@ async def get_club(
     result = await db.execute(select(Club).where(Club.id == club_id))
     club = result.scalar_one_or_none()
     if not club:
-        raise HTTPException(status_code=404, detail="Club not found")
-    return club
-
-
-@router.post("/clubs", response_model=ClubResponse, status_code=status.HTTP_201_CREATED)
-async def create_club(
-    club_data: ClubCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_superadmin),
-) -> Club:
-    result = await db.execute(select(Club).where(Club.slug == club_data.slug))
-    existing = result.scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=400, detail="Slug already exists")
-
-    reserved_slugs = ["admin", "api", "display", "www", "mail", "app", "static"]
-    if club_data.slug.lower() in reserved_slugs:
-        raise HTTPException(status_code=400, detail="Slug is reserved")
-
-    club = Club(
-        naam=club_data.naam,
-        slug=club_data.slug,
-        adres=club_data.adres,
-        postcode=club_data.postcode,
-        stad=club_data.stad,
-        telefoon=club_data.telefoon,
-        website=club_data.website,
-        status="trial",
-        trial_ends_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=7),
-    )
-    db.add(club)
-    await db.commit()
-    await db.refresh(club)
-
-    return club
-
-
-@router.patch("/clubs/{club_id}", response_model=ClubResponse)
-async def update_club(
-    club_id: UUID,
-    club_data: ClubUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_superadmin),
-) -> Club:
-    result = await db.execute(select(Club).where(Club.id == club_id))
-    club = result.scalar_one_or_none()
-    if not club:
-        raise HTTPException(status_code=404, detail="Club not found")
-
-    update_data = club_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(club, field, value)
-
-    await db.commit()
-    await db.refresh(club)
+        raise ResourceNotFoundError("Club niet gevonden")
     return club
 
 
@@ -197,7 +144,7 @@ async def get_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise ResourceNotFoundError("Gebruiker niet gevonden")
     return user
 
 
@@ -211,7 +158,7 @@ async def update_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise ResourceNotFoundError("Gebruiker niet gevonden")
 
     update_data = user_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -290,7 +237,7 @@ async def update_club_billing(
     result = await db.execute(select(Club).where(Club.id == club_id))
     club = result.scalar_one_or_none()
     if not club:
-        raise HTTPException(status_code=404, detail="Club not found")
+        raise ResourceNotFoundError("Club niet gevonden")
 
     if data.billing_info is not None:
         club.billing_info = data.billing_info

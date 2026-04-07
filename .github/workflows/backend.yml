@@ -36,6 +36,10 @@ jobs:
         working-directory: backend
         run: uv run ruff format --check app/
 
+      - name: Run mypy
+        working-directory: backend
+        run: uv run mypy app --strict
+
   test:
     name: Test
     runs-on: ubuntu-latest

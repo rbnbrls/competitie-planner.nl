@@ -1,15 +1,23 @@
 from datetime import UTC, datetime, timedelta
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.exceptions import AuthenticationError, AuthorizationError, ConflictError
 from app.limiter import limiter
 from app.models import User
-from app.schemas import UserResponse
+from app.schemas import (
+    AdminExistsResponse,
+    LogoutResponse,
+    RefreshTokenResponse,
+    RegisterAdminRequest,
+    TokenResponse,
+    UserResponse,
+)
 from app.services.auth import (
     TokenPayload,
     create_access_token,
@@ -25,6 +33,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 
 async def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -32,19 +41,16 @@ async def get_current_user(
     token_payload = TokenPayload(payload)
 
     if token_payload.type != "access":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token type",
-        )
+        raise AuthenticationError("Ongeldig token type")
 
     result = await db.execute(select(User).where(User.id == token_payload.user_id))
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+        raise AuthenticationError("Gebruiker niet gevonden of inactief")
+
+    # Add user_id to request state for logging
+    request.state.user_id = str(user.id)
 
     return user
 
@@ -53,20 +59,17 @@ async def get_current_superadmin(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if not current_user.is_superadmin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Superadmin access required",
-        )
+        raise AuthorizationError("Superadmin toegang vereist")
     return current_user
 
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> TokenResponse:
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
 
@@ -75,9 +78,8 @@ async def login(
             retry_after = int(
                 (user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds()
             )
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
+            raise AuthenticationError(
+                f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw."
             )
 
     if not user or not verify_password(form_data.password, user.password_hash):
@@ -87,23 +89,13 @@ async def login(
                 user.locked_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=15)
             await db.commit()
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError("Onjuiste email of wachtwoord")
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is inactive",
-        )
+        raise AuthenticationError("Gebruikersaccount is inactief")
 
     if not user.is_superadmin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Superadmin access required",
-        )
+        raise AuthorizationError("Superadmin toegang vereist")
 
     # Reset failed attempts on success
     user.failed_login_attempts = 0
@@ -132,35 +124,29 @@ async def login(
 
     await db.commit()
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
 
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=RefreshTokenResponse)
 async def refresh_token(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> RefreshTokenResponse:
     payload = decode_token(token)
     token_payload = TokenPayload(payload)
 
     if token_payload.type != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token type",
-        )
+        raise AuthenticationError("Ongeldig token type")
 
     result = await db.execute(select(User).where(User.id == token_payload.user_id))
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+        raise AuthenticationError("Gebruiker niet gevonden of inactief")
 
     access_token = create_access_token(
         data={
@@ -173,10 +159,10 @@ async def refresh_token(
         }
     )
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-    }
+    return RefreshTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+    )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -186,46 +172,38 @@ async def get_me(
     return current_user
 
 
-@router.post("/logout")
-async def logout() -> dict:
-    return {"message": "Logged out successfully"}
+@router.post("/logout", response_model=LogoutResponse)
+async def logout() -> LogoutResponse:
+    return LogoutResponse(message="Logged out successfully")
 
 
-@router.get("/admin-exists")
-async def admin_exists(db: AsyncSession = Depends(get_db)) -> dict:
+@router.get("/admin-exists", response_model=AdminExistsResponse)
+async def admin_exists(db: AsyncSession = Depends(get_db)) -> AdminExistsResponse:
     result = await db.execute(select(func.count(User.id)).where(User.is_superadmin))
     count = result.scalar()
-    return {"exists": count > 0}
+    return AdminExistsResponse(exists=count > 0)
 
 
-@router.post("/register-admin")
+@router.post("/register-admin", response_model=TokenResponse)
 @limiter.limit("3/hour")
 async def register_admin(
     request: Request,
-    email: str,
-    password: str,
-    full_name: str,
+    admin_data: RegisterAdminRequest,
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> TokenResponse:
     result = await db.execute(select(func.count(User.id)).where(User.is_superadmin))
     if result.scalar() > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Admin already exists",
-        )
+        raise ConflictError("Admin bestaat al")
 
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.email == admin_data.email))
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
+        raise ConflictError("Email is al geregistreerd")
 
-    password_hash = get_password_hash(password)
+    password_hash = get_password_hash(admin_data.password)
     new_user = User(
-        email=email,
+        email=admin_data.email,
         password_hash=password_hash,
-        full_name=full_name,
+        full_name=admin_data.full_name,
         role="admin",
         is_superadmin=True,
         is_active=True,
@@ -246,8 +224,8 @@ async def register_admin(
     )
     refresh_token = create_refresh_token(new_user.id)
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
