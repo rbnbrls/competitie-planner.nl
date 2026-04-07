@@ -7,6 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = structlog.get_logger()
 
+
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Clear/initialize context for each request

@@ -5,6 +5,7 @@ Test complete flow from club creation to user invitation
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models import Club, PasswordResetToken
 
 
@@ -261,7 +262,7 @@ class TestPasswordResetJourney:
     ):
         """Journey: User forgets password and resets it."""
 
-        from app.models import Club, PasswordResetToken, User
+        from app.models import Club, User
         from app.services.auth import get_password_hash
 
         club = Club(naam="Test Club", slug="testpwd", status="trial")
@@ -287,7 +288,10 @@ class TestPasswordResetJourney:
 
         # Get reset token from DB
         from sqlalchemy import select
-        result = await db_session.execute(select(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+
+        result = await db_session.execute(
+            select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+        )
         reset_token = result.scalar_one_or_none()
         assert reset_token is not None
 

@@ -55,6 +55,7 @@ def setup_logging():
         cache_logger_on_first_use=True,
     )
 
+
 setup_logging()
 logger = structlog.get_logger()
 
@@ -91,7 +92,9 @@ async def lifespan(app: FastAPI):
                     )
 
         # Confirm CSRF safety (tokens in Authorization header, not cookies)
-        logger.info("Security check: CSRF protection verified - tokens are stateless (OAuth2 Bearer).")
+        logger.info(
+            "Security check: CSRF protection verified - tokens are stateless (OAuth2 Bearer)."
+        )
 
     yield
     if not os.getenv("TEST_MODE") and not os.getenv("TESTING"):
@@ -171,20 +174,12 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     try:
         # Check database connectivity
         await db.execute(text("SELECT 1"))
-        return {
-            "status": "healthy",
-            "database": "ok",
-            "version": settings.VERSION
-        }
+        return {"status": "healthy", "database": "ok", "version": settings.VERSION}
     except Exception as e:
         logger.error("Health check failed", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "status": "unhealthy",
-                "database": "down",
-                "version": settings.VERSION
-            }
+            detail={"status": "unhealthy", "database": "down", "version": settings.VERSION},
         )
 
 
@@ -200,8 +195,7 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.error("Readiness check failed", error=str(e), exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection failure"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database connection failure"
         )
 
 

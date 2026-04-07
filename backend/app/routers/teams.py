@@ -33,6 +33,7 @@ async def list_teams(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     from sqlalchemy import or_
+
     user, club = current
 
     if page < 1:
@@ -57,10 +58,7 @@ async def list_teams(
 
     if search:
         base_query = base_query.where(
-            or_(
-                Team.naam.ilike(f"%{search}%"),
-                Team.captain_naam.ilike(f"%{search}%")
-            )
+            or_(Team.naam.ilike(f"%{search}%"), Team.captain_naam.ilike(f"%{search}%"))
         )
 
     # Count total
@@ -69,9 +67,7 @@ async def list_teams(
     total = total_result.scalar() or 0
 
     # Get page results
-    result = await db.execute(
-        base_query.order_by(Team.naam).offset(offset).limit(size)
-    )
+    result = await db.execute(base_query.order_by(Team.naam).offset(offset).limit(size))
     teams = result.scalars().all()
 
     pages = (total + size - 1) // size
@@ -93,7 +89,7 @@ async def list_teams(
         "total": total,
         "page": page,
         "size": size,
-        "pages": pages
+        "pages": pages,
     }
 
 

@@ -423,7 +423,6 @@ async def forgot_password(
 
         import secrets
 
-
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(datetime.UTC) + timedelta(hours=1)
 

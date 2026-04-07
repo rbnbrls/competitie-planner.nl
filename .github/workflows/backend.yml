@@ -65,7 +65,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: uv sync --group test
+        run: uv sync --group dev
 
       - name: Run pytest with coverage
         working-directory: backend

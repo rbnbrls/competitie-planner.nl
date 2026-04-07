@@ -12,15 +12,14 @@ os.environ["SUPER_ADMIN_EMAIL"] = "test@test.nl"
 os.environ["ENCRYPTION_KEY"] = "test-encryption-key-for-testing-32chars"
 os.environ["TESTING"] = "1"
 
-from app.config import settings
-from app import models  # noqa: F401
-from app.db import Base
-
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
+from app import models  # noqa: F401
+from app.config import settings
+from app.db import Base
 
 TEST_DATABASE_URL = settings.DATABASE_URL
 
@@ -36,16 +35,18 @@ TestSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Provide a perfectly isolated session for each test."""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     async with TestSessionLocal() as session:
         yield session
         await session.close()
+
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
@@ -64,9 +65,11 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides.clear()
 
+
 @pytest_asyncio.fixture(scope="function")
 async def club(db_session: AsyncSession):
     from app.models import Club
+
     club = Club(
         id=uuid.uuid4(),
         naam="Test Club",
@@ -79,10 +82,12 @@ async def club(db_session: AsyncSession):
     await db_session.refresh(club)
     return club
 
+
 @pytest_asyncio.fixture(scope="function")
 async def admin_user(db_session: AsyncSession, club):
     from app.models import User
     from app.services.auth import get_password_hash
+
     user = User(
         id=uuid.uuid4(),
         club_id=club.id,
@@ -97,10 +102,12 @@ async def admin_user(db_session: AsyncSession, club):
     await db_session.refresh(user)
     return user
 
+
 @pytest_asyncio.fixture(scope="function")
 async def superadmin_user(db_session: AsyncSession):
     from app.models import User
     from app.services.auth import get_password_hash
+
     user = User(
         id=uuid.uuid4(),
         email="superadmin@test.nl",
@@ -115,6 +122,7 @@ async def superadmin_user(db_session: AsyncSession):
     await db_session.refresh(user)
     return user
 
+
 @pytest_asyncio.fixture
 async def admin_auth_headers(client: AsyncClient, admin_user):
     response = await client.post(
@@ -126,6 +134,7 @@ async def admin_auth_headers(client: AsyncClient, admin_user):
         return {"Authorization": "Bearer invalid"}
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
 
 @pytest_asyncio.fixture
 async def superadmin_auth_headers(client: AsyncClient, superadmin_user):

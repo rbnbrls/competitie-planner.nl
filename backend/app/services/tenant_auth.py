@@ -77,4 +77,5 @@ async def get_current_tenant_admin(
 def generate_public_token() -> str:
     """Generate a secure random string for public links."""
     import secrets
+
     return secrets.token_urlsafe(32)

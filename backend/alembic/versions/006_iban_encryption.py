@@ -18,6 +18,7 @@ from alembic import op
 # Try to import settings, otherwise use environment
 try:
     from app.config import settings
+
     ENCRYPTION_KEY = settings.ENCRYPTION_KEY
 except ImportError:
     ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
@@ -41,10 +42,13 @@ def get_fernet(key: str):
 
 def upgrade() -> None:
     # 1. Update column length
-    op.alter_column('sepa_mandates', 'iban',
-               existing_type=sa.String(length=34),
-               type_=sa.String(length=255),
-               existing_nullable=False)
+    op.alter_column(
+        "sepa_mandates",
+        "iban",
+        existing_type=sa.String(length=34),
+        type_=sa.String(length=255),
+        existing_nullable=False,
+    )
 
     # 2. Encrypt existing data if key is available
     if ENCRYPTION_KEY:
@@ -61,7 +65,7 @@ def upgrade() -> None:
                 encrypted_iban = fernet.encrypt(current_iban.encode()).decode()
                 conn.execute(
                     sa.text("UPDATE sepa_mandates SET iban = :iban WHERE id = :id"),
-                    {"iban": encrypted_iban, "id": mandate_id}
+                    {"iban": encrypted_iban, "id": mandate_id},
                 )
 
 
@@ -80,13 +84,16 @@ def downgrade() -> None:
                     # Truncate to original length if necessary
                     conn.execute(
                         sa.text("UPDATE sepa_mandates SET iban = :iban WHERE id = :id"),
-                        {"iban": decrypted_iban[:34], "id": mandate_id}
+                        {"iban": decrypted_iban[:34], "id": mandate_id},
                     )
                 except Exception:
                     pass
 
     # 2. Revert column length
-    op.alter_column('sepa_mandates', 'iban',
-               existing_type=sa.String(length=255),
-               type_=sa.String(length=34),
-               existing_nullable=False)
+    op.alter_column(
+        "sepa_mandates",
+        "iban",
+        existing_type=sa.String(length=255),
+        type_=sa.String(length=34),
+        existing_nullable=False,
+    )

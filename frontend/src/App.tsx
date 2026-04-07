@@ -223,9 +223,7 @@ import { ToastContainer } from "./components/Toast";
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <AppRoutes />
       <ToastContainer />
     </AuthProvider>
   );

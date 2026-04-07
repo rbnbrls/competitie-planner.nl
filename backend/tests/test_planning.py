@@ -315,8 +315,18 @@ class TestBatchPlanning:
         await db_session.commit()
 
         # Add home matches
-        w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
-        w2 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde2.id, thuisteam_id=teams[0].id, uitteam_id=teams[2].id)
+        w1 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde1.id,
+            thuisteam_id=teams[0].id,
+            uitteam_id=teams[1].id,
+        )
+        w2 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde2.id,
+            thuisteam_id=teams[0].id,
+            uitteam_id=teams[2].id,
+        )
         db_session.add_all([w1, w2])
         await db_session.commit()
 
@@ -343,7 +353,12 @@ class TestBatchPlanning:
         db_session.add(ronde1)
         await db_session.commit()
 
-        w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
+        w1 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde1.id,
+            thuisteam_id=teams[0].id,
+            uitteam_id=teams[1].id,
+        )
         db_session.add(w1)
         await db_session.commit()
 
@@ -375,8 +390,18 @@ class TestBatchPlanning:
         db_session.add_all([ronde1, ronde2])
 
         # Team 0 plays home twice in a row
-        w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
-        w2 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde2.id, thuisteam_id=teams[0].id, uitteam_id=teams[2].id)
+        w1 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde1.id,
+            thuisteam_id=teams[0].id,
+            uitteam_id=teams[1].id,
+        )
+        w2 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde2.id,
+            thuisteam_id=teams[0].id,
+            uitteam_id=teams[2].id,
+        )
         db_session.add_all([w1, w2])
         await db_session.commit()
 
@@ -405,8 +430,18 @@ class TestBatchPlanning:
         db_session.add(ronde1)
 
         # 2 home matches for same competition on same day
-        w1 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[0].id, uitteam_id=teams[1].id)
-        w2 = Wedstrijd(competitie_id=competitie.id, ronde_id=ronde1.id, thuisteam_id=teams[2].id, uitteam_id=teams[3].id)
+        w1 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde1.id,
+            thuisteam_id=teams[0].id,
+            uitteam_id=teams[1].id,
+        )
+        w2 = Wedstrijd(
+            competitie_id=competitie.id,
+            ronde_id=ronde1.id,
+            thuisteam_id=teams[2].id,
+            uitteam_id=teams[3].id,
+        )
         db_session.add_all([w1, w2])
         await db_session.commit()
 

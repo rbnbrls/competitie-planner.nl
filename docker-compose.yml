@@ -23,8 +23,10 @@ services:
       - ./backend:/app
     environment:
       - DATABASE_URL=postgresql+asyncpg://cpuser:cpdevpass@db:5432/competitieplanner
-      - SECRET_KEY=dev-secret-key-change-in-production-min-64-chars-long-abcdef
+      - SECRET_KEY=dev-secret-key-change-in-production-min-64-chars-long-abcdef-extra-padding-to-reach-limit-1234567890
       - CORS_ORIGINS=["http://localhost:5173"]
+      - SUPER_ADMIN_EMAIL=admin@competitie-planner.nl
+      - ENCRYPTION_KEY=07vC-wX7B-H_1m7L7y-q6V8w-Z2X3c-f4G5h-j8K9l-m0=
     depends_on:
       db:
         condition: service_healthy

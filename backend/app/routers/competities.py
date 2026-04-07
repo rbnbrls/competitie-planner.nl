@@ -17,7 +17,6 @@ from app.schemas import (
     SeizoensoverzichtTeamRow,
     SpeelrondeNestedResponse,
     TeamBase,
-    TeamCreate,
 )
 from app.services import planning as planning_service
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
@@ -26,6 +25,7 @@ router = APIRouter(prefix="/tenant/competities", tags=["competities"])
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
+
 
 @router.post("")
 async def create_competitie(
@@ -90,9 +90,7 @@ async def list_competities(
 
     # Get page results
     result = await db.execute(
-        base_query.order_by(Competitie.start_datum.desc())
-        .offset(offset)
-        .limit(size)
+        base_query.order_by(Competitie.start_datum.desc()).offset(offset).limit(size)
     )
     competities = result.scalars().all()
 
@@ -117,7 +115,7 @@ async def list_competities(
         "total": total,
         "page": page,
         "size": size,
-        "pages": pages
+        "pages": pages,
     }
 
 
@@ -188,6 +186,7 @@ async def list_rondes(
 
     if lazy:
         from datetime import date as date_lib
+
         today = date_lib.today()
         # Toon alleen rondes van vandaag en later
         query = query.where(Speelronde.datum >= today)
@@ -225,10 +224,9 @@ async def list_competitie_teams(
         raise HTTPException(status_code=400, detail="Invalid competition ID")
 
     result = await db.execute(
-        select(Team).where(
-            Team.competitie_id == competitie_uuid,
-            Team.club_id == club.id
-        ).order_by(Team.naam)
+        select(Team)
+        .where(Team.competitie_id == competitie_uuid, Team.club_id == club.id)
+        .order_by(Team.naam)
     )
     teams = result.scalars().all()
 
@@ -262,10 +260,7 @@ async def create_competitie_team(
 
     # Check if competitie exists and belongs to club
     result = await db.execute(
-        select(Competitie).where(
-            Competitie.id == competitie_uuid,
-            Competitie.club_id == club.id
-        )
+        select(Competitie).where(Competitie.id == competitie_uuid, Competitie.club_id == club.id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Competitie not found")
@@ -306,10 +301,7 @@ async def get_seizoensoverzicht(
     # Fetch rounds
     rondes_result = await db.execute(
         select(Speelronde)
-        .where(
-            Speelronde.competitie_id == competitie_uuid,
-            Speelronde.club_id == club.id
-        )
+        .where(Speelronde.competitie_id == competitie_uuid, Speelronde.club_id == club.id)
         .order_by(Speelronde.datum)
     )
     rondes = rondes_result.scalars().all()
@@ -317,10 +309,7 @@ async def get_seizoensoverzicht(
     # Fetch teams
     teams_result = await db.execute(
         select(Team)
-        .where(
-            Team.competitie_id == competitie_uuid,
-            Team.club_id == club.id
-        )
+        .where(Team.competitie_id == competitie_uuid, Team.club_id == club.id)
         .order_by(Team.naam)
     )
     teams = teams_result.scalars().all()
@@ -335,8 +324,7 @@ async def get_seizoensoverzicht(
     toewijzingen = toewijzingen_result.scalars().all()
 
     wedstrijden_result = await db.execute(
-        select(Wedstrijd)
-        .where(Wedstrijd.competitie_id == competitie_uuid)
+        select(Wedstrijd).where(Wedstrijd.competitie_id == competitie_uuid)
     )
     wedstrijden = wedstrijden_result.scalars().all()
 
@@ -367,23 +355,22 @@ async def get_seizoensoverzicht(
                 entry_type = "uit"
                 label = "UIT"
 
-            planning.append(SeizoensoverzichtEntry(
-                ronde_id=ronde.id,
-                type=entry_type,
-                label=label,
-                details=details,
-                status=ronde.status
-            ))
+            planning.append(
+                SeizoensoverzichtEntry(
+                    ronde_id=ronde.id,
+                    type=entry_type,
+                    label=label,
+                    details=details,
+                    status=ronde.status,
+                )
+            )
 
-        rows.append(SeizoensoverzichtTeamRow(
-            team_id=team.id,
-            team_naam=team.naam,
-            planning=planning
-        ))
+        rows.append(
+            SeizoensoverzichtTeamRow(team_id=team.id, team_naam=team.naam, planning=planning)
+        )
 
     return SeizoensoverzichtResponse(
-        rondes=[SpeelrondeNestedResponse.model_validate(r) for r in rondes],
-        rows=rows
+        rondes=[SpeelrondeNestedResponse.model_validate(r) for r in rondes], rows=rows
     )
 
 
@@ -400,6 +387,7 @@ async def export_seizoensoverzicht_pdf(
         raise HTTPException(status_code=400, detail="Invalid competition ID")
 
     from app.services.pdf import PDFService
+
     pdf_service = PDFService(db)
 
     try:

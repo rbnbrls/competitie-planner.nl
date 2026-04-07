@@ -294,15 +294,18 @@ async def get_captain_portal(
     # 2. Haal alle wedstrijden op van dit team
     result = await db.execute(
         select(Wedstrijd)
-        .options(joinedload(Wedstrijd.ronde), joinedload(Wedstrijd.thuisteam), joinedload(Wedstrijd.uitteam), joinedload(Wedstrijd.baan))
+        .options(
+            joinedload(Wedstrijd.ronde),
+            joinedload(Wedstrijd.thuisteam),
+            joinedload(Wedstrijd.uitteam),
+            joinedload(Wedstrijd.baan),
+        )
         .where(or_(Wedstrijd.thuisteam_id == team.id, Wedstrijd.uitteam_id == team.id))
     )
     wedstrijden = result.scalars().all()
 
     # 3. Haal beschikbaarheden op
-    result = await db.execute(
-        select(Beschikbaarheid).where(Beschikbaarheid.team_id == team.id)
-    )
+    result = await db.execute(select(Beschikbaarheid).where(Beschikbaarheid.team_id == team.id))
     beschikbaarheden = result.scalars().all()
 
     # Formatteer wedstrijden
@@ -408,7 +411,7 @@ async def submit_uitslag(
         select(Wedstrijd).where(
             and_(
                 Wedstrijd.id == data.wedstrijd_id,
-                or_(Wedstrijd.thuisteam_id == team.id, Wedstrijd.uitteam_id == team.id)
+                or_(Wedstrijd.thuisteam_id == team.id, Wedstrijd.uitteam_id == team.id),
             )
         )
     )

@@ -71,7 +71,11 @@ class EmailService:
             toewijzingen=toewijzingen,
             banen_dict=banen_dict,
             teams_dict=teams_dict,
-            portal_links={t.team_id: f"{self.frontend_url}/captain/{teams_dict[t.team_id].public_token}" for t in toewijzingen if t.team_id in teams_dict}
+            portal_links={
+                t.team_id: f"{self.frontend_url}/captain/{teams_dict[t.team_id].public_token}"
+                for t in toewijzingen
+                if t.team_id in teams_dict
+            },
         )
 
         success = await self._send_email(

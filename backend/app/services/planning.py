@@ -19,6 +19,7 @@ from app.models import (
 
 class PlanningResult(Protocol):
     """Protocol for planning results to support both preview and apply."""
+
     toewijzingen: list[BaanToewijzing]
     conflicten: list[dict]
 
@@ -73,20 +74,28 @@ async def detecteer_tijdslot_conflicten(
 
     # Simple overlap check
     new_start_min = tijdslot_start.hour * 60 + tijdslot_start.minute
-    new_end_min = (tijdslot_eind.hour * 60 + tijdslot_eind.minute) if tijdslot_eind else new_start_min + 60
+    new_end_min = (
+        (tijdslot_eind.hour * 60 + tijdslot_eind.minute) if tijdslot_eind else new_start_min + 60
+    )
 
     for bestaande in all_toewijzingen:
         b_start_min = bestaande.tijdslot_start.hour * 60 + bestaande.tijdslot_start.minute
-        b_end_min = (bestaande.tijdslot_eind.hour * 60 + bestaande.tijdslot_eind.minute) if bestaande.tijdslot_eind else b_start_min + 60
+        b_end_min = (
+            (bestaande.tijdslot_eind.hour * 60 + bestaande.tijdslot_eind.minute)
+            if bestaande.tijdslot_eind
+            else b_start_min + 60
+        )
 
         # Check for overlap: max(start) < min(end)
         if max(new_start_min, b_start_min) < min(new_end_min, b_end_min):
-            conflicten.append({
-                "type": "overlap",
-                "baan_id": str(baan_id),
-                "bestaand_tijdslot": f"{bestaande.tijdslot_start.strftime('%H:%M')} - {(bestaande.tijdslot_eind.strftime('%H:%M') if bestaande.tijdslot_eind else '?')}",
-                "message": f"Overlap op baan {baan_id} met bestaand tijdslot {bestaande.tijdslot_start.isoformat()}",
-            })
+            conflicten.append(
+                {
+                    "type": "overlap",
+                    "baan_id": str(baan_id),
+                    "bestaand_tijdslot": f"{bestaande.tijdslot_start.strftime('%H:%M')} - {(bestaande.tijdslot_eind.strftime('%H:%M') if bestaande.tijdslot_eind else '?')}",
+                    "message": f"Overlap op baan {baan_id} met bestaand tijdslot {bestaande.tijdslot_start.isoformat()}",
+                }
+            )
 
     return conflicten
 
@@ -167,7 +176,7 @@ async def plan_competitie(
     result = await db.execute(
         select(PlanningHistorie).where(PlanningHistorie.competitie_id == competitie_id)
     )
-    history_map: dict[tuple[uuid.UUID, uuid.UUID], float] = {} # (team_id, baan_id) -> score
+    history_map: dict[tuple[uuid.UUID, uuid.UUID], float] = {}  # (team_id, baan_id) -> score
     for h in result.scalars().all():
         history_map[(h.team_id, h.baan_id)] = float(h.totaal_score)
 
@@ -179,14 +188,12 @@ async def plan_competitie(
     last_court_per_team: dict[uuid.UUID, uuid.UUID] = {}
 
     # Also track current season scores for fairness within this batch
-    current_season_scores: dict[uuid.UUID, float] = {} # team_id -> total_score
+    current_season_scores: dict[uuid.UUID, float] = {}  # team_id -> total_score
 
     # 5. Plan round by round
     for ronde in rondes:
         # Find home teams for this round
-        result = await db.execute(
-            select(Wedstrijd).where(Wedstrijd.ronde_id == ronde.id)
-        )
+        result = await db.execute(select(Wedstrijd).where(Wedstrijd.ronde_id == ronde.id))
         wedstrijden = list(result.scalars().all())
         thuisteam_ids = [w.thuisteam_id for w in wedstrijden]
 
@@ -196,23 +203,28 @@ async def plan_competitie(
         # Check total home teams constraint for the club on this date
         # (This is a soft check here, we report it in logs if exceeded)
         # Count teams from other competitions
-        other_teams_count = await db.scalar(
-            select(func.count(Wedstrijd.id))
-            .join(Speelronde)
-            .where(
-                Speelronde.datum == ronde.datum,
-                Speelronde.club_id == club.id,
-                Speelronde.competitie_id != competitie_id
+        other_teams_count = (
+            await db.scalar(
+                select(func.count(Wedstrijd.id))
+                .join(Speelronde)
+                .where(
+                    Speelronde.datum == ronde.datum,
+                    Speelronde.club_id == club.id,
+                    Speelronde.competitie_id != competitie_id,
+                )
             )
-        ) or 0
+            or 0
+        )
         total_planned_today = other_teams_count + len(thuisteam_ids)
         if total_planned_today > club.max_thuisteams_per_dag:
-            logs.append({
-                "ronde_id": str(ronde.id),
-                "datum": ronde.datum.isoformat(),
-                "severity": "warning",
-                "message": f"Maximum aantal thuisteams ({club.max_thuisteams_per_dag}) overschreden op deze dag (totaal {total_planned_today})."
-            })
+            logs.append(
+                {
+                    "ronde_id": str(ronde.id),
+                    "datum": ronde.datum.isoformat(),
+                    "severity": "warning",
+                    "message": f"Maximum aantal thuisteams ({club.max_thuisteams_per_dag}) overschreden op deze dag (totaal {total_planned_today}).",
+                }
+            )
 
         # Sort teams to give priority to those with lower cumulative scores (fairness)
         thuisteam_ids.sort(key=lambda tid: current_season_scores.get(tid, 0))
@@ -271,29 +283,35 @@ async def plan_competitie(
                     team_id=team_id,
                     baan_id=best_baan.id,
                     tijdslot_start=best_tijd,
-                    tijdslot_eind=time((best_tijd.hour + 1) % 24, best_tijd.minute)
+                    tijdslot_eind=time((best_tijd.hour + 1) % 24, best_tijd.minute),
                 )
                 new_toewijzingen.append(toewijzing)
 
                 # Update tracking state
                 last_court_per_team[team_id] = best_baan.id
-                current_season_scores[team_id] = current_season_scores.get(team_id, 0) + best_baan.prioriteit_score
+                current_season_scores[team_id] = (
+                    current_season_scores.get(team_id, 0) + best_baan.prioriteit_score
+                )
 
                 # Mark as occupied for subsequent teams in the same round
                 if ronde.datum not in occupied_slots:
                     occupied_slots[ronde.datum] = {}
                 if best_baan.id not in occupied_slots[ronde.datum]:
                     occupied_slots[ronde.datum][best_baan.id] = []
-                occupied_slots[ronde.datum][best_baan.id].append((best_tijd, time((best_tijd.hour + 1) % 24, best_tijd.minute)))
+                occupied_slots[ronde.datum][best_baan.id].append(
+                    (best_tijd, time((best_tijd.hour + 1) % 24, best_tijd.minute))
+                )
 
                 assigned_in_ronde += 1
             else:
-                logs.append({
-                    "ronde_id": str(ronde.id),
-                    "datum": ronde.datum.isoformat(),
-                    "severity": "error",
-                    "message": f"Kon geen baan vinden voor team {team_id} op {ronde.datum}."
-                })
+                logs.append(
+                    {
+                        "ronde_id": str(ronde.id),
+                        "datum": ronde.datum.isoformat(),
+                        "severity": "error",
+                        "message": f"Kon geen baan vinden voor team {team_id} op {ronde.datum}.",
+                    }
+                )
 
     # 6. Apply to DB if requested
     if apply:
@@ -329,7 +347,7 @@ async def plan_competitie(
             "toewijzingen": len(new_toewijzingen),
             "errors": len([log for log in logs if log["severity"] == "error"]),
             "warnings": len([log for log in logs if log["severity"] == "warning"]),
-        }
+        },
     }
 
 
@@ -478,7 +496,9 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
             voorkeur_tijd = "19:00"
 
             if ronde.wedstrijden:
-                first_thuisteam = next((w.thuisteam for w in ronde.wedstrijden if w.thuisteam), None)
+                first_thuisteam = next(
+                    (w.thuisteam for w in ronde.wedstrijden if w.thuisteam), None
+                )
                 if first_thuisteam:
                     team_naam = first_thuisteam.naam
                     speelklasse = first_thuisteam.speelklasse or ""
@@ -486,15 +506,17 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
             if ronde.competitie.standaard_starttijden:
                 voorkeur_tijd = ronde.competitie.standaard_starttijden[0].strftime("%H:%M")
 
-            competities_overzicht.append({
-                "competitie_id": str(ronde.competitie.id),
-                "competitie_naam": ronde.competitie.naam,
-                "team_naam": team_naam,
-                "divisie": speelklasse,
-                "banen_nodig": banen_nodig,
-                "voorkeur_tijd": voorkeur_tijd,
-                "speeldag": ronde.competitie.speeldag,
-            })
+            competities_overzicht.append(
+                {
+                    "competitie_id": str(ronde.competitie.id),
+                    "competitie_naam": ronde.competitie.naam,
+                    "team_naam": team_naam,
+                    "divisie": speelklasse,
+                    "banen_nodig": banen_nodig,
+                    "voorkeur_tijd": voorkeur_tijd,
+                    "speeldag": ronde.competitie.speeldag,
+                }
+            )
 
     return {
         "datum": datum.isoformat(),
@@ -518,20 +540,24 @@ async def detecteer_conflicten(datum: date, club_id: uuid.UUID, db: AsyncSession
 
     conflicten = []
     if total_thuisteams > club_max:
-        conflicten.append({
-            "type": "max_thuisteams",
-            "severity": "error",
-            "message": f"Aantal thuisteams ({total_thuisteams}) overschrijdt maximum ({club_max})",
-            "suggestie": "Overweeg om uitwedstrijden te verplaatsen of speeltijd aan te passen",
-        })
+        conflicten.append(
+            {
+                "type": "max_thuisteams",
+                "severity": "error",
+                "message": f"Aantal thuisteams ({total_thuisteams}) overschrijdt maximum ({club_max})",
+                "suggestie": "Overweeg om uitwedstrijden te verplaatsen of speeltijd aan te passen",
+            }
+        )
 
     if dagoverzicht["conflict_warning"]:
-        conflicten.append({
-            "type": "baan_tekort",
-            "severity": "error",
-            "message": f"Niet genoeg banen: {dagoverzicht['totaal_banen_nodig']} nodig, {dagoverzicht['beschikbare_banen']} beschikbaar",
-            "suggestie": "Plan minder thuisteams of verdeel over meerdere tijdblokken",
-        })
+        conflicten.append(
+            {
+                "type": "baan_tekort",
+                "severity": "error",
+                "message": f"Niet genoeg banen: {dagoverzicht['totaal_banen_nodig']} nodig, {dagoverzicht['beschikbare_banen']} beschikbaar",
+                "suggestie": "Plan minder thuisteams of verdeel over meerdere tijdblokken",
+            }
+        )
 
     return {
         "datum": dagoverzicht["datum"],

@@ -110,6 +110,7 @@ class WedstrijdImportRow(BaseModel):
 
 # --- Added Schemas ---
 
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str | None = None
@@ -348,6 +349,7 @@ class SeizoensoverzichtResponse(BaseModel):
 
 # --- Captain Portal Schemas ---
 
+
 class BeschikbaarheidBase(BaseModel):
     is_beschikbaar: bool = True
     notitie: str | None = None
@@ -378,6 +380,7 @@ class CaptainWedstrijdResponse(BaseModel):
     status: str
     uitslag_thuisteam: int | None = None
     uitslag_uitteam: int | None = None
+
 
 class DisplayClubInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)

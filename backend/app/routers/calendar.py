@@ -11,12 +11,15 @@ from app.models import BaanToewijzing, Competitie, Speelronde, Team, Wedstrijd
 
 router = APIRouter(tags=["calendar"])
 
+
 def format_ical_datetime(dt: datetime) -> str:
     # iCal expects UTC time in YYYYMMDDTHHMMSSZ format
     return dt.strftime("%Y%m%dT%H%M%SZ")
 
+
 def format_ical_date(d: date) -> str:
     return d.strftime("%Y%m%d")
+
 
 def generate_ics(events: list[dict], calendar_name: str) -> str:
     lines = [
@@ -35,39 +38,52 @@ def generate_ics(events: list[dict], calendar_name: str) -> str:
         lines.append(f"UID:{event['uid']}")
         lines.append(f"DTSTAMP:{now_str}")
 
-        if event.get('all_day'):
+        if event.get("all_day"):
             lines.append(f"DTSTART;VALUE=DATE:{format_ical_date(event['start'])}")
             # For all-day events, DTEND is the following day according to RFC 5545
-            end_date = event['start'] + timedelta(days=1)
+            end_date = event["start"] + timedelta(days=1)
             lines.append(f"DTEND;VALUE=DATE:{format_ical_date(end_date)}")
         else:
             # Assume local time for DTSTART if no timezone info, but ideally we should provide UTC
             # For simplicity in this app, we'll treat the stored times as "local" but output as UTC-ish or floating
             # Better: output as local time without Z to let the calendar app handle it
-            start_str = event['start'].strftime("%Y%m%dT%H%M%S")
+            start_str = event["start"].strftime("%Y%m%dT%H%M%S")
             lines.append(f"DTSTART:{start_str}")
-            if event.get('end'):
-                end_str = event['end'].strftime("%Y%m%dT%H%M%S")
+            if event.get("end"):
+                end_str = event["end"].strftime("%Y%m%dT%H%M%S")
                 lines.append(f"DTEND:{end_str}")
             else:
                 # Default duration 2 hours
-                end_dt = event['start'] + timedelta(hours=2)
+                end_dt = event["start"] + timedelta(hours=2)
                 end_str = end_dt.strftime("%Y%m%dT%H%M%S")
                 lines.append(f"DTEND:{end_str}")
 
         lines.append(f"SUMMARY:{event['summary']}")
-        if event.get('description'):
+        if event.get("description"):
             # Escape special characters
-            desc = str(event['description']).replace('\\', '\\\\').replace(',', '\\,').replace(';', '\\;').replace('\n', '\\n')
+            desc = (
+                str(event["description"])
+                .replace("\\", "\\\\")
+                .replace(",", "\\,")
+                .replace(";", "\\;")
+                .replace("\n", "\\n")
+            )
             lines.append(f"DESCRIPTION:{desc}")
-        if event.get('location'):
-            loc = str(event['location']).replace('\\', '\\\\').replace(',', '\\,').replace(';', '\\;').replace('\n', '\\n')
+        if event.get("location"):
+            loc = (
+                str(event["location"])
+                .replace("\\", "\\\\")
+                .replace(",", "\\,")
+                .replace(";", "\\;")
+                .replace("\n", "\\n")
+            )
             lines.append(f"LOCATION:{loc}")
 
         lines.append("END:VEVENT")
 
     lines.append("END:VCALENDAR")
     return "\r\n".join(lines)
+
 
 @router.get("/calendar/competition/{competition_id}.ics", response_class=Response)
 async def get_competition_calendar(
@@ -86,8 +102,9 @@ async def get_competition_calendar(
 
     # Fetch all published rounds
     result = await db.execute(
-        select(Speelronde)
-        .where(and_(Speelronde.competitie_id == competition_id, Speelronde.status == "gepubliceerd"))
+        select(Speelronde).where(
+            and_(Speelronde.competitie_id == competition_id, Speelronde.status == "gepubliceerd")
+        )
     )
     rondes = result.scalars().all()
     ronde_ids = [r.id for r in rondes]
@@ -99,7 +116,11 @@ async def get_competition_calendar(
     # Fetch court assignments for these rounds
     result = await db.execute(
         select(BaanToewijzing)
-        .options(joinedload(BaanToewijzing.baan), joinedload(BaanToewijzing.team), joinedload(BaanToewijzing.ronde))
+        .options(
+            joinedload(BaanToewijzing.baan),
+            joinedload(BaanToewijzing.team),
+            joinedload(BaanToewijzing.ronde),
+        )
         .where(BaanToewijzing.ronde_id.in_(ronde_ids))
     )
     toewijzingen = result.scalars().all()
@@ -107,7 +128,11 @@ async def get_competition_calendar(
     # Fetch matches for these rounds
     result = await db.execute(
         select(Wedstrijd)
-        .options(joinedload(Wedstrijd.ronde), joinedload(Wedstrijd.thuisteam), joinedload(Wedstrijd.uitteam))
+        .options(
+            joinedload(Wedstrijd.ronde),
+            joinedload(Wedstrijd.thuisteam),
+            joinedload(Wedstrijd.uitteam),
+        )
         .where(Wedstrijd.ronde_id.in_(ronde_ids))
     )
     wedstrijden = result.scalars().all()
@@ -140,20 +165,25 @@ async def get_competition_calendar(
         start_dt = datetime.combine(start_date, start_time)
         end_dt = datetime.combine(start_date, end_time) if end_time else None
 
-        events.append({
-            "uid": f"toewijzing-{t.id}@competitie-planner.nl",
-            "start": start_dt,
-            "end": end_dt,
-            "summary": summary,
-            "description": description,
-            "location": location,
-            "all_day": False
-        })
+        events.append(
+            {
+                "uid": f"toewijzing-{t.id}@competitie-planner.nl",
+                "start": start_dt,
+                "end": end_dt,
+                "summary": summary,
+                "description": description,
+                "location": location,
+                "all_day": False,
+            }
+        )
 
     ics_content = generate_ics(events, f"{competitie.club.naam} - {competitie.naam}")
-    return Response(content=ics_content, media_type="text/calendar", headers={
-        "Content-Disposition": f"attachment; filename=competitie-{competition_id}.ics"
-    })
+    return Response(
+        content=ics_content,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f"attachment; filename=competitie-{competition_id}.ics"},
+    )
+
 
 @router.get("/calendar/team/{team_token}.ics", response_class=Response)
 async def get_team_calendar(
@@ -173,7 +203,11 @@ async def get_team_calendar(
     # Fetch all matches for this team (home and away)
     result = await db.execute(
         select(Wedstrijd)
-        .options(joinedload(Wedstrijd.ronde), joinedload(Wedstrijd.thuisteam), joinedload(Wedstrijd.uitteam))
+        .options(
+            joinedload(Wedstrijd.ronde),
+            joinedload(Wedstrijd.thuisteam),
+            joinedload(Wedstrijd.uitteam),
+        )
         .where(
             and_(
                 or_(Wedstrijd.thuisteam_id == team.id, Wedstrijd.uitteam_id == team.id),
@@ -223,26 +257,32 @@ async def get_team_calendar(
         if start_time:
             start_dt = datetime.combine(start_date, start_time)
             end_dt = datetime.combine(start_date, end_time) if end_time else None
-            events.append({
-                "uid": f"match-{w.id}@competitie-planner.nl",
-                "start": start_dt,
-                "end": end_dt,
-                "summary": summary,
-                "description": description,
-                "location": location,
-                "all_day": False
-            })
+            events.append(
+                {
+                    "uid": f"match-{w.id}@competitie-planner.nl",
+                    "start": start_dt,
+                    "end": end_dt,
+                    "summary": summary,
+                    "description": description,
+                    "location": location,
+                    "all_day": False,
+                }
+            )
         else:
-            events.append({
-                "uid": f"match-{w.id}@competitie-planner.nl",
-                "start": start_date,
-                "summary": summary,
-                "description": description,
-                "location": location,
-                "all_day": True
-            })
+            events.append(
+                {
+                    "uid": f"match-{w.id}@competitie-planner.nl",
+                    "start": start_date,
+                    "summary": summary,
+                    "description": description,
+                    "location": location,
+                    "all_day": True,
+                }
+            )
 
     ics_content = generate_ics(events, f"Team: {team.naam}")
-    return Response(content=ics_content, media_type="text/calendar", headers={
-        "Content-Disposition": f"attachment; filename=team-{team.naam}.ics"
-    })
+    return Response(
+        content=ics_content,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f"attachment; filename=team-{team.naam}.ics"},
+    )

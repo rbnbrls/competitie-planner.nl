@@ -532,9 +532,6 @@ async def get_competitie_historie(
     )
 
 
-
-
-
 @router.get("/banen")
 async def list_banen_for_planning(
     current: tuple = Depends(get_current_tenant_user),

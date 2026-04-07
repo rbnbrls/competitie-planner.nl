@@ -169,7 +169,9 @@ class Competitie(Base):
     __table_args__ = (Index("idx_competities_club", "club_id"),)
 
     club: Mapped["Club"] = relationship("Club", back_populates="competities")
-    teams: Mapped[list["Team"]] = relationship("Team", back_populates="competitie", cascade="all, delete-orphan")
+    teams: Mapped[list["Team"]] = relationship(
+        "Team", back_populates="competitie", cascade="all, delete-orphan"
+    )
     speelrondes: Mapped[list["Speelronde"]] = relationship(
         "Speelronde", back_populates="competitie"
     )
@@ -199,7 +201,9 @@ class Team(Base):
     speelklasse: Mapped[str | None] = mapped_column(String(50), default=None)
     knltb_team_id: Mapped[str | None] = mapped_column(String(50), default=None)
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
-    public_token: Mapped[str] = mapped_column(String(64), unique=True, default=lambda: uuid.uuid4().hex)
+    public_token: Mapped[str] = mapped_column(
+        String(64), unique=True, default=lambda: uuid.uuid4().hex
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
