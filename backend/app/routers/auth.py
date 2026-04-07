@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -71,8 +71,8 @@ async def login(
     user = result.scalar_one_or_none()
 
     if user:
-        if user.locked_until and user.locked_until > datetime.now(datetime.UTC):
-            retry_after = int((user.locked_until - datetime.now(datetime.UTC)).total_seconds())
+        if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
+            retry_after = int((user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds())
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
@@ -82,7 +82,7 @@ async def login(
         if user:
             user.failed_login_attempts += 1
             if user.failed_login_attempts >= 10:
-                user.locked_until = datetime.now(datetime.UTC) + timedelta(minutes=15)
+                user.locked_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=15)
             await db.commit()
 
         raise HTTPException(
@@ -106,7 +106,7 @@ async def login(
     # Reset failed attempts on success
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now(datetime.UTC)
+    user.last_login = datetime.now(UTC).replace(tzinfo=None)
 
     access_token = create_access_token(
         data={

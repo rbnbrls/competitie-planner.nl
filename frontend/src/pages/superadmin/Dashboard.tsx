@@ -1,4 +1,5 @@
-import { useOutletContext } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { superadminApi } from "../../lib/api";
 
 interface DashboardData {
   metrics: {
@@ -25,15 +26,25 @@ interface DashboardData {
   }>;
 }
 
-interface DashboardContext {
-  data: DashboardData | null;
-}
-
 export default function DashboardPage() {
-  const { data } = useOutletContext<DashboardContext>();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    superadminApi.getDashboard()
+      .then(res => setData(res.data))
+      .catch(err => {
+        console.error("Failed to fetch dashboard data:", err);
+        setError("Kon dashboardgegevens niet laden. Probeer het later opnieuw.");
+      });
+  }, []);
+
+  if (error) {
+    return <div className="p-4 bg-red-100 text-red-800 rounded">{error}</div>;
+  }
 
   if (!data) {
-    return <div>Loading...</div>;
+    return <div>Laden...</div>;
   }
 
   const { metrics, recent_clubs, recent_logins } = data;

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -27,12 +27,12 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(datetime.UTC) + expires_delta
+        expire = datetime.now(UTC).replace(tzinfo=None) + expires_delta
     else:
-        expire = datetime.now(datetime.UTC) + timedelta(
+        expire = datetime.now(UTC).replace(tzinfo=None) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode.update({"exp": expire, "iat": datetime.now(datetime.UTC)})
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC).replace(tzinfo=None)})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -41,8 +41,8 @@ def create_refresh_token(user_id: UUID) -> str:
     to_encode = {
         "sub": str(user_id),
         "type": "refresh",
-        "exp": datetime.now(datetime.UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-        "iat": datetime.now(datetime.UTC),
+        "exp": datetime.now(UTC).replace(tzinfo=None) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        "iat": datetime.now(UTC).replace(tzinfo=None),
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 

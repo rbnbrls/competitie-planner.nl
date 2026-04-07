@@ -158,7 +158,7 @@ function AppRoutes() {
     return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
   }
 
-  const isAdminPanel = hostname === "admin.competitie-planner.nl";
+  const isAdminPanel = hostname === "admin.competitie-planner.nl" || hostname === "localhost" || hostname === "127.0.0.1";
   const isDisplayPanel = hostname === "display.competitie-planner.nl";
   const isTenant = !isAdminPanel && !isDisplayPanel;
 

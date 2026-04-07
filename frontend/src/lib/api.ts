@@ -47,10 +47,14 @@ api.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post("/auth/login", null, {
-      params: { username: email, password },
-    }),
+  login: (email: string, password: string) => {
+    const data = new URLSearchParams();
+    data.append("username", email);
+    data.append("password", password);
+    return api.post("/auth/login", data, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+  },
   logout: () => api.post("/auth/logout"),
   me: () => api.get("/auth/me"),
   adminExists: () => api.get("/auth/admin-exists"),
@@ -61,10 +65,14 @@ export const authApi = {
 };
 
 export const tenantApi = {
-  login: (email: string, password: string, slug: string) =>
-    api.post("/tenant/login", null, {
-      params: { username: email, password, slug },
-    }),
+  login: (email: string, password: string, slug: string) => {
+    const data = new URLSearchParams();
+    data.append("username", email);
+    data.append("password", password);
+    return api.post(`/tenant/login?slug=${slug}`, data, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+  },
   refresh: () =>
     api.post("/tenant/refresh"),
   me: () => api.get("/tenant/me"),
