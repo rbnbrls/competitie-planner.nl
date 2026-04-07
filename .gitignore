@@ -1,0 +1,37 @@
+.env
+.env.local
+.env.*.local
+.*
+/roadmap*
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Node modules
+node_modules/
+
+# Build artifacts
+frontend/storybook-static/
+*.tsbuildinfo
+frontend/vite.config.d.ts
+frontend/vite.config.js
+
+# Frontend test results
+frontend/test-results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
