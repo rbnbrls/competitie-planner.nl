@@ -26,7 +26,6 @@ CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
 @router.post(
     "",
-    summary="Create new competition"
     responses={
         402: {"model": None, "description": "Payment required for this competition"},
     },
@@ -61,7 +60,7 @@ async def create_competitie(
     }
 @router.get(
     "",
-    summary="List competitions"
+    summary="List competitions",
     responses={
         401: {"description": "Authentication required"},
     },
@@ -117,7 +116,7 @@ async def list_competities(
     }
 @router.get(
     "/{competitie_id}",
-    summary="Get competition details"
+    summary="Get competition details",
 )
 async def get_competitie(
     competitie_id: str,
@@ -160,7 +159,7 @@ async def get_competitie(
     }
 @router.get(
     "/{competitie_id}/rondes",
-    summary="List competition rounds"
+    summary="List competition rounds",
 )
 async def list_rondes(
     competitie_id: str,
