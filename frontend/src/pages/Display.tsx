@@ -52,7 +52,7 @@ export default function DisplayPage() {
       const res = await axios.get<DisplayResponse>(url);
       setData(res.data);
       setError(null);
-    } catch (_err) {
+    } catch {
       setError("Geen actuele banenindeling beschikbaar");
     } finally {
       setIsLoading(false);

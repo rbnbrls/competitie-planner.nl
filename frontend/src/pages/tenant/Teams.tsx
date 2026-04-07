@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { Search, Plus, Upload, User, Mail, Shield, Edit, ToggleLeft, ToggleRight } from "lucide-react";
@@ -71,14 +71,7 @@ export default function TeamsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    if (competitieId) {
-      setPage(1);
-      loadData(1, debouncedSearch);
-    }
-  }, [competitieId, debouncedSearch]);
-
-  const loadData = (pageNum = page, search = debouncedSearch) => {
+  const loadData = useCallback((pageNum = page, search = debouncedSearch) => {
     if (!competitieId) return;
     setIsLoading(true);
 
@@ -94,7 +87,14 @@ export default function TeamsPage() {
       console.error("Error loading teams:", err);
       showToast.error("Fout bij laden van teams");
     }).finally(() => setIsLoading(false));
-  };
+  }, [competitieId, page, debouncedSearch]);
+
+  useEffect(() => {
+    if (competitieId) {
+      setPage(1);
+      loadData(1, debouncedSearch);
+    }
+  }, [competitieId, debouncedSearch, loadData]);
 
   useEffect(() => {
     if (competitieId) {

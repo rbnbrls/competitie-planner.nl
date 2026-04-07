@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +11,8 @@ from app.db import get_db
 from app.exceptions import ResourceNotFoundError
 from app.models import Club, User
 from app.routers.auth import get_current_superadmin
+from app.schemas import ClubResponse, UserResponse, UserUpdate
 from app.services.audit import log_audit
-from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 
 router = APIRouter(
     prefix="/superadmin",

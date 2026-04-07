@@ -99,7 +99,7 @@ export default function CompetitiesPage() {
     try {
       const res = await tenantApi.getTijdslotConfig(competitieId);
       setTijdslotConfig(res.data);
-    } catch (err) {
+    } catch {
       setTijdslotConfig({
         standaard_starttijden: [],
         eerste_datum: null,
@@ -120,7 +120,7 @@ export default function CompetitiesPage() {
         start_datum: "",
         eind_datum: "",
       });
-    } catch (err) {
+    } catch {
       // Error is handled in the hook's onError handler
     }
   };
@@ -144,7 +144,7 @@ export default function CompetitiesPage() {
         }
       });
       setShowTijdslotModal(false);
-    } catch (err) {
+    } catch {
       // Error handled in hook
     }
   };

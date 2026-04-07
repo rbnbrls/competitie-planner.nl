@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ToastContainer, showToast } from './Toast';
 
 const meta: Meta<typeof ToastContainer> = {

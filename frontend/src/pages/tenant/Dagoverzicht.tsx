@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { tenantApi } from "../../lib/api";
 import { useParams } from "react-router-dom";
 import { 
@@ -61,11 +61,7 @@ export default function DagoverzichtPage() {
   const [dagoverzicht, setDagoverzicht] = useState<Dagoverzicht | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadDagoverzicht();
-  }, [datum]);
-
-  const loadDagoverzicht = () => {
+  const loadDagoverzicht = useCallback(() => {
     setIsLoading(true);
     tenantApi
       .getDagoverzicht(datum)
@@ -79,7 +75,11 @@ export default function DagoverzichtPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }, [datum]);
+
+  useEffect(() => {
+    loadDagoverzicht();
+  }, [loadDagoverzicht]);
 
   const getStatusConfig = () => {
     if (!dagoverzicht) return { color: "bg-gray-100", label: "Onbekend", icon: Info, variant: "default" as const };

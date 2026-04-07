@@ -9,7 +9,8 @@ describe('cn utility', () => {
   it('handles conditional classes', () => {
     const isActive = true
     expect(cn('base', isActive && 'active')).toBe('base active')
-    expect(cn('base', false && 'active')).toBe('base')
+    const isInactive = false
+    expect(cn('base', isInactive && 'active')).toBe('base')
   })
 
   it('handles array inputs', () => {

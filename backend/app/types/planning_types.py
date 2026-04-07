@@ -1,5 +1,5 @@
-from typing import TypedDict, Optional
-from datetime import datetime, date, time
+from datetime import time
+from typing import TypedDict
 from uuid import UUID
 
 
@@ -14,8 +14,8 @@ class TimeSlotAssignment(TypedDict):
     team_id: UUID
     baan_id: UUID
     tijdslot_start: time
-    tijdslot_eind: Optional[time]
-    notitie: Optional[str]
+    tijdslot_eind: time | None
+    notitie: str | None
 
 
 class RoundPlanningResult(TypedDict):

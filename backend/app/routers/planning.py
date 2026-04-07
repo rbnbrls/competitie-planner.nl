@@ -8,9 +8,9 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.services.audit import log_audit
 from app.models import Baan, BaanToewijzing, Competitie, Speelronde, Team
 from app.routers.tenant import get_current_tenant_user
+from app.services.audit import log_audit
 from app.services.email import EmailService
 from app.services.mollie import MollieService
 from app.services.pdf import PDFService

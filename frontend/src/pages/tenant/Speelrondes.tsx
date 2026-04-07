@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { CheckCircle, Share2, Wand2, Globe, Clock, Filter, AlertCircle } from "lucide-react";
@@ -44,13 +44,7 @@ export default function SpeelrondesPage() {
   const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
   const [lazy, setLazy] = useState(true);
   
-  useEffect(() => {
-    if (competitieId) {
-      loadData();
-    }
-  }, [competitieId, lazy]);
-
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!competitieId) return;
     setIsLoading(true);
     
@@ -63,7 +57,13 @@ export default function SpeelrondesPage() {
     }).catch(() => {
       showToast.error("Fout bij laden van speelrondes");
     }).finally(() => setIsLoading(false));
-  };
+  }, [competitieId, lazy]);
+
+  useEffect(() => {
+    if (competitieId) {
+      loadData();
+    }
+  }, [competitieId, loadData]);
 
   const handleToggleFeestdag = async (e: React.MouseEvent, ronde: Speelronde) => {
     e.stopPropagation();

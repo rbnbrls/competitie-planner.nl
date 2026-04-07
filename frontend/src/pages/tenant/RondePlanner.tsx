@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 
@@ -41,13 +41,7 @@ export default function RondePlannerPage() {
   const [message, setMessage] = useState("");
   const [selectedRonde, setSelectedRonde] = useState<string>("");
 
-  useEffect(() => {
-    if (competitieId) {
-      loadData();
-    }
-  }, [competitieId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!competitieId) return;
 
     setIsLoading(true);
@@ -66,7 +60,13 @@ export default function RondePlannerPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [competitieId]);
+
+  useEffect(() => {
+    if (competitieId) {
+      loadData();
+    }
+  }, [competitieId, loadData]);
 
   const handleExportAgenda = async () => {
     if (!competitieId) return;

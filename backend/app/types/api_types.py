@@ -1,20 +1,20 @@
-from typing import TypeVar, Generic, Optional, Dict, Any
-from uuid import UUID
+from typing import TypeVar
 
 from pydantic import BaseModel
+from pydantic.generics import GenericModel
 
 # Generic response types
 T = TypeVar("T")
 
 
-class APIResponse(BaseModel, Generic[T]):
+class APIResponse(GenericModel[T]):
     success: bool = True
-    data: Optional[T] = None
-    message: Optional[str] = None
-    errors: Optional[list[str]] = None
+    data: T | None = None
+    message: str | None = None
+    errors: list[str] | None = None
 
 
-class PaginatedAPIResponse(BaseModel, Generic[T]):
+class PaginatedAPIResponse(GenericModel[T]):
     items: list[T]
     total: int
     page: int
@@ -24,10 +24,10 @@ class PaginatedAPIResponse(BaseModel, Generic[T]):
 
 # Common filter and sort types
 class FilterParams(BaseModel):
-    search: Optional[str] = None
-    status: Optional[str] = None
-    date_from: Optional[str] = None
-    date_to: Optional[str] = None
+    search: str | None = None
+    status: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
 
 
 class SortParams(BaseModel):
@@ -39,7 +39,7 @@ class SortParams(BaseModel):
 class ErrorDetail(BaseModel):
     field: str
     message: str
-    code: Optional[str] = None
+    code: str | None = None
 
 
 class ValidationErrorResponse(BaseModel):
@@ -52,4 +52,4 @@ class NotFoundResponse(BaseModel):
     success: bool = False
     message: str = "Resource not found"
     resource_type: str
-    resource_id: Optional[str] = None
+    resource_id: str | None = None

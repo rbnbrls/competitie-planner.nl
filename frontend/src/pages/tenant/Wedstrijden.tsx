@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
 import { 
@@ -100,13 +100,7 @@ export default function WedstrijdenPage() {
     fouten: { rij: number; fout: string }[];
   } | null>(null);
 
-  useEffect(() => {
-    if (competitieId) {
-      loadData();
-    }
-  }, [competitieId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!competitieId) return;
 
     setIsLoading(true);
@@ -128,7 +122,13 @@ export default function WedstrijdenPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [competitieId]);
+
+  useEffect(() => {
+    if (competitieId) {
+      loadData();
+    }
+  }, [competitieId, loadData]);
 
   const handleImport = async () => {
     if (!selectedFile || !competitieId) return;

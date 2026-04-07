@@ -70,7 +70,7 @@ export default function SettingsPage() {
     try {
       await tenantApi.updateSettings(formData);
       showToast.success("Instellingen succesvol opgeslagen");
-    } catch (_err) {
+    } catch {
       showToast.error("Fout bij opslaan van instellingen");
     } finally {
       setIsSaving(false);
@@ -88,7 +88,7 @@ export default function SettingsPage() {
       setTimeout(() => {
         window.location.href = "/onboarding";
       }, 1500);
-    } catch (_err) {
+    } catch {
       showToast.error("Fout bij resetten van onboarding");
       setIsResetting(false);
     }

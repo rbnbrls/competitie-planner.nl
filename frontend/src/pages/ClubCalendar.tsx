@@ -37,7 +37,7 @@ export default function ClubCalendarPage() {
       try {
         const res = await axios.get<ClubCalendarResponse>(`${API_BASE_URL}/display/${slug}/kalender`);
         setData(res.data);
-      } catch (_err) {
+      } catch {
         setError("Kon de club-kalender niet laden");
       } finally {
         setIsLoading(false);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { onboardingApi } from "../lib/api";
@@ -30,11 +30,17 @@ export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(true);
   const [competitieId, setCompetitieId] = useState<string>("");
 
-  useEffect(() => {
-    loadStatus();
-  }, []);
+  const completeOnboarding = async () => {
+    try {
+      await onboardingApi.complete();
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Failed to complete onboarding:", error);
+      navigate("/dashboard");
+    }
+  };
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       const response = await onboardingApi.getStatus();
       setStatus(response.data);
@@ -55,7 +61,11 @@ export default function Onboarding() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate, completeOnboarding]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   const handleStep1Complete = () => {
     setCurrentStep(2);
@@ -72,16 +82,6 @@ export default function Onboarding() {
 
   const handleStep4Complete = async () => {
     await completeOnboarding();
-  };
-
-  const completeOnboarding = async () => {
-    try {
-      await onboardingApi.complete();
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Failed to complete onboarding:", error);
-      navigate("/dashboard");
-    }
   };
 
   const handleStepClick = (step: number) => {

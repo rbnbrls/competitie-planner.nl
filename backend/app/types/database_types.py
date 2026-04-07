@@ -1,4 +1,4 @@
-from typing import TypeVar, Protocol, runtime_checkable
+from typing import Protocol, TypeVar, runtime_checkable
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
