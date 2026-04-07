@@ -30,7 +30,6 @@ from app.services.auth import (
 router = APIRouter(
     prefix="/auth",
     tags=["auth"],
-    description="Platform authentication endpoints for superadmin users. Handles login, token refresh, session management, and initial admin registration.",
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")

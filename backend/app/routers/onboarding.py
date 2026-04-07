@@ -1,78 +1,67 @@
 from datetime import date
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.models import Baan, Club, Competitie, Team
 from app.services.tenant_auth import get_current_tenant_user
-
 router = APIRouter(
     prefix="/tenant/onboarding",
-    tags=["onboarding"],
-    description="Onboarding endpoints for new tenant setup. Handles club creation, court setup, competition configuration, and team creation in a guided flow.",
+    tags=["onboarding"]
 )
-
 CURRENT_USER_DEP = Depends(get_current_tenant_user)
-
-
 class ClubInfo(BaseModel):
-    naam: str = Field(..., min_length=2, description="Clubnaam (minimaal 2 karakters)")
+    naam: str = Field(..., min_length=2
+)
     adres: str | None = None
     postcode: str | None = None
     stad: str | None = None
     telefoon: str | None = None
     email: str | None = None
-
-
 class CourtInput(BaseModel):
-    naam: str = Field(..., description="Naam van de baan (bijv. 'Baan 1 - Gravel')")
-    ondergrond: str = Field(..., description="Type ondergrond: gravel, hard, gras, tapijt")
-    prioriteit_score: int = Field(..., ge=1, le=10, description="Prioriteit 1-10")
+    naam: str = Field(...
+)
+    ondergrond: str = Field(...
+)
+    prioriteit_score: int = Field(..., ge=1, le=10
+)
     nummer: int | None = None
-
-
 class CourtsInput(BaseModel):
-    banen: list[CourtInput] = Field(..., min_length=1, description="Minimaal 1 baan toevoegen")
-
-
+    banen: list[CourtInput] = Field(..., min_length=1
+)
 class CompetitionInput(BaseModel):
-    naam: str = Field(..., description="Naam van de competitie")
-    speeldag: str = Field(..., description="Dag van de week: maandag t/m zondag")
-    start_datum: str = Field(..., description="Startdatum in ISO formaat (YYYY-MM-DD)")
-    eind_datum: str = Field(..., description="Einddatum in ISO formaat (YYYY-MM-DD)")
-
-
+    naam: str = Field(...
+)
+    speeldag: str = Field(...
+)
+    start_datum: str = Field(...
+)
+    eind_datum: str = Field(...
+)
 class TeamInput(BaseModel):
-    naam: str = Field(..., description="Naam van het team")
+    naam: str = Field(...
+)
     captain_naam: str | None = None
     captain_email: str | None = None
     speelklasse: str | None = None
-
-
 class TeamsInput(BaseModel):
-    teams: list[TeamInput] = Field(..., min_length=1, description="Minimaal 1 team toevoegen")
-
-
+    teams: list[TeamInput] = Field(..., min_length=1
+)
 @router.get("/status")
 async def get_onboarding_status(
     current: tuple = CURRENT_USER_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(select(Competitie).where(Competitie.club_id == club.id))
     competities = result.scalars().all()
-
     has_teams = False
     for comp in competities:
         if comp.teams:
             has_teams = True
             break
-
     return {
         "onboarding_completed": user.onboarding_completed,
         "step1_completed": club.naam is not None and len(club.naam) >= 2,
@@ -84,8 +73,6 @@ async def get_onboarding_status(
         "has_competition": len(competities) > 0,
         "has_teams": has_teams,
     }
-
-
 @router.post("/club")
 async def save_club_info(
     data: ClubInfo,
@@ -93,7 +80,6 @@ async def save_club_info(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(select(Club).where(Club.naam.ilike(data.naam), Club.id != club.id))
     existing_club = result.scalar_one_or_none()
     if existing_club:
@@ -101,7 +87,6 @@ async def save_club_info(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Er bestaat al een club met deze naam. Kies een andere naam.",
         )
-
     club.naam = data.naam
     club.adres = data.adres
     club.postcode = data.postcode
@@ -109,13 +94,9 @@ async def save_club_info(
     club.telefoon = data.telefoon
     if data.email:
         club.website = data.email
-
     await db.commit()
     await db.refresh(club)
-
     return {"step": 1, "completed": True, "club_naam": club.naam}
-
-
 @router.post("/courts")
 async def save_courts(
     data: CourtsInput,
@@ -123,29 +104,24 @@ async def save_courts(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     existing_nummers = set()
     if club.banen:
         for baan in club.banen:
             existing_nummers.add(baan.nummer)
-
     toegevoegd = []
     for idx, baan_data in enumerate(data.banen):
         nummer = baan_data.nummer if baan_data.nummer else (idx + 1)
-
         if nummer in existing_nummers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Baan nummer {nummer} bestaat al. Kies een ander nummer.",
             )
-
         ondergrond = baan_data.ondergrond.lower()
         if ondergrond not in ["gravel", "hard", "gras", "tapijt"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ongeldige ondergrond. Kies uit: gravel, hard, gras, tapijt",
             )
-
         baan = Baan(
             club_id=club.id,
             nummer=nummer,
@@ -157,12 +133,8 @@ async def save_courts(
         db.add(baan)
         toegevoegd.append(baan.naam)
         existing_nummers.add(nummer)
-
     await db.commit()
-
     return {"step": 2, "completed": True, "banen_toegevoegd": len(toegevoegd)}
-
-
 @router.post("/competition")
 async def save_competition(
     data: CompetitionInput,
@@ -170,7 +142,6 @@ async def save_competition(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         start = date.fromisoformat(data.start_datum)
         eind = date.fromisoformat(data.eind_datum)
@@ -179,32 +150,27 @@ async def save_competition(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ongeldige datumformaat. Gebruik YYYY-MM-DD.",
         )
-
     if start <= date.today():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="De startdatum moet in de toekomst liggen.",
         )
-
     if eind <= start:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="De einddatum moet na de startdatum liggen.",
         )
-
     if (eind - start).days < 28:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="De competitie moet minimaal 4 weken duren.",
         )
-
     valid_days = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
     if data.speeldag.lower() not in valid_days:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ongeldige speeldag. Kies: maandag, dinsdag, woensdag, donderdag, vrijdag, zaterdag of zondag.",
         )
-
     competitie = Competitie(
         club_id=club.id,
         naam=data.naam,
@@ -215,15 +181,12 @@ async def save_competition(
     db.add(competitie)
     await db.commit()
     await db.refresh(competitie)
-
     return {
         "step": 3,
         "completed": True,
         "competitie_id": str(competitie.id),
         "competitie_naam": competitie.naam,
     }
-
-
 @router.post("/teams")
 async def save_teams(
     data: TeamsInput,
@@ -232,7 +195,6 @@ async def save_teams(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -240,7 +202,6 @@ async def save_teams(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ongeldig competitie ID.",
         )
-
     result = await db.execute(
         select(Competitie).where(
             Competitie.id == competitie_uuid,
@@ -253,7 +214,6 @@ async def save_teams(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Competitie niet gevonden.",
         )
-
     teams_toegevoegd = []
     for team_data in data.teams:
         team = Team(
@@ -266,31 +226,24 @@ async def save_teams(
         )
         db.add(team)
         teams_toegevoegd.append(team_data.naam)
-
     await db.commit()
-
     return {"step": 4, "completed": True, "teams_toegevoegd": len(teams_toegevoegd)}
-
-
 @router.post("/complete")
 async def complete_onboarding(
     current: tuple = CURRENT_USER_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     if not club.naam or len(club.naam) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Clubinformatie ontbreekt. Vul eerst je clubgegevens in.",
         )
-
     if not club.banen or len(club.banen) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Geen banen toegevoegd. Voeg minimaal 1 baan toe.",
         )
-
     result = await db.execute(select(Competitie).where(Competitie.club_id == club.id))
     competities = result.scalars().all()
     if not competities:
@@ -298,44 +251,33 @@ async def complete_onboarding(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Geen competitie aangemaakt. Maak eerst een competitie aan.",
         )
-
     has_teams = any(comp.teams for comp in competities if comp.teams)
     if not has_teams:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Geen teams toegevoegd. Voeg minimaal 1 team toe.",
         )
-
     user.onboarding_completed = True
     await db.commit()
     await db.refresh(user)
-
     return {"completed": True, "message": "Onboarding voltooid!"}
-
-
 @router.post("/skip")
 async def skip_onboarding(
     current: tuple = CURRENT_USER_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     user.onboarding_completed = True
     await db.commit()
     await db.refresh(user)
-
     return {"skipped": True, "message": "Onboarding overgeslagen."}
-
-
 @router.post("/reset")
 async def reset_onboarding(
     current: tuple = CURRENT_USER_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     user.onboarding_completed = False
     await db.commit()
     await db.refresh(user)
-
     return {"reset": True, "message": "Onboarding reset. Je kunt nu opnieuw beginnen."}

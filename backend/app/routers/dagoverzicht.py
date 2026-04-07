@@ -1,9 +1,7 @@
 from datetime import date
-
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.routers.tenant import get_current_tenant_user
 from app.services.planning import (
@@ -12,14 +10,10 @@ from app.services.planning import (
     plan_banen,
     validate_club_max_thuisteams,
 )
-
 router = APIRouter(
     prefix="/api/v1/dagoverzicht",
-    tags=["dagoverzicht"],
-    description="Day overview and planning analysis endpoints. Provides daily overview with court requirements, conflict detection, and scheduling validation.",
+    tags=["dagoverzicht"]
 )
-
-
 class CompetitieOverzicht(BaseModel):
     competitie_id: str
     team_naam: str
@@ -28,8 +22,6 @@ class CompetitieOverzicht(BaseModel):
     banen_nodig: int
     voorkeur_tijd: str
     speeldag: str | None = None
-
-
 class DagoverzichtResponse(BaseModel):
     datum: str
     club_id: str
@@ -42,15 +34,11 @@ class DagoverzichtResponse(BaseModel):
     conflict_warning: bool
     totaal_banen_nodig: int
     beschikbaarheid: dict[str, int]
-
-
 class ConflictItem(BaseModel):
     type: str
     severity: str
     message: str
     suggestie: str
-
-
 class ConflictenResponse(BaseModel):
     datum: str
     club_id: str
@@ -58,16 +46,12 @@ class ConflictenResponse(BaseModel):
     conflicten: list[ConflictItem]
     total_banen_nodig: int
     beschikbare_banen: int
-
-
 class BaanToewijzingItem(BaseModel):
     competitie_id: str
     team_naam: str
     toegewezen_banen: int
     tijdblok: str | None
     status: str
-
-
 class PlanBanenResponse(BaseModel):
     datum: str
     club_id: str
@@ -75,11 +59,10 @@ class PlanBanenResponse(BaseModel):
     used_banen: int
     toewijzingen: list[BaanToewijzingItem]
     unassigned: list[BaanToewijzingItem]
-
-
 @router.get("", response_model=DagoverzichtResponse)
 async def dagoverzicht_get(
-    datum: date = Query(..., description="Datum in YYYY-MM-DD formaat"),
+    datum: date = Query(...
+),
     current: tuple = Depends(get_current_tenant_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -88,14 +71,12 @@ async def dagoverzicht_get(
     op de gegeven datum, inclusief baanvereisten en conflictwaarschuwingen.
     """
     user, club = current
-
     result = await bereken_banenvereisten(datum, club.id, db)
     return result
-
-
 @router.get("/conflicten", response_model=ConflictenResponse)
 async def dagoverzicht_conflicten(
-    datum: date = Query(..., description="Datum in YYYY-MM-DD formaat"),
+    datum: date = Query(...
+),
     current: tuple = Depends(get_current_tenant_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -103,14 +84,12 @@ async def dagoverzicht_conflicten(
     Retourneert specifieke conflicten voor een gegeven datum.
     """
     user, club = current
-
     result = await detecteer_conflicten(datum, club.id, db)
     return result
-
-
 @router.post("/plan", response_model=PlanBanenResponse)
 async def dagoverzicht_plan(
-    datum: date = Query(..., description="Datum in YYYY-MM-DD formaat"),
+    datum: date = Query(...
+),
     current: tuple = Depends(get_current_tenant_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -118,15 +97,13 @@ async def dagoverzicht_plan(
     Voert het planning-algoritme uit om banen toe te wijzen over alle competities.
     """
     user, club = current
-
     dagoverzicht = await bereken_banenvereisten(datum, club.id, db)
     result = await plan_banen(dagoverzicht, db)
     return result
-
-
 @router.get("/validate/max-thuisteams")
 async def validate_max_thuisteams(
-    datum: date = Query(..., description="Datum in YYYY-MM-DD formaat"),
+    datum: date = Query(...
+),
     current: tuple = Depends(get_current_tenant_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -134,7 +111,6 @@ async def validate_max_thuisteams(
     Valideer of het aantal thuisteams de club-instelling niet overschrijdt.
     """
     user, club = current
-
     is_valid = await validate_club_max_thuisteams(club.id, datum, db)
     return {
         "valid": is_valid,
