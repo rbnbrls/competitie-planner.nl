@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v.startswith("["):
                 import json
+
                 try:
                     return json.loads(v.replace("'", '"'))
                 except json.JSONDecodeError:

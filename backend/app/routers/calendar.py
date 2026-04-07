@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import and_, or_, select
@@ -31,7 +31,7 @@ def generate_ics(events: list[dict], calendar_name: str) -> str:
         "METHOD:PUBLISH",
     ]
 
-    now_str = format_ical_datetime(datetime.now(datetime.UTC))
+    now_str = format_ical_datetime(datetime.now(UTC))
 
     for event in events:
         lines.append("BEGIN:VEVENT")

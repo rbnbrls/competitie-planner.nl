@@ -72,7 +72,9 @@ async def login(
 
     if user:
         if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
-            retry_after = int((user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds())
+            retry_after = int(
+                (user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds()
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",

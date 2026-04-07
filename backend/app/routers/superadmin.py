@@ -38,7 +38,7 @@ async def get_dashboard(
     recent_clubs = sorted(clubs, key=lambda c: c.created_at, reverse=True)[:5]
     recent_logins = sorted(
         [u for u in users if u.last_login],
-        key=lambda u: u.last_login,
+        key=lambda u: u.last_login or datetime.min,
         reverse=True,
     )[:5]
 
@@ -249,7 +249,7 @@ async def get_billing_overview(
     actives = []
     suspended = []
 
-    # now = datetime.now(datetime.UTC)  # reserved for future billing logic
+    # now = datetime.now(UTC)  # reserved for future billing logic
 
     for c in clubs:
         entry = {

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
@@ -373,7 +373,7 @@ async def publish_ronde(
         ronde.public_token = secrets.token_urlsafe(32)
 
     ronde.status = "gepubliceerd"
-    ronde.published_at = datetime.now(datetime.UTC)
+    ronde.published_at = datetime.now(UTC)
     ronde.published_by = user.id
 
     result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
@@ -742,7 +742,7 @@ async def bulk_publish_rondes(
                 ronde.public_token = secrets.token_urlsafe(32)
 
             ronde.status = "gepubliceerd"
-            ronde.published_at = datetime.now(datetime.UTC)
+            ronde.published_at = datetime.now(UTC)
             ronde.published_by = user.id
             await db.commit()
             await db.refresh(ronde)

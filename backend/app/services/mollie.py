@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
@@ -42,7 +42,7 @@ class MollieService:
         existing = await self.get_config()
         if existing:
             existing.api_key = encrypted_key
-            existing.updated_at = datetime.now(datetime.UTC)
+            existing.updated_at = datetime.now(UTC)
         else:
             existing = MollieConfig(api_key=encrypted_key)
             self.db.add(existing)
@@ -73,7 +73,7 @@ class MollieService:
             "consumerName": consumer_name,
             "consumerAccount": iban,
             "consumerReference": mandate_ref,
-            "signatureDate": datetime.now(datetime.UTC).date().isoformat(),
+            "signatureDate": datetime.now(UTC).date().isoformat(),
             "sequenceType": "recurring",
         }
 
@@ -143,8 +143,8 @@ class MollieService:
         if new_status != mandate.status:
             mandate.status = new_status
             if new_status == "active":
-                mandate.signed_at = datetime.now(datetime.UTC)
-            mandate.updated_at = datetime.now(datetime.UTC)
+                mandate.signed_at = datetime.now(UTC)
+            mandate.updated_at = datetime.now(UTC)
             await self.db.commit()
 
         return {
@@ -226,7 +226,7 @@ class MollieService:
         payment.mollie_payment_status = mollie_data["status"]
         if mollie_data["status"] == "paid":
             payment.status = "paid"
-            payment.paid_at = datetime.now(datetime.UTC)
+            payment.paid_at = datetime.now(UTC)
         await self.db.commit()
         await self.db.refresh(payment)
 
@@ -264,7 +264,7 @@ class MollieService:
         payment.mollie_payment_status = mollie_data["status"]
         if mollie_data["status"] == "paid":
             payment.status = "paid"
-            payment.paid_at = datetime.now(datetime.UTC)
+            payment.paid_at = datetime.now(UTC)
         elif mollie_data["status"] in ("failed", "expired", "canceled"):
             payment.status = "failed"
         await self.db.commit()
@@ -291,7 +291,7 @@ class MollieService:
         if existing:
             existing.price_small_club = price_small_club
             existing.price_large_club = price_large_club
-            existing.updated_at = datetime.now(datetime.UTC)
+            existing.updated_at = datetime.now(UTC)
         else:
             existing = CompetitionPrice(
                 competitie_naam=competitie_naam,

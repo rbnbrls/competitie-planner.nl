@@ -129,7 +129,9 @@ async def login(
 
     if user:
         if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
-            retry_after = int((user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds())
+            retry_after = int(
+                (user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds()
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
@@ -285,7 +287,7 @@ async def create_invite(
     import secrets
 
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(datetime.UTC) + timedelta(hours=48)
+    expires_at = datetime.now(UTC) + timedelta(hours=48)
 
     invite = InviteToken(
         club_id=club.id,
@@ -328,7 +330,7 @@ async def accept_invite(
             detail="Invalid or expired invite token",
         )
 
-    if invite.expires_at < datetime.now(datetime.UTC):
+    if invite.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite token has expired",
@@ -411,7 +413,7 @@ async def forgot_password(
         result = await db.execute(
             select(func.count(PasswordResetToken.id)).where(
                 PasswordResetToken.user_id == user.id,
-                PasswordResetToken.created_at > datetime.now(datetime.UTC) - timedelta(hours=1),
+                PasswordResetToken.created_at > datetime.now(UTC) - timedelta(hours=1),
             )
         )
         reset_count = result.scalar()
@@ -424,7 +426,7 @@ async def forgot_password(
         import secrets
 
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(datetime.UTC) + timedelta(hours=1)
+        expires_at = datetime.now(UTC) + timedelta(hours=1)
 
         reset_token = PasswordResetToken(
             club_id=club.id,
@@ -468,7 +470,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    if reset_token.expires_at < datetime.now(datetime.UTC):
+    if reset_token.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",

@@ -64,7 +64,7 @@ export default function CaptainPortaal() {
     try {
       const res = await axios.get<CaptainPortalData>(`${API_BASE_URL}/captain/${token}`);
       setData(res.data);
-    } catch (_err) {
+    } catch {
       setError("Kon gegevens niet laden. Is de link correct?");
     } finally {
       setIsLoading(false);
@@ -82,7 +82,7 @@ export default function CaptainPortaal() {
         is_beschikbaar: !current
       });
       fetchData(); // Refresh
-    } catch (_err) {
+    } catch {
       alert("Fout bij het opslaan van beschikbaarheid");
     }
   };
@@ -95,7 +95,7 @@ export default function CaptainPortaal() {
         uitslag_uitteam: uit
       });
       fetchData();
-    } catch (_err) {
+    } catch {
       alert("Fout bij het opslaan van uitslag");
     }
   };
