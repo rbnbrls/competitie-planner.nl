@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import engine, get_db
-from app.exceptions import BaseAPIException, RateLimitError
+from app.exceptions import BaseAPIExceptionErrorError, RateLimitError
 from app.limiter import limiter
 from app.middleware.logging import LoggingMiddleware
 from app.routers import (
@@ -160,7 +160,7 @@ def get_user_id_from_request(request: Request) -> Optional[str]:
     return getattr(request.state, "user_id", None)
 
 
-async def base_api_exception_handler(request: Request, exc: BaseAPIException):
+async def base_api_exception_handler(request: Request, exc: BaseAPIExceptionError):
     """Handler for custom API exceptions."""
     # Determine language
     language = get_language_from_request(request)
@@ -241,7 +241,7 @@ async def unexpected_exception_handler(request: Request, exc: Exception):
 
 
 # Register exception handlers
-app.add_exception_handler(BaseAPIException, base_api_exception_handler)
+app.add_exception_handler(BaseAPIExceptionError, base_api_exception_handler)
 app.add_exception_handler(Exception, unexpected_exception_handler)
 
 

@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional, List
+from typing import TypedDict, Optional
 from datetime import datetime, date, time
 from uuid import UUID
 
@@ -7,7 +7,7 @@ class PlanningConflict(TypedDict):
     type: str  # "overlap", "double_booking", etc.
     description: str
     severity: str  # "error", "warning"
-    entities: List[str]  # IDs of conflicting entities
+    entities: list[str]  # IDs of conflicting entities
 
 
 class TimeSlotAssignment(TypedDict):
@@ -20,6 +20,6 @@ class TimeSlotAssignment(TypedDict):
 
 class RoundPlanningResult(TypedDict):
     ronde_id: UUID
-    toewijzingen: List[TimeSlotAssignment]
-    conflicten: List[PlanningConflict]
+    toewijzingen: list[TimeSlotAssignment]
+    conflicten: list[PlanningConflict]
     status: str  # "success", "partial", "failed"

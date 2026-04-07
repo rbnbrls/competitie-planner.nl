@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Optional, List, Dict, Any
+from typing import TypeVar, Generic, Optional, Dict, Any
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -11,11 +11,11 @@ class APIResponse(BaseModel, Generic[T]):
     success: bool = True
     data: Optional[T] = None
     message: Optional[str] = None
-    errors: Optional[List[str]] = None
+    errors: Optional[list[str]] = None
 
 
 class PaginatedAPIResponse(BaseModel, Generic[T]):
-    items: List[T]
+    items: list[T]
     total: int
     page: int
     size: int
@@ -45,7 +45,7 @@ class ErrorDetail(BaseModel):
 class ValidationErrorResponse(BaseModel):
     success: bool = False
     message: str = "Validation failed"
-    errors: List[ErrorDetail]
+    errors: list[ErrorDetail]
 
 
 class NotFoundResponse(BaseModel):

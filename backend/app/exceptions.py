@@ -5,7 +5,7 @@ from fastapi import status
 type DictOrNone = dict[str, Any] | None
 
 
-class BaseAPIException(Exception):
+class BaseAPIExceptionError(Exception):
     """Base exception class for all API errors."""
 
     def __init__(
@@ -25,7 +25,7 @@ class BaseAPIException(Exception):
         super().__init__(self.message)
 
 
-class ValidationError(BaseAPIException):
+class ValidationError(BaseAPIExceptionError):
     """Exception for input validation errors with field-specific information."""
 
     def __init__(
@@ -43,7 +43,7 @@ class ValidationError(BaseAPIException):
         )
 
 
-class AuthenticationError(BaseAPIException):
+class AuthenticationError(BaseAPIExceptionError):
     """Exception for authentication problems."""
 
     def __init__(
@@ -59,7 +59,7 @@ class AuthenticationError(BaseAPIException):
         )
 
 
-class AuthorizationError(BaseAPIException):
+class AuthorizationError(BaseAPIExceptionError):
     """Exception for authorization/permission issues."""
 
     def __init__(
@@ -75,7 +75,7 @@ class AuthorizationError(BaseAPIException):
         )
 
 
-class ResourceNotFoundError(BaseAPIException):
+class ResourceNotFoundError(BaseAPIExceptionError):
     """Exception for missing resources."""
 
     def __init__(
@@ -91,7 +91,7 @@ class ResourceNotFoundError(BaseAPIException):
         )
 
 
-class ConflictError(BaseAPIException):
+class ConflictError(BaseAPIExceptionError):
     """Exception for duplicate entries and state conflicts."""
 
     def __init__(
@@ -107,7 +107,7 @@ class ConflictError(BaseAPIException):
         )
 
 
-class RateLimitError(BaseAPIException):
+class RateLimitError(BaseAPIExceptionError):
     """Exception for rate limiting scenarios."""
 
     def __init__(
@@ -127,7 +127,7 @@ class RateLimitError(BaseAPIException):
         self.retry_after = retry_after
 
 
-class ExternalServiceError(BaseAPIException):
+class ExternalServiceError(BaseAPIExceptionError):
     """Exception for upstream service failures."""
 
     def __init__(
