@@ -11,6 +11,7 @@ from app.db import get_db
 from app.exceptions import ResourceNotFoundError
 from app.models import Club, User
 from app.routers.auth import get_current_superadmin
+from app.services.audit import log_audit
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 
 router = APIRouter(
@@ -170,6 +171,16 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
+
+    log_audit(
+        "user.update",
+        actor_id=str(current_user.id),
+        actor_email=current_user.email,
+        target_type="user",
+        target_id=str(user_id),
+        changed_fields=list(update_data.keys()),
+    )
+
     return user
 
 
@@ -248,6 +259,15 @@ async def update_club_billing(
 
     await db.commit()
     await db.refresh(club)
+
+    log_audit(
+        "club.update",
+        actor_id=str(current_user.id),
+        actor_email=current_user.email,
+        target_type="club",
+        target_id=str(club_id),
+        changed_fields=["billing_info"],
+    )
 
     return {
         "id": str(club.id),

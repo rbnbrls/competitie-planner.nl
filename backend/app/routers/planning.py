@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -9,6 +8,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.services.audit import log_audit
 from app.models import Baan, BaanToewijzing, Competitie, Speelronde, Team
 from app.routers.tenant import get_current_tenant_user
 from app.services.email import EmailService
@@ -391,13 +391,13 @@ async def publish_ronde(
         email_result = await email_service.send_publication_notification(ronde_uuid)
         email_notification_sent = email_result.get("sent", 0) > 0
 
-    logger = structlog.get_logger()
-    logger.info(
-        "ronde_published",
-        ronde_id=str(ronde.id),
-        competitie_id=str(competitie.id),
+    log_audit(
+        "ronde.publish",
+        actor_id=str(user.id),
+        target_type="ronde",
+        target_id=str(ronde.id),
         club_id=str(club.id),
-        published_by=str(user.id),
+        competitie_id=str(competitie.id),
     )
 
     await db.commit()
@@ -471,6 +471,15 @@ async def depublish_ronde(
 
     await db.commit()
     await db.refresh(ronde)
+
+    log_audit(
+        "ronde.depublish",
+        actor_id=str(user.id),
+        target_type="ronde",
+        target_id=str(ronde.id),
+        club_id=str(club.id),
+        competitie_id=str(competitie.id),
+    )
 
     return {
         "id": str(ronde.id),
@@ -761,13 +770,14 @@ async def bulk_publish_rondes(
                 if email_result.get("sent", 0) > 0:
                     email_notifications_sent += 1
 
-            logger = structlog.get_logger()
-            logger.info(
-                "ronde_published_bulk",
-                ronde_id=str(ronde.id),
-                competitie_id=str(competitie.id),
+            log_audit(
+                "ronde.publish",
+                actor_id=str(user.id),
+                target_type="ronde",
+                target_id=str(ronde.id),
                 club_id=str(club.id),
-                published_by=str(user.id),
+                competitie_id=str(competitie.id),
+                bulk=True,
             )
 
             results.append(

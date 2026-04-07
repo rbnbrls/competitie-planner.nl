@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { onboardingApi } from "../../lib/api";
+import { competitionSchema, zodErrors } from "../../lib/schemas";
 
 interface CompetitionStepProps {
   onNext: (competitieId: string) => void;
@@ -27,11 +28,6 @@ export default function CompetitionStep({ onNext, onBack }: CompetitionStepProps
     { value: "zondag", label: "Zondag" },
   ];
 
-  const getToday = () => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  };
-
   const getMinDate = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -39,33 +35,16 @@ export default function CompetitionStep({ onNext, onBack }: CompetitionStepProps
   };
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.naam.trim()) {
-      newErrors.naam = "Vul een naam in voor de competitie";
-    }
-    
-    if (!formData.start_datum) {
-      newErrors.start_datum = "Selecteer een startdatum";
-    } else if (formData.start_datum < getToday()) {
-      newErrors.start_datum = "De startdatum moet in de toekomst liggen";
-    }
-    
-    if (!formData.eind_datum) {
-      newErrors.eind_datum = "Selecteer een einddatum";
-    } else if (formData.start_datum && formData.eind_datum <= formData.start_datum) {
-      newErrors.eind_datum = "De einddatum moet na de startdatum liggen";
-    } else if (formData.start_datum && formData.eind_datum) {
-      const start = new Date(formData.start_datum);
-      const end = new Date(formData.eind_datum);
-      const diffDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-      if (diffDays < 28) {
-        newErrors.eind_datum = "De competitie moet minimaal 4 weken duren";
-      }
-    }
-
+    const result = competitionSchema.safeParse(formData);
+    const newErrors = zodErrors(result);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateField = (field: string, value: string) => {
+    const result = competitionSchema.safeParse({ ...formData, [field]: value });
+    const fieldError = zodErrors(result)[field];
+    setErrors((prev) => ({ ...prev, [field]: fieldError || "" }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,9 +129,10 @@ export default function CompetitionStep({ onNext, onBack }: CompetitionStepProps
             id="naam"
             value={formData.naam}
             onChange={(e) => handleChange("naam", e.target.value)}
+            onBlur={(e) => validateField("naam", e.target.value)}
             className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-              errors.naam 
-                ? "border-red-400 bg-red-50" 
+              errors.naam
+                ? "border-red-400 bg-red-50"
                 : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             }`}
             placeholder="Bijv. Zomercompetitie 2025"
@@ -190,9 +170,10 @@ export default function CompetitionStep({ onNext, onBack }: CompetitionStepProps
               min={getMinDate()}
               value={formData.start_datum}
               onChange={(e) => handleChange("start_datum", e.target.value)}
+              onBlur={(e) => validateField("start_datum", e.target.value)}
               className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                errors.start_datum 
-                  ? "border-red-400 bg-red-50" 
+                errors.start_datum
+                  ? "border-red-400 bg-red-50"
                   : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               }`}
             />
@@ -211,9 +192,10 @@ export default function CompetitionStep({ onNext, onBack }: CompetitionStepProps
               min={formData.start_datum || getMinDate()}
               value={formData.eind_datum}
               onChange={(e) => handleChange("eind_datum", e.target.value)}
+              onBlur={(e) => validateField("eind_datum", e.target.value)}
               className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                errors.eind_datum 
-                  ? "border-red-400 bg-red-50" 
+                errors.eind_datum
+                  ? "border-red-400 bg-red-50"
                   : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               }`}
             />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { forgotPasswordSchema, zodErrors } from "../../lib/schemas";
 
 export default function ForgotPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -14,10 +15,17 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    const validation = forgotPasswordSchema.safeParse({ email });
+    if (!validation.success) {
+      setError(zodErrors(validation).email || "Voer een geldig e-mailadres in");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      await tenantApi.forgotPassword(email, slug);
+      await tenantApi.forgotPassword(email.trim(), slug);
       setSuccess(true);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {

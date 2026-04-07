@@ -1,6 +1,5 @@
 from datetime import UTC, datetime, timedelta
 
-import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import func, select
@@ -18,6 +17,7 @@ from app.schemas import (
     TokenResponse,
     UserResponse,
 )
+from app.services.audit import log_audit
 from app.services.auth import (
     TokenPayload,
     create_access_token,
@@ -101,8 +101,23 @@ async def login(
     if not user or not verify_password(form_data.password, user.password_hash):
         if user:
             user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 3:
+                log_audit(
+                    "auth.login_failure",
+                    actor_id=str(user.id),
+                    actor_email=user.email,
+                    result="failure",
+                    attempts=user.failed_login_attempts,
+                )
             if user.failed_login_attempts >= 10:
                 user.locked_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=15)
+                log_audit(
+                    "auth.account_locked",
+                    actor_id=str(user.id),
+                    actor_email=user.email,
+                    result="failure",
+                    locked_minutes=15,
+                )
             await db.commit()
 
         raise AuthenticationError("Onjuiste email of wachtwoord")
@@ -130,12 +145,11 @@ async def login(
     )
     refresh_token = create_refresh_token(user.id)
 
-    logger = structlog.get_logger()
-    logger.info(
-        "user_login_success",
-        user_id=str(user.id),
-        email=user.email,
-        is_superadmin=user.is_superadmin,
+    log_audit(
+        "auth.login_success",
+        actor_id=str(user.id),
+        actor_email=user.email,
+        is_superadmin=True,
     )
 
     await db.commit()
@@ -227,6 +241,15 @@ async def register_admin(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    log_audit(
+        "user.create",
+        actor_id=str(new_user.id),
+        actor_email=new_user.email,
+        target_type="user",
+        target_id=str(new_user.id),
+        role="superadmin",
+    )
 
     access_token = create_access_token(
         data={

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { passwordSchema, zodErrors } from "../../lib/schemas";
 
 export default function ResetPasswordPage() {
   const { token } = useParams<{ token: string }>();
@@ -15,18 +16,10 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError("");
 
-    if (password.length < 8) {
-      setError("Wachtwoord moet minimaal 8 tekens zijn");
-      return;
-    }
-
-    if (!/\d/.test(password)) {
-      setError("Wachtwoord moet minimaal 1 cijfer bevatten");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Wachtwoorden komen niet overeen");
+    const validation = passwordSchema.safeParse({ password, confirmPassword });
+    if (!validation.success) {
+      const errs = zodErrors(validation);
+      setError(errs.password || errs.confirmPassword || "Validatiefout");
       return;
     }
 

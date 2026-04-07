@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { onboardingApi } from "../../lib/api";
+import { clubSchema, zodErrors } from "../../lib/schemas";
 
 interface ClubStepProps {
   onNext: () => void;
@@ -26,22 +27,16 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.naam || formData.naam.trim().length < 2) {
-      newErrors.naam = "Clubnaam moet minimaal 2 karakters bevatten";
-    }
-    
-    if (formData.postcode && !/^\d{4}[A-Z]{2}$/i.test(formData.postcode)) {
-      newErrors.postcode = "Voer een geldige Nederlandse postcode in (bijv. 1234AB)";
-    }
-    
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Voer een geldig e-mailadres in";
-    }
-
+    const result = clubSchema.safeParse(formData);
+    const newErrors = zodErrors(result);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateField = (field: string, value: string) => {
+    const result = clubSchema.safeParse({ ...formData, [field]: value });
+    const fieldError = zodErrors(result)[field];
+    setErrors((prev) => ({ ...prev, [field]: fieldError || "" }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,9 +97,10 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
             id="naam"
             value={formData.naam}
             onChange={(e) => handleChange("naam", e.target.value)}
+            onBlur={(e) => validateField("naam", e.target.value)}
             className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-              errors.naam 
-                ? "border-red-400 bg-red-50" 
+              errors.naam
+                ? "border-red-400 bg-red-50"
                 : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             }`}
             placeholder="Bijvoorbeeld: Tennisvereniging example"
@@ -139,9 +135,10 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
               id="postcode"
               value={formData.postcode}
               onChange={(e) => handleChange("postcode", e.target.value.toUpperCase())}
+              onBlur={(e) => validateField("postcode", e.target.value.toUpperCase())}
               className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                errors.postcode 
-                  ? "border-red-400 bg-red-50" 
+                errors.postcode
+                  ? "border-red-400 bg-red-50"
                   : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               }`}
               placeholder="1234AB"
@@ -192,9 +189,10 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
                 id="email"
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
+                onBlur={(e) => validateField("email", e.target.value)}
                 className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                  errors.email 
-                    ? "border-red-400 bg-red-50" 
+                  errors.email
+                    ? "border-red-400 bg-red-50"
                     : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 }`}
                 placeholder="info@vereniging.nl"

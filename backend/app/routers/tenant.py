@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -11,6 +10,7 @@ from app.db import get_db
 from app.limiter import limiter
 from app.models import Club, InviteToken, PasswordResetToken, User
 from app.schemas import UserResponse
+from app.services.audit import log_audit
 from app.services.auth import (
     TokenPayload,
     create_access_token,
@@ -142,8 +142,25 @@ async def login(
     if not user or not verify_password(form_data.password, user.password_hash):
         if user:
             user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 3:
+                log_audit(
+                    "auth.login_failure",
+                    actor_id=str(user.id),
+                    actor_email=user.email,
+                    club_id=str(club.id),
+                    result="failure",
+                    attempts=user.failed_login_attempts,
+                )
             if user.failed_login_attempts >= 10:
                 user.locked_until = datetime.now() + timedelta(minutes=15)
+                log_audit(
+                    "auth.account_locked",
+                    actor_id=str(user.id),
+                    actor_email=user.email,
+                    club_id=str(club.id),
+                    result="failure",
+                    locked_minutes=15,
+                )
             await db.commit()
 
         raise HTTPException(
@@ -175,13 +192,11 @@ async def login(
     user.locked_until = None
     user.last_login = datetime.now()
 
-    logger = structlog.get_logger()
-    logger.info(
-        "tenant_login_success",
-        user_id=str(user.id),
-        email=user.email,
+    log_audit(
+        "auth.login_success",
+        actor_id=str(user.id),
+        actor_email=user.email,
         club_id=str(club.id),
-        club_slug=club.slug,
     )
 
     await db.commit()
@@ -380,6 +395,16 @@ async def accept_invite(
     invite.used = True
     await db.commit()
 
+    log_audit(
+        "user.create",
+        actor_id=str(user.id),
+        actor_email=user.email,
+        target_type="user",
+        target_id=str(user.id),
+        club_id=str(club.id),
+        role=invite.role,
+    )
+
     access_token = create_access_token(
         data={
             "sub": str(user.id),
@@ -519,6 +544,13 @@ async def reset_password(
     user.password_hash = get_password_hash(data.new_password)
     reset_token.used = True
     await db.commit()
+
+    log_audit(
+        "user.password_reset",
+        target_type="user",
+        target_id=str(user.id),
+        club_id=str(reset_token.club_id),
+    )
 
     return {"message": "Password reset successfully"}
 

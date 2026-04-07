@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { tenantApi } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { inviteUserSchema, zodErrors } from "../../lib/schemas";
 import { UserPlus, Edit, Shield, Mail, Calendar, UserCheck, UserMinus, AlertCircle } from "lucide-react";
 import { showToast } from "../../components/Toast";
 import { 
@@ -86,10 +87,17 @@ export default function UsersPage() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validation = inviteUserSchema.safeParse({ email: inviteData.email });
+    if (!validation.success) {
+      showToast.error(zodErrors(validation).email || "Voer een geldig e-mailadres in");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      await tenantApi.inviteUser(inviteData);
+      await tenantApi.inviteUser({ ...inviteData, email: inviteData.email.trim() });
       showToast.success("Uitnodiging verstuurd naar " + inviteData.email);
       setShowInviteModal(false);
       setInviteData({ email: "", role: "planner" });

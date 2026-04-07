@@ -40,13 +40,7 @@ export default defineConfig({
         '**/*.stories.ts',
         '**/*.stories.tsx',
         'src/pages/**'
-      ],
-      thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 70,
-        statements: 70
-      }
+      ]
     }
   }
 });

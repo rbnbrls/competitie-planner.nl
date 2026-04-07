@@ -99,6 +99,12 @@ async def lifespan(app: FastAPI):
             "Security check: CSRF protection verified - tokens are stateless (OAuth2 Bearer)."
         )
 
+        logger.info(
+            "audit_log_retention_policy",
+            retention_days=settings.AUDIT_LOG_RETENTION_DAYS,
+            note="Configure Docker/Coolify log rotation to enforce this retention period.",
+        )
+
     yield
     if not os.getenv("TEST_MODE") and not os.getenv("TESTING"):
         await engine.dispose()
@@ -249,6 +255,15 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     # Strict-Transport-Security (HSTS) - 1 year in seconds
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Restrict resource loading for API responses; frame-ancestors replaces X-Frame-Options
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    # Do not send the full URL as referrer across origins
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Disable browser features not needed by this API
+    response.headers["Permissions-Policy"] = (
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+        "magnetometer=(), microphone=(), payment=(), usb=()"
+    )
     return response
 
 

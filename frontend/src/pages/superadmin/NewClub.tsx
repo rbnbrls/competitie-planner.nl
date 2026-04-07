@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { superadminApi } from "../../lib/api";
+import { newClubSchema, zodErrors } from "../../lib/schemas";
 
 export default function NewClubPage() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function NewClubPage() {
   const [contactNaam, setContactNaam] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const generateSlug = (name: string) => {
@@ -30,11 +32,18 @@ export default function NewClubPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+
+    const validation = newClubSchema.safeParse({ naam, slug, contactEmail });
+    if (!validation.success) {
+      setFieldErrors(zodErrors(validation));
+      return;
+    }
+    setFieldErrors({});
     setIsLoading(true);
 
     try {
       await superadminApi.createClub({
-        naam,
+        naam: naam.trim(),
         slug,
       });
       navigate("/clubs");
@@ -50,7 +59,6 @@ export default function NewClubPage() {
     }
   };
 
-  const reservedSlugs = ["admin", "api", "display", "www", "mail", "app", "static"];
 
   return (
     <div>
@@ -77,9 +85,9 @@ export default function NewClubPage() {
               type="text"
               value={naam}
               onChange={(e) => handleNaamChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.naam ? "border-red-500" : "border-gray-300"}`}
             />
+            {fieldErrors.naam && <p className="text-red-500 text-sm mt-1">{fieldErrors.naam}</p>}
           </div>
 
           <div className="mb-4">
@@ -92,16 +100,12 @@ export default function NewClubPage() {
                 type="text"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                minLength={3}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.slug ? "border-red-500" : "border-gray-300"}`}
                 maxLength={30}
               />
               <span className="ml-2 text-gray-500">.competitie-planner.nl</span>
             </div>
-            {reservedSlugs.includes(slug.toLowerCase()) && (
-              <p className="text-red-500 text-sm mt-1">Deze slug is gereserveerd</p>
-            )}
+            {fieldErrors.slug && <p className="text-red-500 text-sm mt-1">{fieldErrors.slug}</p>}
           </div>
 
           <div className="mb-4">
@@ -126,11 +130,12 @@ export default function NewClubPage() {
               type="email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.contactEmail ? "border-red-500" : "border-gray-300"}`}
             />
-            <p className="text-sm text-gray-500 mt-1">
-              Er wordt een uitnodigingsemail verstuurd naar dit emailadres
-            </p>
+            {fieldErrors.contactEmail
+              ? <p className="text-red-500 text-sm mt-1">{fieldErrors.contactEmail}</p>
+              : <p className="text-sm text-gray-500 mt-1">Er wordt een uitnodigingsemail verstuurd naar dit emailadres</p>
+            }
           </div>
 
           <div className="flex justify-end gap-2">
@@ -143,7 +148,7 @@ export default function NewClubPage() {
             </button>
             <button
               type="submit"
-              disabled={isLoading || reservedSlugs.includes(slug.toLowerCase())}
+              disabled={isLoading}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
             >
               {isLoading ? "Aanmaken..." : "Vereniging aanmaken"}

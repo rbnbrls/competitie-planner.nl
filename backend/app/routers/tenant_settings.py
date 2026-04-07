@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Baan, User
+from app.services.audit import log_audit
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
 router = APIRouter(
@@ -80,6 +81,16 @@ async def update_settings(
 
     await db.commit()
     await db.refresh(club)
+
+    changed = [k for k, v in data.model_dump(exclude_unset=True).items() if v is not None]
+    log_audit(
+        "club.update",
+        actor_id=str(user.id),
+        target_type="club",
+        target_id=str(club.id),
+        club_id=str(club.id),
+        changed_fields=changed,
+    )
 
     return {
         "id": str(club.id),
@@ -496,6 +507,15 @@ async def update_user(
     await db.commit()
     await db.refresh(user_obj)
 
+    log_audit(
+        "user.update",
+        actor_id=str(admin_user.id),
+        target_type="user",
+        target_id=str(user_obj.id),
+        club_id=str(club.id),
+        changed_fields=[k for k in data.model_dump(exclude_unset=True)],
+    )
+
     return {
         "id": str(user_obj.id),
         "email": user_obj.email,
@@ -534,6 +554,14 @@ async def deactivate_user(
 
     user_obj.is_active = False
     await db.commit()
+
+    log_audit(
+        "user.deactivate",
+        actor_id=str(admin_user.id),
+        target_type="user",
+        target_id=user_id,
+        club_id=str(club.id),
+    )
 
     return {"message": "User deactivated successfully"}
 

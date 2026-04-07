@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { passwordSchema, zodErrors } from "../../lib/schemas";
 import { ShieldCheck, Lock, UserCheck, ArrowRight, Sparkles } from "lucide-react";
 import { showToast } from "../../components/Toast";
 import { 
@@ -23,18 +24,10 @@ export default function InvitePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 8) {
-      showToast.error("Wachtwoord moet minimaal 8 tekens zijn");
-      return;
-    }
-
-    if (!/\d/.test(password)) {
-      showToast.error("Wachtwoord moet minimaal 1 cijfer bevatten");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      showToast.error("Wachtwoorden komen niet overeen");
+    const validation = passwordSchema.safeParse({ password, confirmPassword });
+    if (!validation.success) {
+      const errs = zodErrors(validation);
+      showToast.error(errs.password || errs.confirmPassword || "Validatiefout");
       return;
     }
 

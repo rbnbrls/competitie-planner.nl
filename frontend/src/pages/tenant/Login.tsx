@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { loginSchema, zodErrors } from "../../lib/schemas";
 
 export default function TenantLoginPage() {
   const [searchParams] = useSearchParams();
@@ -24,8 +25,10 @@ export default function TenantLoginPage() {
     e.preventDefault();
     setError("");
 
-    if (!email.trim()) {
-      setError("email is verplicht");
+    const validation = loginSchema.safeParse({ email, password });
+    if (!validation.success) {
+      const errs = zodErrors(validation);
+      setError(errs.email || errs.password || "Vul alle velden in");
       return;
     }
 
