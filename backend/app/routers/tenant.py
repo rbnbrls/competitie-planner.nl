@@ -376,7 +376,22 @@ async def accept_invite(
     invite.used = True
     await db.commit()
 
-    return {"message": "Account created successfully"}
+    access_token = create_access_token(
+        data={
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "club_id": str(user.club_id),
+            "club_slug": club.slug,
+            "is_superadmin": False,
+        }
+    )
+
+    return {
+        "message": "Account created successfully",
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
 
 
 class ForgotPasswordRequest(BaseModel):

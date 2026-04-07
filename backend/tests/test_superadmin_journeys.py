@@ -142,7 +142,8 @@ class TestPaymentSetupJourney:
             headers=superadmin_auth_headers,
         )
         assert list_response.status_code == 200
-        prices = list_response.json()
+        data = list_response.json()
+        prices = data.get("prices", [])
         assert any(p["competitie_naam"] == "Wintercompetitie" for p in prices)
 
 
@@ -187,7 +188,7 @@ class TestDisplayJourney:
         )
         assert display_response.status_code == 200
         data = display_response.json()
-        assert data["id"] == str(ronde.id)
+        assert data["ronde"]["id"] == str(ronde.id)
 
 
 class TestTenantSettingsJourney:

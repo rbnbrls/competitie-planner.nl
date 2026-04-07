@@ -4,6 +4,7 @@ Test complete flow from club creation to user invitation
 """
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Club, PasswordResetToken
@@ -155,6 +156,22 @@ class TestClubSetupJourney:
 
         await db_session.commit()
 
+        from app.models import Wedstrijd
+
+        result = await db_session.execute(select(Team).where(Team.competitie_id == competitie.id))
+        teams = list(result.scalars().all())
+
+        for i in range(len(teams)):
+            wedstrijd = Wedstrijd(
+                competitie_id=competitie.id,
+                ronde_id=ronde.id,
+                thuisteam_id=teams[i].id,
+                uitteam_id=teams[(i + 1) % len(teams)].id,
+            )
+            db_session.add(wedstrijd)
+
+        await db_session.commit()
+
         # Generate indeling
         generate_response = await client.post(
             f"/api/v1/tenant/rondes/{ronde.id}/genereer",
@@ -203,11 +220,11 @@ class TestUserInvitationJourney:
         # Step 3: New user can login
         login_response = await client.post(
             "/api/v1/tenant/login",
-            params={
+            data={
                 "username": "newuser@testclub.nl",
                 "password": "newpassword123",
-                "slug": "testclub",
             },
+            params={"slug": "testclub"},
         )
         assert login_response.status_code == 200
         assert "access_token" in login_response.json()
@@ -219,11 +236,11 @@ class TestUserInvitationJourney:
         from app.models import Club, User
         from app.services.auth import get_password_hash
 
-        club = Club(naam="Test Club", slug="testusers", status="trial")
-        db_session.add(club)
-        await db_session.commit()
+        result = await db_session.execute(select(Club).where(Club.slug == "testclub"))
+        club = result.scalar_one_or_none()
+        assert club is not None, "testclub should already exist from fixture"
 
-        # Create a user
+        # Create a user in the same club as the admin
         user = User(
             club_id=club.id,
             email="member@testclub.nl",
@@ -308,11 +325,11 @@ class TestPasswordResetJourney:
         # Step 3: Login with new password
         login_response = await client.post(
             "/api/v1/tenant/login",
-            params={
+            data={
                 "username": "resetuser@testclub.nl",
                 "password": "newpassword123",
-                "slug": "testpwd",
             },
+            params={"slug": "testpwd"},
         )
         assert login_response.status_code == 200
         assert "access_token" in login_response.json()

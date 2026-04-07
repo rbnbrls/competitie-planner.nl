@@ -41,6 +41,7 @@ class SpeelrondeDetailResponse(BaseModel):
     week_nummer: int | None
     is_inhaalronde: bool
     status: str
+    public_token: str | None = None
     toewijzingen: list[BaanToewijzingResponse]
 
 
@@ -171,6 +172,7 @@ async def get_ronde_detail(
         week_nummer=ronde.week_nummer,
         is_inhaalronde=ronde.is_inhaalronde,
         status=ronde.status,
+        public_token=ronde.public_token,
         toewijzingen=[
             BaanToewijzingResponse(
                 id=str(t.id),
