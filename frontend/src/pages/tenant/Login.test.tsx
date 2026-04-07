@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '../../contexts/AuthContext'
 import { server } from '../../test/msw/server'
@@ -65,14 +65,26 @@ describe('Login Component', () => {
 
   it('redirects to dashboard on successful login', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Login />)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/tenant/dashboard" element={<div data-testid="dashboard">Dashboard Page</div>} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    )
     
     await user.type(screen.getByLabelText(/email/i), 'admin@testclub.nl')
     await user.type(screen.getByLabelText(/wachtwoord/i), 'password123')
     await user.click(screen.getByRole('button', { name: /inloggen/i }))
     
+    // Verify we have navigated to the dashboard page
     await waitFor(() => {
-      expect(window.location.href).toContain('/tenant/dashboard')
+      expect(screen.queryByTestId('dashboard')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 })

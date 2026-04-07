@@ -119,6 +119,20 @@ class TestGenereerIndeling:
         speelronde,
     ):
         """Test basic indeling generation with multiple teams and courts."""
+        _, competitie = club_with_competitie
+
+        wedstrijden = []
+        for i in range(len(teams)):
+            wedstrijd = Wedstrijd(
+                competitie_id=competitie.id,
+                ronde_id=speelronde.id,
+                thuisteam_id=teams[i].id,
+                uitteam_id=teams[(i + 1) % len(teams)].id,
+            )
+            wedstrijden.append(wedstrijd)
+        db_session.add_all(wedstrijden)
+        await db_session.commit()
+
         toewijzingen = await genereer_indeling(speelronde.id, db_session)
 
         assert len(toewijzingen) == min(len(banen), len(teams))
@@ -136,6 +150,20 @@ class TestGenereerIndeling:
         speelronde,
     ):
         """Test that generating indeling replaces existing toewijzingen."""
+        _, competitie = club_with_competitie
+
+        wedstrijden = []
+        for i in range(len(teams)):
+            wedstrijd = Wedstrijd(
+                competitie_id=competitie.id,
+                ronde_id=speelronde.id,
+                thuisteam_id=teams[i].id,
+                uitteam_id=teams[(i + 1) % len(teams)].id,
+            )
+            wedstrijden.append(wedstrijd)
+        db_session.add_all(wedstrijden)
+        await db_session.commit()
+
         eerst = await genereer_indeling(speelronde.id, db_session)
         assert len(eerst) == 4
 
@@ -388,6 +416,7 @@ class TestBatchPlanning:
         ronde1 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 5, 1))
         ronde2 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 5, 8))
         db_session.add_all([ronde1, ronde2])
+        await db_session.commit()
 
         # Team 0 plays home twice in a row
         w1 = Wedstrijd(
@@ -428,6 +457,7 @@ class TestBatchPlanning:
 
         ronde1 = Speelronde(competitie_id=competitie.id, club_id=club.id, datum=date(2024, 6, 1))
         db_session.add(ronde1)
+        await db_session.commit()
 
         # 2 home matches for same competition on same day
         w1 = Wedstrijd(

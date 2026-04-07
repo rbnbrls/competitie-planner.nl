@@ -91,8 +91,9 @@ class TestSuperadminJourney:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "total_clubs" in data
-        assert "total_users" in data
+        assert "metrics" in data
+        assert "total_clubs" in data["metrics"]
+        assert "total_users" in data["metrics"]
 
 
 class TestPaymentSetupJourney:
@@ -182,7 +183,7 @@ class TestDisplayJourney:
 
         # View ronde via public display endpoint
         display_response = await client.get(
-            f"/api/v1/display/rondes/{ronde.public_token}",
+            f"/api/v1/display/{club.slug}/{ronde.public_token}",
         )
         assert display_response.status_code == 200
         data = display_response.json()

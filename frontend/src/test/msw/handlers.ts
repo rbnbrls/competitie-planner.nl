@@ -38,9 +38,18 @@ export const handlers = [
   // Tenant handlers
   http.post(`${API_BASE}/tenant/login`, async ({ request }) => {
     await delay(100)
-    // tenantApi.login sends credentials as query params, not a JSON body
-    const url = new URL(request.url)
-    const username = url.searchParams.get('username')
+    
+    let username = null
+    try {
+      // Try to extract username from formData
+      const formData = await request.formData()
+      username = formData.get('username')
+    } catch {
+      // Fallback to URL search params if body reading fails
+      const url = new URL(request.url)
+      username = url.searchParams.get('username')
+    }
+    
     // Return 401 for any email that isn't our test admin
     if (username !== 'admin@testclub.nl') {
       return HttpResponse.json(

@@ -67,6 +67,13 @@ jobs:
         working-directory: backend
         run: uv sync --group dev
 
+      - name: Wait for PostgreSQL and create database
+        run: |
+          until pg_isready -h localhost -p 5432; do sleep 1; done
+          PGPASSWORD=pass psql -h localhost -U user -d postgres -c "CREATE DATABASE competitieplanner_test;" || true
+        env:
+          PGPASSWORD: pass
+
       - name: Run pytest with coverage
         working-directory: backend
         env:

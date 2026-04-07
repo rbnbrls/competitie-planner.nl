@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -128,10 +128,8 @@ async def login(
     user = result.scalar_one_or_none()
 
     if user:
-        if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
-            retry_after = int(
-                (user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds()
-            )
+        if user.locked_until and user.locked_until > datetime.now():
+            retry_after = int((user.locked_until - datetime.now()).total_seconds())
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
@@ -141,7 +139,7 @@ async def login(
         if user:
             user.failed_login_attempts += 1
             if user.failed_login_attempts >= 10:
-                user.locked_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=15)
+                user.locked_until = datetime.now() + timedelta(minutes=15)
             await db.commit()
 
         raise HTTPException(
@@ -171,7 +169,7 @@ async def login(
     # Reset failed attempts on success
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now(UTC).replace(tzinfo=None)
+    user.last_login = datetime.now()
 
     logger = structlog.get_logger()
     logger.info(
@@ -287,7 +285,7 @@ async def create_invite(
     import secrets
 
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(UTC) + timedelta(hours=48)
+    expires_at = datetime.now() + timedelta(hours=48)
 
     invite = InviteToken(
         club_id=club.id,
@@ -330,7 +328,7 @@ async def accept_invite(
             detail="Invalid or expired invite token",
         )
 
-    if invite.expires_at < datetime.now(UTC):
+    if invite.expires_at < datetime.now():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite token has expired",
@@ -413,7 +411,7 @@ async def forgot_password(
         result = await db.execute(
             select(func.count(PasswordResetToken.id)).where(
                 PasswordResetToken.user_id == user.id,
-                PasswordResetToken.created_at > datetime.now(UTC) - timedelta(hours=1),
+                PasswordResetToken.created_at > datetime.now() - timedelta(hours=1),
             )
         )
         reset_count = result.scalar()
@@ -426,7 +424,7 @@ async def forgot_password(
         import secrets
 
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(UTC) + timedelta(hours=1)
+        expires_at = datetime.now() + timedelta(hours=1)
 
         reset_token = PasswordResetToken(
             club_id=club.id,
@@ -470,7 +468,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    if reset_token.expires_at < datetime.now(UTC):
+    if reset_token.expires_at < datetime.now():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",
