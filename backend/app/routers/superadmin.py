@@ -13,7 +13,11 @@ from app.models import Club, User
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 
-router = APIRouter(prefix="/superadmin", tags=["superadmin"])
+router = APIRouter(
+    prefix="/superadmin",
+    tags=["superadmin"],
+    description="Superadmin management endpoints. Handles platform-wide club management, user administration, and dashboard analytics.",
+)
 
 
 @router.get("/dashboard")

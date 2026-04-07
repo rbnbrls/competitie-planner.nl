@@ -106,8 +106,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Competitie-Planner API",
+    description="Backend API for competitive tennis planning. Manages competitions, teams, court scheduling, match results, and club subscriptions.",
     version=settings.VERSION,
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 app.state.limiter = limiter
 
@@ -118,11 +121,19 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     Returns 429 Too Many Requests with Retry-After header.
     """
     retry_after = getattr(exc, "retry_after", 60)
+    detail = getattr(
+        exc, "detail", f"Te veel aanvragen. Probeer het over {retry_after} seconden opnieuw."
+    )
     response = JSONResponse(
         status_code=429,
-        content={"detail": f"Te veel aanvragen. Probeer het over {retry_after} seconden opnieuw."},
+        content={"detail": detail},
+        headers={
+            "Retry-After": str(retry_after),
+            "X-RateLimit-Limit": "60",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": str(int(retry_after)),
+        },
     )
-    response.headers["Retry-After"] = str(retry_after)
     return response
 
 

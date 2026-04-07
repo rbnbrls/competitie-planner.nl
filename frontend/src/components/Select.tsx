@@ -10,23 +10,30 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 }
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, helperText, options, children, ...props }, ref) => {
+  ({ className, label, error, helperText, options, children, id, ...props }, ref) => {
+    const selectId = id || React.useId();
+    const errorId = `${selectId}-error`;
+    const helperId = `${selectId}-helper`;
+
     return (
       <div className="w-full relative group">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-1 transition-colors group-focus-within:text-blue-600">
+          <label htmlFor={selectId} className="block text-sm font-medium text-gray-700 mb-1 transition-colors group-focus-within:text-blue-600">
             {label}
-            {props.required && <span className="text-red-500 ml-1 font-bold">*</span>}
+            {props.required && <span className="text-red-500 ml-1 font-bold" aria-hidden="true">*</span>}
           </label>
         )}
         <div className="relative">
           <select
+            id={selectId}
             className={cn(
               "flex w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all",
               error ? "border-red-500 focus-visible:ring-red-500" : "border-gray-300 hover:border-gray-400",
               className
             )}
             ref={ref}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : helperText ? helperId : undefined}
             {...props}
           >
             {options
@@ -37,12 +44,12 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 ))
               : children}
           </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 group-hover:text-gray-500 transition-colors">
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 group-hover:text-gray-500 transition-colors" aria-hidden="true">
             <ChevronDown className="h-4 w-4" />
           </div>
         </div>
-        {error && <p className="mt-1 text-xs text-red-600 font-medium">{error}</p>}
-        {helperText && !error && <p className="mt-1 text-xs text-gray-500">{helperText}</p>}
+        {error && <p id={errorId} className="mt-1 text-xs text-red-600 font-medium" role="alert">{error}</p>}
+        {helperText && !error && <p id={helperId} className="mt-1 text-xs text-gray-500">{helperText}</p>}
       </div>
     );
   }

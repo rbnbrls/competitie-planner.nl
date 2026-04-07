@@ -12,7 +12,11 @@ from app.routers.auth import get_current_superadmin
 from app.services.mollie import MollieService
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
-router = APIRouter(prefix="/payments", tags=["payments"])
+router = APIRouter(
+    prefix="/payments",
+    tags=["payments"],
+    description="Payment and subscription management endpoints. Handles Mollie integration, subscription status, SEPA mandates, and payment history.",
+)
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)

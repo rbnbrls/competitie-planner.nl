@@ -11,7 +11,11 @@ from app.db import get_db
 from app.models import Baan, User
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
-router = APIRouter(prefix="/tenant", tags=["tenant"])
+router = APIRouter(
+    prefix="/tenant",
+    tags=["tenant-settings"],
+    description="Tenant (club) settings and configuration endpoints. Handles club profile, courts, logo upload, and subscription management.",
+)
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)

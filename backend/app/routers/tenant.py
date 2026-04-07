@@ -20,7 +20,11 @@ from app.services.auth import (
     verify_password,
 )
 
-router = APIRouter(prefix="/tenant", tags=["tenant"])
+router = APIRouter(
+    prefix="/tenant",
+    tags=["tenant"],
+    description="Tenant (club) authentication and user management. Handles club login, user registration, invitations, and password reset.",
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/tenant/login")
 

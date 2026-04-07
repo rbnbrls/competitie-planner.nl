@@ -21,7 +21,11 @@ from app.services.planning import (
     update_planning_historie,
 )
 
-router = APIRouter(prefix="/tenant", tags=["planning"])
+router = APIRouter(
+    prefix="/tenant",
+    tags=["planning"],
+    description="Planning and scheduling endpoints for tenant users. Handles round generation, publishing, court assignments, and PDF exports.",
+)
 
 
 class BaanToewijzingResponse(BaseModel):

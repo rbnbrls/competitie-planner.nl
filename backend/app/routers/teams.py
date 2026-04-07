@@ -12,7 +12,11 @@ from app.models import Team
 from app.schemas import TeamCreate, TeamUpdate
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
-router = APIRouter(prefix="/tenant/teams", tags=["teams"])
+router = APIRouter(
+    prefix="/tenant/teams",
+    tags=["teams"],
+    description="Team management endpoints for tenant users. Handles CRUD operations for teams, bulk activation, and CSV import.",
+)
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)

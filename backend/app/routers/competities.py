@@ -21,13 +21,24 @@ from app.schemas import (
 from app.services import planning as planning_service
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
 
-router = APIRouter(prefix="/tenant/competities", tags=["competities"])
+router = APIRouter(
+    prefix="/tenant/competities",
+    tags=["competities"],
+    description="Competition management endpoints for tenant users. Handles CRUD operations for competitions, teams, rounds, and season overviews.",
+)
 
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
 
 
-@router.post("")
+@router.post(
+    "",
+    summary="Create new competition",
+    description="Create a new competition for the club. Requires admin access. Note: Competitions require payment before they can be fully configured.",
+    responses={
+        402: {"model": None, "description": "Payment required for this competition"},
+    },
+)
 async def create_competitie(
     data: CompetitieCreate,
     current: tuple = CURRENT_ADMIN_DEP,
@@ -60,7 +71,14 @@ async def create_competitie(
     }
 
 
-@router.get("")
+@router.get(
+    "",
+    summary="List competitions",
+    description="Get a paginated list of competitions for the club. By default only returns active competitions.",
+    responses={
+        401: {"description": "Authentication required"},
+    },
+)
 async def list_competities(
     actief_only: bool = True,
     page: int = 1,
@@ -119,7 +137,11 @@ async def list_competities(
     }
 
 
-@router.get("/{competitie_id}")
+@router.get(
+    "/{competitie_id}",
+    summary="Get competition details",
+    description="Retrieve detailed information about a specific competition including settings and dates.",
+)
 async def get_competitie(
     competitie_id: str,
     current: tuple = CURRENT_TENANT_DEP,
@@ -163,7 +185,11 @@ async def get_competitie(
     }
 
 
-@router.get("/{competitie_id}/rondes")
+@router.get(
+    "/{competitie_id}/rondes",
+    summary="List competition rounds",
+    description="Get all rounds (speelrondes) for a competition. Use lazy=true to only return future rounds.",
+)
 async def list_rondes(
     competitie_id: str,
     lazy: bool = False,

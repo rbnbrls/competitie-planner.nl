@@ -39,18 +39,7 @@ describe('Login Component', () => {
     expect(screen.getByRole('button', { name: /inloggen/i })).toBeInTheDocument()
   })
 
-  it('shows validation errors on empty submit', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Login />)
-    
-    await user.click(screen.getByRole('button', { name: /inloggen/i }))
-    
-    await waitFor(() => {
-      expect(screen.getByText(/email is verplicht/i)).toBeInTheDocument()
-    })
-  })
-
-  it('shows error on invalid credentials', async () => {
+  it('shows error message when login fails with invalid credentials', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Login />)
     

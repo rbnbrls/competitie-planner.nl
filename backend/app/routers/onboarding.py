@@ -10,7 +10,11 @@ from app.db import get_db
 from app.models import Baan, Club, Competitie, Team
 from app.services.tenant_auth import get_current_tenant_user
 
-router = APIRouter(prefix="/tenant/onboarding", tags=["onboarding"])
+router = APIRouter(
+    prefix="/tenant/onboarding",
+    tags=["onboarding"],
+    description="Onboarding endpoints for new tenant setup. Handles club creation, court setup, competition configuration, and team creation in a guided flow.",
+)
 
 CURRENT_USER_DEP = Depends(get_current_tenant_user)
 

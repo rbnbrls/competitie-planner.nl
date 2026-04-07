@@ -10,7 +10,10 @@ from app.db import get_db
 from app.exceptions import ResourceNotFoundError
 from app.models import BaanToewijzing, Competitie, Speelronde, Team, Wedstrijd
 
-router = APIRouter(tags=["calendar"])
+router = APIRouter(
+    tags=["calendar"],
+    description="Calendar integration endpoints for public competition schedules. Provides iCal export functionality.",
+)
 
 
 def format_ical_datetime(dt: datetime) -> str:

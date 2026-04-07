@@ -13,7 +13,11 @@ from app.services.planning import (
     validate_club_max_thuisteams,
 )
 
-router = APIRouter(prefix="/api/v1/dagoverzicht", tags=["dagoverzicht"])
+router = APIRouter(
+    prefix="/api/v1/dagoverzicht",
+    tags=["dagoverzicht"],
+    description="Day overview and planning analysis endpoints. Provides daily overview with court requirements, conflict detection, and scheduling validation.",
+)
 
 
 class CompetitieOverzicht(BaseModel):

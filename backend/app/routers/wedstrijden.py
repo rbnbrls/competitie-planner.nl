@@ -13,7 +13,11 @@ from app.models import Baan, Competitie, Speelronde, Team, Wedstrijd
 from app.schemas import WedstrijdCreate, WedstrijdUpdate
 from app.services.tenant_auth import get_current_tenant_user
 
-router = APIRouter(prefix="/tenant/wedstrijden", tags=["wedstrijden"])
+router = APIRouter(
+    prefix="/tenant/wedstrijden",
+    tags=["wedstrijden"],
+    description="Match management endpoints. Handles CRUD operations for matches, result submission, and CSV import.",
+)
 
 
 class WedstrijdFilterParams(BaseModel):

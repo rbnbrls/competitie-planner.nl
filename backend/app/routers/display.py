@@ -17,7 +17,10 @@ from app.schemas import (
     ResultSubmission,
 )
 
-router = APIRouter(tags=["display"])
+router = APIRouter(
+    tags=["display"],
+    description="Public display and captain portal endpoints. Provides public competition views with tokens, result submission, and team captain access.",
+)
 
 
 class DisplayToewijzing(BaseModel):

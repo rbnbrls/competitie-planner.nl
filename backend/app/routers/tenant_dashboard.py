@@ -19,7 +19,11 @@ from app.models import (
 )
 from app.services.tenant_auth import get_current_tenant_user
 
-router = APIRouter(prefix="/tenant/dashboard", tags=["tenant-dashboard"])
+router = APIRouter(
+    prefix="/tenant/dashboard",
+    tags=["tenant-dashboard"],
+    description="Tenant dashboard and analytics endpoints. Provides club statistics, activity overviews, and administrative metrics.",
+)
 
 
 class DashboardRonde(BaseModel):

@@ -27,7 +27,11 @@ from app.services.auth import (
     verify_password,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"],
+    description="Platform authentication endpoints for superadmin users. Handles login, token refresh, session management, and initial admin registration.",
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
@@ -63,7 +67,19 @@ async def get_current_superadmin(
     return current_user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    summary="Login as superadmin",
+    description="Authenticate a superadmin user with email and password. Returns access and refresh tokens. Rate limited to 5 requests per minute. Account locks for 15 minutes after 10 failed attempts.",
+    responses={
+        401: {
+            "description": "Onjuiste email of wachtwoord / Account geblokkeerd / Gebruiker inactief"
+        },
+        403: {"description": "Superadmin toegang vereist"},
+        429: {"description": "Te veel inlogpogingen"},
+    },
+)
 @limiter.limit("5/minute")
 async def login(
     request: Request,

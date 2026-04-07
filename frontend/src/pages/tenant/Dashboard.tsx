@@ -361,7 +361,14 @@ export default function TenantDashboard() {
                        <span className="text-2xl font-black text-gray-900">{comp.percentage}%</span>
                     </div>
                   </div>
-                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                  <div 
+                    className="relative h-2 bg-gray-100 rounded-full overflow-hidden mb-2"
+                    role="progressbar"
+                    aria-valuenow={comp.percentage}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Voortgang ${comp.naam}: ${comp.percentage}%`}
+                  >
                     <div 
                       className="absolute left-0 top-0 h-full bg-blue-600 rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${comp.percentage}%` }}
