@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { authApi, tenantApi } from "../lib/api";
 
 interface Club {
@@ -30,14 +31,29 @@ interface AuthContextType {
   isSuperadmin: boolean;
   login: (email: string, password: string, slug?: string) => Promise<void>;
   logout: () => void;
+  refetchClub: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [club, setClub] = useState<Club | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const storedClubSlug = localStorage.getItem("club_slug");
+
+  const {
+    data: club,
+    refetch: refetchClub,
+  } = useQuery<Club>({
+    queryKey: ["club", storedClubSlug],
+    queryFn: async () => {
+      const response = await tenantApi.getClub();
+      return response.data;
+    },
+    enabled: !!storedClubSlug,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
 
   const isSuperadmin = user?.is_superadmin === true;
 
@@ -47,11 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedClubSlug = localStorage.getItem("club_slug");
       
       if (storedClubSlug) {
-        tenantApi.getClub()
-          .then((res) => {
-            setClub(res.data);
-            return tenantApi.me();
-          })
+        tenantApi.me()
           .then((res) => {
             setUser({ ...res.data, club_slug: storedClubSlug, is_superadmin: false });
           })
@@ -75,6 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (club) {
+      applyClubTheme(club);
+    }
+  }, [club]);
+
   const login = async (email: string, password: string, slug?: string) => {
     if (slug) {
       const response = await tenantApi.login(email, password, slug);
@@ -82,14 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("access_token", access_token);
       localStorage.setItem("refresh_token", refresh_token);
       localStorage.setItem("club_slug", slug);
-      // Fetch user and club info separately after login
-      const [meRes, clubRes] = await Promise.all([
-        tenantApi.me(),
-        tenantApi.getClub(),
-      ]);
+      const meRes = await tenantApi.me();
       setUser({ ...meRes.data, is_superadmin: false, club_slug: slug });
-      setClub(clubRes.data);
-      applyClubTheme(clubRes.data);
+      await refetchClub();
+      const clubData = club || (await tenantApi.getClub()).data;
+      applyClubTheme(clubData as Club);
     } else {
       const response = await authApi.login(email, password);
       const { access_token, refresh_token } = response.data;
@@ -98,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("club_slug");
       const meResponse = await authApi.me();
       setUser({ ...meResponse.data, is_superadmin: true });
-      setClub(null);
     }
   };
 
@@ -108,14 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("club_slug");
     setUser(null);
-    setClub(null);
     document.documentElement.style.removeProperty("--color-primary");
     document.documentElement.style.removeProperty("--color-secondary");
     document.documentElement.style.removeProperty("--color-accent");
   };
 
   return (
-    <AuthContext.Provider value={{ user, club, isLoading, isSuperadmin, login, logout }}>
+    <AuthContext.Provider value={{ user, club: club || null, isLoading, isSuperadmin, login, logout, refetchClub }}>
       {children}
     </AuthContext.Provider>
   );

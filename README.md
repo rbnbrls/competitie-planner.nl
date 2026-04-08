@@ -4,6 +4,65 @@
 
 ---
 
+## Developer Setup
+
+### Vereisten
+
+- Docker en Docker Compose
+- Of: Node.js 20+ en Python 3.12
+
+### Docker (aanbevolen)
+
+```bash
+# Start alle services
+make up
+
+# Bekijk logs
+make logs
+
+# Stop alle services
+make down
+```
+
+Services draaien op:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8000
+- Database: localhost:5432
+
+### Handmatig
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Backend:**
+```bash
+cd backend
+cp .env.example .env
+uv sync
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### TypeScript API Client
+
+De frontend heeft een getypt API-client die gegenereerd wordt vanuit de OpenAPI-spec:
+
+```bash
+# Zorg dat de backend draait, dan:
+cd frontend
+npm run generate:api
+```
+
+Dit genereert types in `frontend/src/types/api.ts`. Herhaal na elke API-wijziging.
+
+---
+
+## Wat is Competitie-Planner?
+
 ## Wat is Competitie-Planner?
 
 Competitie-Planner is een online tool waarmee tennisverenigingen eenvoudig hun competitie-roosters kunnen maken en publiceren. Of je nu tennisclublid, teamcaptain of baanplanner bent — met deze website kun je:

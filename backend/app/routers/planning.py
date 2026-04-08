@@ -6,6 +6,8 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.db import get_db
 from app.models import Baan, BaanToewijzing, Competitie, Speelronde, Team
 from app.routers.tenant import get_current_tenant_user
@@ -19,10 +21,10 @@ from app.services.planning import (
     plan_competitie,
     update_planning_historie,
 )
-router = APIRouter(
-    prefix="/tenant",
-    tags=["planning"]
-)
+
+router = APIRouter(prefix="/tenant", tags=["planning"])
+
+
 class BaanToewijzingResponse(BaseModel):
     id: str
     team_id: str
@@ -30,6 +32,8 @@ class BaanToewijzingResponse(BaseModel):
     tijdslot_start: str
     tijdslot_eind: str | None = None
     notitie: str | None = None
+
+
 class SpeelrondeDetailResponse(BaseModel):
     id: str
     competitie_id: str
@@ -40,19 +44,27 @@ class SpeelrondeDetailResponse(BaseModel):
     status: str
     public_token: str | None = None
     toewijzingen: list[BaanToewijzingResponse]
+
+
 class UpdateToewijzingRequest(BaseModel):
     team_id: str | None = None
     baan_id: str | None = None
     tijdslot_start: str | None = None
     tijdslot_eind: str | None = None
     notitie: str | None = None
+
+
 class HistorieTeamRow(BaseModel):
     team_id: str
     team_naam: str
     data: dict[str, int]
+
+
 class HistorieResponse(BaseModel):
     teams: list[HistorieTeamRow]
     banen: list[dict]
+
+
 @router.post("/rondes/{ronde_id}/genereer")
 async def generate_indeling(
     ronde_id: str,
@@ -67,7 +79,11 @@ async def generate_indeling(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid ronde ID",
         )
-    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+    result = await db.execute(
+        select(Speelronde)
+        .where(Speelronde.id == ronde_uuid)
+        .options(selectinload(Speelronde.competitie))
+    )
     ronde = result.scalar_one_or_none()
     if not ronde:
         raise HTTPException(
@@ -79,67 +95,12 @@ async def generate_indeling(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
-    competitie = result.scalar_one_or_none()
-    if not competitie:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Competitie not found",
-        )
-    mollie_service = MollieService(db)
-    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
-        )
-    if ronde.status == "gepubliceerd":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot regenerate for published ronde",
-        )
-    toewijzingen = await genereer_indeling(ronde_uuid, db)
-    return {
-        "toewijzingen": [
-            {
-                "id": str(t.id),
-                "team_id": str(t.team_id),
-                "baan_id": str(t.baan_id),
-                "tijdslot_start": t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
-                "tijdslot_eind": t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
-                "notitie": t.notitie,
-            }
-            for t in toewijzingen
-        ]
-    }
-@router.get("/rondes/{ronde_id}")
-async def get_ronde_detail(
-    ronde_id: str,
-    current: tuple = Depends(get_current_tenant_user),
-    db: AsyncSession = Depends(get_db),
-) -> SpeelrondeDetailResponse:
-    user, club = current
-    try:
-        ronde_uuid = UUID(ronde_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid ronde ID",
-        )
-    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
-    ronde = result.scalar_one_or_none()
-    if not ronde:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Speelronde not found",
-        )
-    if ronde.club_id != club.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
-        )
-    result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_uuid))
-    toewijzingen = list(result.scalars().all())
+    toewijzing_result = await db.execute(
+        select(BaanToewijzing)
+        .where(BaanToewijzing.ronde_id == ronde_uuid)
+        .options(selectinload(BaanToewijzing.baan), selectinload(BaanToewijzing.team))
+    )
+    toewijzingen = list(toewijzing_result.scalars().all())
     return SpeelrondeDetailResponse(
         id=str(ronde.id),
         competitie_id=str(ronde.competitie_id),
@@ -161,6 +122,8 @@ async def get_ronde_detail(
             for t in toewijzingen
         ],
     )
+
+
 @router.patch("/toewijzingen/{toewijzing_id}")
 async def update_toewijzing(
     toewijzing_id: str,
@@ -176,22 +139,24 @@ async def update_toewijzing(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid toewijzing ID",
         )
-    result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.id == toewijzing_uuid))
-    toewijzing = result.scalar_one_or_none()
+    toewijzing_result = await db.execute(
+        select(BaanToewijzing)
+        .where(BaanToewijzing.id == toewijzing_uuid)
+        .options(selectinload(BaanToewijzing.ronde).selectinload(Speelronde.competitie))
+    )
+    toewijzing = toewijzing_result.scalar_one_or_none()
     if not toewijzing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Toewijzing not found",
         )
-    result = await db.execute(select(Speelronde).where(Speelronde.id == toewijzing.ronde_id))
-    ronde = result.scalar_one_or_none()
+    ronde = toewijzing.ronde
     if not ronde or ronde.club_id != club.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
-    competitie = result.scalar_one_or_none()
+    competitie = ronde.competitie
     if not competitie:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -277,6 +242,8 @@ async def update_toewijzing(
         "tijdslot_eind": toewijzing.tijdslot_eind.isoformat() if toewijzing.tijdslot_eind else None,
         "notitie": toewijzing.notitie,
     }
+
+
 @router.post("/rondes/{ronde_id}/publish")
 async def publish_ronde(
     ronde_id: str,
@@ -323,6 +290,7 @@ async def publish_ronde(
             detail="Ronde is already published",
         )
     import secrets
+
     if not ronde.public_token:
         ronde.public_token = secrets.token_urlsafe(32)
     ronde.status = "gepubliceerd"
@@ -354,6 +322,8 @@ async def publish_ronde(
         "public_url": public_url,
         "email_notification_sent": email_notification_sent,
     }
+
+
 @router.post("/rondes/{ronde_id}/depublish")
 async def depublish_ronde(
     ronde_id: str,
@@ -368,7 +338,11 @@ async def depublish_ronde(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid ronde ID",
         )
-    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+    result = await db.execute(
+        select(Speelronde)
+        .where(Speelronde.id == ronde_uuid)
+        .options(selectinload(Speelronde.competitie))
+    )
     ronde = result.scalar_one_or_none()
     if not ronde:
         raise HTTPException(
@@ -380,8 +354,7 @@ async def depublish_ronde(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    result = await db.execute(select(Competitie).where(Competitie.id == ronde.competitie_id))
-    competitie = result.scalar_one_or_none()
+    competitie = ronde.competitie
     if not competitie:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -414,6 +387,8 @@ async def depublish_ronde(
         "id": str(ronde.id),
         "status": ronde.status,
     }
+
+
 @router.get("/competities/{competitie_id}/historie")
 async def get_competitie_historie(
     competitie_id: str,
@@ -466,6 +441,8 @@ async def get_competitie_historie(
             for b in banen
         ],
     )
+
+
 @router.get("/banen")
 async def list_banen_for_planning(
     current: tuple = Depends(get_current_tenant_user),
@@ -486,6 +463,8 @@ async def list_banen_for_planning(
         }
         for b in banen
     ]
+
+
 @router.get("/rondes/{ronde_id}/pdf")
 async def download_ronde_pdf(
     ronde_id: str,
@@ -500,7 +479,11 @@ async def download_ronde_pdf(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid ronde ID",
         )
-    result = await db.execute(select(Speelronde).where(Speelronde.id == ronde_uuid))
+    result = await db.execute(
+        select(Speelronde)
+        .where(Speelronde.id == ronde_uuid)
+        .options(selectinload(Speelronde.competitie))
+    )
     ronde = result.scalar_one_or_none()
     if not ronde:
         raise HTTPException(
@@ -517,6 +500,7 @@ async def download_ronde_pdf(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only published roundes can be exported to PDF",
         )
+    competitie = ronde.competitie
     pdf_service = PDFService(db)
     pdf_content = await pdf_service.generate_banenindeling_pdf(ronde_uuid)
     filename = f"banenindeling-{club.slug}-{ronde.datum.strftime('%Y-%m-%d')}.pdf"
@@ -525,10 +509,16 @@ async def download_ronde_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
 class BulkGenerateRequest(BaseModel):
     ronde_ids: list[str]
+
+
 class BulkPublishRequest(BaseModel):
     ronde_ids: list[str]
+
+
 @router.post("/rondes/bulk-generate")
 async def bulk_generate_rondes(
     competitie_id: str,
@@ -590,6 +580,8 @@ async def bulk_generate_rondes(
         "errors": errors,
         "results": results,
     }
+
+
 @router.post("/rondes/bulk-publish")
 async def bulk_publish_rondes(
     competitie_id: str,
@@ -598,6 +590,7 @@ async def bulk_publish_rondes(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     import secrets
+
     user, club = current
     try:
         competitie_uuid = UUID(competitie_id)
@@ -675,8 +668,12 @@ async def bulk_publish_rondes(
         "results": results,
         "email_notifications_sent": email_notifications_sent,
     }
+
+
 class PlanningPreviewRequest(BaseModel):
     ronde_ids: list[str] | None = None
+
+
 @router.post("/competities/{competitie_id}/planning/preview")
 async def preview_planning(
     competitie_id: str,
@@ -709,6 +706,8 @@ async def preview_planning(
             detail="Competitie not found",
         )
     return await plan_competitie(competitie_uuid, db, ronde_ids=ronde_uuids, apply=False)
+
+
 @router.post("/competities/{competitie_id}/planning/apply")
 async def apply_planning(
     competitie_id: str,

@@ -1,39 +1,46 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import LoginPage from "./pages/Login";
-import RegisterAdminPage from "./pages/admin/RegisterAdmin";
-import DashboardPage from "./pages/superadmin/Dashboard";
-import ClubsPage from "./pages/superadmin/Clubs";
-import NewClubPage from "./pages/superadmin/NewClub";
-import ClubDetailPage from "./pages/superadmin/ClubDetail";
-import UsersPage from "./pages/superadmin/Users";
-import PaymentsPage from "./pages/superadmin/Payments";
-import TenantLoginPage from "./pages/tenant/Login";
-import TenantLayout from "./pages/tenant/Layout";
-import TenantDashboard from "./pages/tenant/Dashboard";
-import SettingsPage from "./pages/tenant/Settings";
-import BrandingPage from "./pages/tenant/Branding";
-import BanenPage from "./pages/tenant/Banen";
-import UsersTenantPage from "./pages/tenant/Users";
-import InvitePage from "./pages/tenant/Invite";
-import ForgotPasswordPage from "./pages/tenant/ForgotPassword";
-import ResetPasswordPage from "./pages/tenant/ResetPassword";
-import CompetitiesPage from "./pages/tenant/Competities";
-import TeamsPage from "./pages/tenant/Teams";
-import SpeelrondesPage from "./pages/tenant/Speelrondes";
-import RondeDetailPage from "./pages/tenant/RondeDetail";
-import PrintView from "./pages/tenant/PrintView";
-import HistoriePage from "./pages/tenant/Historie";
-import CheckoutPage from "./pages/tenant/Checkout";
-import DisplayPage from "./pages/Display";
-import ClubCalendarPage from "./pages/ClubCalendar";
-import DagoverzichtPage from "./pages/tenant/Dagoverzicht";
-import SeizoensoverzichtPage from "./pages/tenant/Seizoensoverzicht";
-import OnboardingPage from "./pages/Onboarding";
-import CaptainPortaalPage from "./pages/CaptainPortaal";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { authApi, paymentApi } from "./lib/api";
+import { ToastContainer } from "./components/Toast";
+
+const LoginPage = lazy(() => import("./pages/Login"));
+const RegisterAdminPage = lazy(() => import("./pages/admin/RegisterAdmin"));
+const DashboardPage = lazy(() => import("./pages/superadmin/Dashboard"));
+const ClubsPage = lazy(() => import("./pages/superadmin/Clubs"));
+const NewClubPage = lazy(() => import("./pages/superadmin/NewClub"));
+const ClubDetailPage = lazy(() => import("./pages/superadmin/ClubDetail"));
+const UsersPage = lazy(() => import("./pages/superadmin/Users"));
+const PaymentsPage = lazy(() => import("./pages/superadmin/Payments"));
+const TenantLoginPage = lazy(() => import("./pages/tenant/Login"));
+const TenantLayout = lazy(() => import("./pages/tenant/Layout"));
+const TenantDashboard = lazy(() => import("./pages/tenant/Dashboard"));
+const SettingsPage = lazy(() => import("./pages/tenant/Settings"));
+const BrandingPage = lazy(() => import("./pages/tenant/Branding"));
+const BanenPage = lazy(() => import("./pages/tenant/Banen"));
+const UsersTenantPage = lazy(() => import("./pages/tenant/Users"));
+const InvitePage = lazy(() => import("./pages/tenant/Invite"));
+const ForgotPasswordPage = lazy(() => import("./pages/tenant/ForgotPassword"));
+const ResetPasswordPage = lazy(() => import("./pages/tenant/ResetPassword"));
+const CompetitiesPage = lazy(() => import("./pages/tenant/Competities"));
+const TeamsPage = lazy(() => import("./pages/tenant/Teams"));
+const SpeelrondesPage = lazy(() => import("./pages/tenant/Speelrondes"));
+const RondeDetailPage = lazy(() => import("./pages/tenant/RondeDetail"));
+const PrintView = lazy(() => import("./pages/tenant/PrintView"));
+const HistoriePage = lazy(() => import("./pages/tenant/Historie"));
+const CheckoutPage = lazy(() => import("./pages/tenant/Checkout"));
+const DisplayPage = lazy(() => import("./pages/Display"));
+const ClubCalendarPage = lazy(() => import("./pages/ClubCalendar"));
+const DagoverzichtPage = lazy(() => import("./pages/tenant/Dagoverzicht"));
+const SeizoensoverzichtPage = lazy(() => import("./pages/tenant/Seizoensoverzicht"));
+const OnboardingPage = lazy(() => import("./pages/Onboarding"));
+const CaptainPortaalPage = lazy(() => import("./pages/CaptainPortaal"));
+
+function LoadingFallback() {
+  return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+}
 
 function TenantRoutes() {
   const { user } = useAuth();
@@ -62,7 +69,7 @@ function TenantRoutes() {
   }
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+    return <LoadingFallback />;
   }
 
   const isCheckoutPage = location.pathname === "/checkout";
@@ -94,7 +101,7 @@ function AdminWrapper() {
   }, []);
 
   if (isChecking || authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+    return <LoadingFallback />;
   }
 
   if (!adminExists) {
@@ -155,7 +162,7 @@ function AppRoutes() {
   const hostname = window.location.hostname;
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+    return <LoadingFallback />;
   }
 
   const isAdminPanel = hostname === "admin.competitie-planner.nl" || hostname === "localhost" || hostname === "127.0.0.1";
@@ -172,53 +179,54 @@ function AppRoutes() {
 
   if (isDisplayPanel) {
     return (
-      <Routes>
-        <Route path="/:slug/kalender" element={<ClubCalendarPage />} />
-        <Route path="/:slug" element={<DisplayPage />} />
-        <Route path="/:slug/:token" element={<DisplayPage />} />
-        <Route path="*" element={<DisplayPage />} />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/:slug/kalender" element={<ClubCalendarPage />} />
+          <Route path="/:slug" element={<DisplayPage />} />
+          <Route path="/:slug/:token" element={<DisplayPage />} />
+          <Route path="*" element={<DisplayPage />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (isTenant) {
     return (
-      <Routes>
-        <Route path="/login" element={<TenantLoginPage />} />
-        <Route path="/invite/:token" element={<InvitePage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-        <Route path="/captain/:token" element={<CaptainPortaalPage />} />
-        <Route element={<TenantLayout />}>
-          <Route element={<TenantRoutes />}>
-            <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/dashboard" element={<TenantDashboard />} />
-            <Route path="/instellingen" element={<SettingsPage />} />
-            <Route path="/branding" element={<BrandingPage />} />
-            <Route path="/banen" element={<BanenPage />} />
-            <Route path="/gebruikers" element={<UsersTenantPage />} />
-            <Route path="/competities" element={<CompetitiesPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/teams/:competitieId" element={<TeamsPage />} />
-            <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
-            <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />
-            <Route path="/ronde/:rondeId/:competitieId/print" element={<PrintView />} />
-
-            <Route path="/historie/:competitieId" element={<HistoriePage />} />
-            <Route path="/seizoensoverzicht/:competitieId" element={<SeizoensoverzichtPage />} />
-            <Route path="/dagoverzicht" element={<DagoverzichtPage />} />
-            <Route path="/dagoverzicht/:datum" element={<DagoverzichtPage />} />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/login" element={<TenantLoginPage />} />
+          <Route path="/invite/:token" element={<InvitePage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route path="/captain/:token" element={<CaptainPortaalPage />} />
+          <Route element={<TenantLayout />}>
+            <Route element={<TenantRoutes />}>
+              <Route path="/onboarding" element={<OnboardingPage />} />
+              <Route path="/dashboard" element={<TenantDashboard />} />
+              <Route path="/instellingen" element={<SettingsPage />} />
+              <Route path="/branding" element={<BrandingPage />} />
+              <Route path="/banen" element={<BanenPage />} />
+              <Route path="/gebruikers" element={<UsersTenantPage />} />
+              <Route path="/competities" element={<CompetitiesPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/teams/:competitieId" element={<TeamsPage />} />
+              <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
+              <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />
+              <Route path="/ronde/:rondeId/:competitieId/print" element={<PrintView />} />
+              <Route path="/historie/:competitieId" element={<HistoriePage />} />
+              <Route path="/seizoensoverzicht/:competitieId" element={<SeizoensoverzichtPage />} />
+              <Route path="/dagoverzicht" element={<DagoverzichtPage />} />
+              <Route path="/dagoverzicht/:datum" element={<DagoverzichtPage />} />
+            </Route>
           </Route>
-        </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return <div className="p-8">Unknown module</div>;
 }
-
-import { ToastContainer } from "./components/Toast";
 
 function App() {
   return (

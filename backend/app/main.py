@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
@@ -12,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache import cache
 from app.config import settings
 from app.db import engine, get_db
 from app.exceptions import BaseAPIExceptionError, RateLimitError
@@ -105,8 +107,15 @@ async def lifespan(app: FastAPI):
             note="Configure Docker/Coolify log rotation to enforce this retention period.",
         )
 
+    try:
+        await cache.get_client()
+        logger.info("cache_initialized", redis_url=settings.REDIS_URL)
+    except Exception as e:
+        logger.warning("cache_init_failed", error=str(e))
+
     yield
     if not os.getenv("TEST_MODE") and not os.getenv("TESTING"):
+        await cache.close()
         await engine.dispose()
 
 
@@ -265,6 +274,40 @@ async def add_security_headers(request: Request, call_next):
         "magnetometer=(), microphone=(), payment=(), usb=()"
     )
     return response
+
+
+@app.middleware("http")
+async def caching_middleware(request: Request, call_next):
+    """
+    Middleware to add caching headers and handle ETag/If-None-Match.
+    """
+    if request.method == "GET" and request.url.path.startswith("/api/v1"):
+        cache_key = f"response:{request.url.path}:{request.url.query or ''}"
+        etag = request.headers.get("If-None-Match")
+
+        cached_response = await cache.get(cache_key)
+        if cached_response and etag:
+            current_etag = f'"{uuid.uuid4().hex}"'
+            if etag == current_etag:
+                return JSONResponse(
+                    status_code=304,
+                    headers={
+                        "ETag": current_etag,
+                        "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+                    },
+                )
+
+        response = await call_next(request)
+
+        if response.status_code == 200:
+            current_etag = f'"{uuid.uuid4().hex}"'
+            response.headers["ETag"] = current_etag
+            response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
+            response.headers["Vary"] = "Accept-Encoding"
+
+        return response
+
+    return await call_next(request)
 
 
 app.add_middleware(

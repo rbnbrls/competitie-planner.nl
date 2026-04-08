@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     VERSION: str = "0.1.0"
     AUDIT_LOG_RETENTION_DAYS: int = 90
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CACHE_TTL_SECONDS: int = 300
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
