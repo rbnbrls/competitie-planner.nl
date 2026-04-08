@@ -1,26 +1,21 @@
 from datetime import UTC, datetime, timedelta
+
 from typing import Any
 from uuid import UUID
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.exceptions import ResourceNotFoundError
 from app.models import Club, User
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubResponse, UserResponse, UserUpdate
 from app.services.audit import log_audit
-
 router = APIRouter(
     prefix="/superadmin",
-    tags=["superadmin"],
-    description="Superadmin management endpoints. Handles platform-wide club management, user administration, and dashboard analytics.",
+    tags=["superadmin"]
 )
-
-
 @router.get("/dashboard")
 async def get_dashboard(
     db: AsyncSession = Depends(get_db),
@@ -28,26 +23,21 @@ async def get_dashboard(
 ) -> dict[str, Any]:
     clubs_result = await db.execute(select(Club))
     clubs = clubs_result.scalars().all()
-
     total_clubs = len(clubs)
     active_clubs = sum(1 for c in clubs if c.status == "active")
     trial_clubs = sum(1 for c in clubs if c.status == "trial")
     suspended_clubs = sum(1 for c in clubs if c.status == "suspended")
-
     users_result = await db.execute(select(User).where(~User.is_superadmin))
     users = users_result.scalars().all()
     total_users = len(users)
-
     week_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7)
     active_users = sum(1 for u in users if u.last_login and u.last_login >= week_ago)
-
     recent_clubs = sorted(clubs, key=lambda c: c.created_at, reverse=True)[:5]
     recent_logins = sorted(
         [u for u in users if u.last_login],
         key=lambda u: u.last_login or datetime.min,
         reverse=True,
     )[:5]
-
     return {
         "metrics": {
             "total_clubs": total_clubs,
@@ -78,8 +68,6 @@ async def get_dashboard(
             for u in recent_logins
         ],
     }
-
-
 @router.get("/clubs", response_model=list[ClubResponse])
 async def list_clubs(
     status_filter: str | None = None,
@@ -90,19 +78,14 @@ async def list_clubs(
     current_user: User = Depends(get_current_superadmin),
 ) -> list[Club]:
     query = select(Club)
-
     if status_filter:
         query = query.where(Club.status == status_filter)
     if search:
         query = query.where((Club.naam.ilike(f"%{search}%")) | (Club.slug.ilike(f"%{search}%")))
-
     query = query.order_by(Club.created_at.desc())
     query = query.offset((page - 1) * per_page).limit(per_page)
-
     result = await db.execute(query)
     return result.scalars().all()
-
-
 @router.get("/clubs/{club_id}", response_model=ClubResponse)
 async def get_club(
     club_id: UUID,
@@ -114,8 +97,6 @@ async def get_club(
     if not club:
         raise ResourceNotFoundError("Club niet gevonden")
     return club
-
-
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     club_id: UUID | None = None,
@@ -125,7 +106,6 @@ async def list_users(
     current_user: User = Depends(get_current_superadmin),
 ) -> list[User]:
     query = select(User).where(~User.is_superadmin)
-
     if club_id:
         query = query.where(User.club_id == club_id)
     if role:
@@ -134,12 +114,9 @@ async def list_users(
         query = query.where(
             (User.full_name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
         )
-
     query = query.order_by(User.created_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
-
-
 @router.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
@@ -151,8 +128,6 @@ async def get_user(
     if not user:
         raise ResourceNotFoundError("Gebruiker niet gevonden")
     return user
-
-
 @router.patch("/users/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: UUID,
@@ -164,14 +139,11 @@ async def update_user(
     user = result.scalar_one_or_none()
     if not user:
         raise ResourceNotFoundError("Gebruiker niet gevonden")
-
     update_data = user_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
-
     await db.commit()
     await db.refresh(user)
-
     log_audit(
         "user.update",
         actor_id=str(current_user.id),
@@ -180,10 +152,7 @@ async def update_user(
         target_id=str(user_id),
         changed_fields=list(update_data.keys()),
     )
-
     return user
-
-
 @router.get("/clubs/{club_id}/users-count")
 async def get_club_users_count(
     club_id: UUID,
@@ -193,12 +162,8 @@ async def get_club_users_count(
     result = await db.execute(select(func.count(User.id)).where(User.club_id == club_id))
     count = result.scalar()
     return {"count": count}
-
-
 class BillingUpdate(BaseModel):
     billing_info: str | None = None
-
-
 @router.get("/billing")
 async def get_billing_overview(
     db: AsyncSession = Depends(get_db),
@@ -206,13 +171,10 @@ async def get_billing_overview(
 ) -> dict:
     result = await db.execute(select(Club))
     clubs = result.scalars().all()
-
     trials = []
     actives = []
     suspended = []
-
     # now = datetime.now(UTC)  # reserved for future billing logic
-
     for c in clubs:
         entry = {
             "id": str(c.id),
@@ -222,14 +184,12 @@ async def get_billing_overview(
             "trial_ends_at": c.trial_ends_at.isoformat() if c.trial_ends_at else None,
             "billing_info": c.billing_info,
         }
-
         if c.status == "trial":
             trials.append(entry)
         elif c.status == "active":
             actives.append(entry)
         elif c.status == "suspended":
             suspended.append(entry)
-
     return {
         "trials": trials,
         "actives": actives,
@@ -240,8 +200,6 @@ async def get_billing_overview(
             "total_suspended": len(suspended),
         },
     }
-
-
 @router.post("/clubs/{club_id}/billing")
 async def update_club_billing(
     club_id: UUID,
@@ -253,13 +211,10 @@ async def update_club_billing(
     club = result.scalar_one_or_none()
     if not club:
         raise ResourceNotFoundError("Club niet gevonden")
-
     if data.billing_info is not None:
         club.billing_info = data.billing_info
-
     await db.commit()
     await db.refresh(club)
-
     log_audit(
         "club.update",
         actor_id=str(current_user.id),
@@ -268,13 +223,10 @@ async def update_club_billing(
         target_id=str(club_id),
         changed_fields=["billing_info"],
     )
-
     return {
         "id": str(club.id),
         "billing_info": club.billing_info,
     }
-
-
 @router.get("/billing/export")
 async def export_billing_csv(
     db: AsyncSession = Depends(get_db),
@@ -282,14 +234,11 @@ async def export_billing_csv(
 ) -> dict:
     result = await db.execute(select(Club))
     clubs = result.scalars().all()
-
     import csv
     import io
-
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["ID", "Naam", "Slug", "Status", "Trial ends", "Billing info"])
-
     for c in clubs:
         writer.writerow(
             [
@@ -301,7 +250,6 @@ async def export_billing_csv(
                 c.billing_info or "",
             ]
         )
-
     return {
         "csv": output.getvalue(),
         "filename": "billing_export.csv",

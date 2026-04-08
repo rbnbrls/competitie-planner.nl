@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
 from app.db import get_db
 from app.models import (
     Baan,
@@ -18,14 +17,10 @@ from app.models import (
     Wedstrijd,
 )
 from app.services.tenant_auth import get_current_tenant_user
-
 router = APIRouter(
     prefix="/tenant/dashboard",
-    tags=["tenant-dashboard"],
-    description="Tenant dashboard and analytics endpoints. Provides club statistics, activity overviews, and administrative metrics.",
+    tags=["tenant-dashboard"]
 )
-
-
 class DashboardRonde(BaseModel):
     id: str
     competitie_id: str
@@ -36,8 +31,6 @@ class DashboardRonde(BaseModel):
     teams_zonder_baan: int
     totaal_teams: int
     week_nummer: int | None
-
-
 class DashboardActie(BaseModel):
     id: str
     type: str
@@ -47,8 +40,6 @@ class DashboardActie(BaseModel):
     ronde_id: str | None
     competitie_id: str | None
     url: str
-
-
 class DashboardCompetitieVoortgang(BaseModel):
     id: str
     naam: str
@@ -58,16 +49,12 @@ class DashboardCompetitieVoortgang(BaseModel):
     percentage: int
     start_datum: str
     eind_datum: str
-
-
 class DashboardWaarschuwing(BaseModel):
     type: str
     titel: str
     bericht: str
     prioriteit: str
     url: str | None
-
-
 class DashboardResponse(BaseModel):
     club: dict
     gebruiker: dict
@@ -76,8 +63,6 @@ class DashboardResponse(BaseModel):
     competities_voortgang: list[DashboardCompetitieVoortgang]
     waarschuwingen: list[DashboardWaarschuwing]
     statistieken: dict
-
-
 DUTCH_HOLIDAYS = {
     "2024-01-01": "Nieuwjaarsdag",
     "2024-02-14": "Valentijnsdag",
@@ -115,8 +100,6 @@ DUTCH_HOLIDAYS = {
     "2026-12-25": "Kerstmis",
     "2026-12-26": "Tweede Kerstdag",
 }
-
-
 def get_dutch_holidays_in_range(start: date, end: date) -> list[date]:
     holidays = []
     current = start
@@ -126,18 +109,14 @@ def get_dutch_holidays_in_range(start: date, end: date) -> list[date]:
             holidays.append(current)
         current += timedelta(days=1)
     return holidays
-
-
 @router.get("")
 async def get_dashboard(
     current: tuple[User, Club] = Depends(get_current_tenant_user),
     db: AsyncSession = Depends(get_db),
 ) -> DashboardResponse:
     user, club = current
-
     vandaag = date.today()
     komende_vijf_weken = vandaag + timedelta(days=35)
-
     result = await db.execute(
         select(Speelronde)
         .options(selectinload(Speelronde.competitie))
@@ -150,13 +129,10 @@ async def get_dashboard(
         .limit(5)
     )
     speelrondes = result.scalars().all()
-
     komende_rondes: list[DashboardRonde] = []
     ronde_ids = [r.id for r in speelrondes]
-
     toewijzingen_per_ronde: dict = {}
     teams_per_ronde: dict = {}
-
     if ronde_ids:
         result = await db.execute(
             select(BaanToewijzing).where(BaanToewijzing.ronde_id.in_(ronde_ids))
@@ -165,19 +141,16 @@ async def get_dashboard(
             if t.ronde_id not in toewijzingen_per_ronde:
                 toewijzingen_per_ronde[t.ronde_id] = set()
             toewijzingen_per_ronde[t.ronde_id].add(t.team_id)
-
         result = await db.execute(select(Wedstrijd).where(Wedstrijd.ronde_id.in_(ronde_ids)))
         for w in result.scalars().all():
             if w.ronde_id not in teams_per_ronde:
                 teams_per_ronde[w.ronde_id] = set()
             teams_per_ronde[w.ronde_id].add(w.thuisteam_id)
             teams_per_ronde[w.ronde_id].add(w.uitteam_id)
-
     for ronde in speelrondes:
         teams_in_ronde = teams_per_ronde.get(ronde.id, set())
         teams_met_baan = toewijzingen_per_ronde.get(ronde.id, set())
         teams_zonder_baan = len(teams_in_ronde) - len(teams_met_baan)
-
         komende_rondes.append(
             DashboardRonde(
                 id=str(ronde.id),
@@ -191,7 +164,6 @@ async def get_dashboard(
                 week_nummer=ronde.week_nummer,
             )
         )
-
     result = await db.execute(
         select(Competitie)
         .options(selectinload(Competitie.speelrondes))
@@ -201,15 +173,12 @@ async def get_dashboard(
         )
     )
     competities = result.scalars().all()
-
     competities_voortgang: list[DashboardCompetitieVoortgang] = []
     acties: list[DashboardActie] = []
-
     for comp in competities:
         totaal = len(comp.speelrondes)
         gepub = sum(1 for r in comp.speelrondes if r.status == "gepubliceerd")
         pct = int(gepub / totaal * 100) if totaal > 0 else 0
-
         competities_voortgang.append(
             DashboardCompetitieVoortgang(
                 id=str(comp.id),
@@ -222,7 +191,6 @@ async def get_dashboard(
                 eind_datum=comp.eind_datum.isoformat(),
             )
         )
-
         for ronde in comp.speelrondes:
             if ronde.status == "concept" and ronde.datum >= vandaag:
                 teams_in = teams_per_ronde.get(ronde.id, set())
@@ -242,7 +210,6 @@ async def get_dashboard(
                             url=f"/competities/{comp.id}/rondes/{ronde.id}",
                         )
                     )
-
                 teams_zonder = len(teams_in) - len(teams_met)
                 if teams_zonder > 0:
                     acties.append(
@@ -259,7 +226,6 @@ async def get_dashboard(
                             url=f"/competities/{comp.id}/planning/{ronde.id}",
                         )
                     )
-
     result = await db.execute(
         select(Team).where(
             Team.club_id == club.id,
@@ -268,7 +234,6 @@ async def get_dashboard(
         )
     )
     teams_zonder_captain = result.scalars().all()
-
     for team in teams_zonder_captain:
         result = await db.execute(select(Competitie).where(Competitie.id == team.competitie_id))
         comp = result.scalar_one_or_none()
@@ -284,14 +249,10 @@ async def get_dashboard(
                     url=f"/competities/{team.competitie_id}/teams/{team.id}",
                 )
             )
-
     acties.sort(key=lambda a: {"hoog": 0, "medium": 1, "laag": 2}.get(a.prioriteit, 3))
-
     result = await db.execute(select(Competitie).where(Competitie.club_id == club.id))
     alle_competities = result.scalars().all()
-
     waarschuwingen: list[DashboardWaarschuwing] = []
-
     if club.status == "trial" and club.trial_ends_at:
         if club.trial_ends_at.date() <= vandaag + timedelta(days=14):
             dagen = (club.trial_ends_at.date() - vandaag).days
@@ -315,7 +276,6 @@ async def get_dashboard(
                         url="/settings/betalen",
                     )
                 )
-
     komende_week = vandaag + timedelta(days=7)
     holidays_week = get_dutch_holidays_in_range(vandaag, komende_week)
     for h in holidays_week:
@@ -328,7 +288,6 @@ async def get_dashboard(
                 url=None,
             )
         )
-
     if len(teams_zonder_captain) > 0:
         waarschuwingen.append(
             DashboardWaarschuwing(
@@ -339,22 +298,18 @@ async def get_dashboard(
                 url=None,
             )
         )
-
     result = await db.execute(
         select(func.count(Baan.id)).where(Baan.club_id == club.id, Baan.actief)
     )
     totaal_banen = result.scalar() or 0
-
     result = await db.execute(
         select(func.count(Team.id)).where(Team.club_id == club.id, Team.actief)
     )
     totaal_teams = result.scalar() or 0
-
     result = await db.execute(
         select(func.count(User.id)).where(User.club_id == club.id, User.is_active)
     )
     totaal_gebruikers = result.scalar() or 0
-
     statistieken = {
         "totaal_banen": totaal_banen,
         "totaal_teams": totaal_teams,
@@ -362,7 +317,6 @@ async def get_dashboard(
         "aantal_competities": len(alle_competities),
         "open_acties": len(acties),
     }
-
     return DashboardResponse(
         club={
             "id": str(club.id),

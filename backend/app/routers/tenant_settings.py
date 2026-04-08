@@ -1,27 +1,20 @@
 import os
 import shutil
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.models import Baan, User
 from app.services.audit import log_audit
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-
 router = APIRouter(
     prefix="/tenant",
-    tags=["tenant-settings"],
-    description="Tenant (club) settings and configuration endpoints. Handles club profile, courts, logo upload, and subscription management.",
+    tags=["tenant-settings"]
 )
-
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
-
-
 class ClubSettingsUpdate(BaseModel):
     naam: str | None = None
     adres: str | None = None
@@ -31,8 +24,6 @@ class ClubSettingsUpdate(BaseModel):
     website: str | None = None
     max_thuisteams_per_dag: int | None = None
     max_banen: int | None = None
-
-
 @router.get("/settings")
 async def get_settings(
     current: tuple = CURRENT_TENANT_DEP,
@@ -52,8 +43,6 @@ async def get_settings(
         "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
         "max_banen": club.max_banen,
     }
-
-
 @router.patch("/settings")
 async def update_settings(
     data: ClubSettingsUpdate,
@@ -61,7 +50,6 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     if data.naam is not None:
         club.naam = data.naam
     if data.adres is not None:
@@ -78,10 +66,8 @@ async def update_settings(
         club.max_thuisteams_per_dag = data.max_thuisteams_per_dag
     if data.max_banen is not None:
         club.max_banen = data.max_banen
-
     await db.commit()
     await db.refresh(club)
-
     changed = [k for k, v in data.model_dump(exclude_unset=True).items() if v is not None]
     log_audit(
         "club.update",
@@ -91,7 +77,6 @@ async def update_settings(
         club_id=str(club.id),
         changed_fields=changed,
     )
-
     return {
         "id": str(club.id),
         "naam": club.naam,
@@ -105,15 +90,11 @@ async def update_settings(
         "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
         "max_banen": club.max_banen,
     }
-
-
 class BrandingUpdate(BaseModel):
     primary_color: str | None = None
     secondary_color: str | None = None
     accent_color: str | None = None
     font_choice: str | None = None
-
-
 @router.get("/branding")
 async def get_branding(
     current: tuple = CURRENT_TENANT_DEP,
@@ -127,8 +108,6 @@ async def get_branding(
         "font_choice": club.font_choice,
         "logo_url": club.logo_url,
     }
-
-
 @router.patch("/branding")
 async def update_branding(
     data: BrandingUpdate,
@@ -136,7 +115,6 @@ async def update_branding(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     if data.primary_color is not None:
         club.primary_color = data.primary_color
     if data.secondary_color is not None:
@@ -145,10 +123,8 @@ async def update_branding(
         club.accent_color = data.accent_color
     if data.font_choice is not None:
         club.font_choice = data.font_choice
-
     await db.commit()
     await db.refresh(club)
-
     return {
         "primary_color": club.primary_color,
         "secondary_color": club.secondary_color,
@@ -156,8 +132,6 @@ async def update_branding(
         "font_choice": club.font_choice,
         "logo_url": club.logo_url,
     }
-
-
 @router.post("/branding/logo")
 async def upload_logo(
     file: UploadFile = File(...),
@@ -165,13 +139,11 @@ async def upload_logo(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     if file.size and file.size > 2 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File too large. Max 2MB.",
         )
-
     allowed_extensions = {".png", ".svg"}
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed_extensions:
@@ -179,22 +151,15 @@ async def upload_logo(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only PNG and SVG files are allowed.",
         )
-
     upload_dir = f"/tmp/uploads/{club.id}"
     os.makedirs(upload_dir, exist_ok=True)
-
     filename = f"logo{ext}"
     filepath = os.path.join(upload_dir, filename)
-
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
     club.logo_url = f"/uploads/{club.id}/{filename}"
     await db.commit()
-
     return {"logo_url": club.logo_url}
-
-
 @router.get("/banen")
 async def list_banen(
     current: tuple = CURRENT_TENANT_DEP,
@@ -218,16 +183,12 @@ async def list_banen(
             for b in banen
         ]
     }
-
-
 class BaanCreate(BaseModel):
     nummer: int
     naam: str | None = None
     verlichting_type: str = "geen"
     overdekt: bool = False
     prioriteit_score: int = 5
-
-
 class BaanUpdate(BaseModel):
     nummer: int | None = None
     naam: str | None = None
@@ -236,8 +197,6 @@ class BaanUpdate(BaseModel):
     prioriteit_score: int | None = None
     actief: bool | None = None
     notitie: str | None = None
-
-
 @router.post("/banen")
 async def create_banen(
     data: BaanCreate,
@@ -245,7 +204,6 @@ async def create_banen(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(
         select(Baan).where(
             Baan.club_id == club.id,
@@ -258,7 +216,6 @@ async def create_banen(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Baan with this number already exists",
         )
-
     baan = Baan(
         club_id=club.id,
         nummer=data.nummer,
@@ -270,7 +227,6 @@ async def create_banen(
     db.add(baan)
     await db.commit()
     await db.refresh(baan)
-
     return {
         "id": str(baan.id),
         "nummer": baan.nummer,
@@ -280,8 +236,6 @@ async def create_banen(
         "prioriteit_score": baan.prioriteit_score,
         "actief": baan.actief,
     }
-
-
 @router.get("/banen/{baan_id}")
 async def get_baan(
     baan_id: str,
@@ -289,7 +243,6 @@ async def get_baan(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(
         select(Baan).where(
             Baan.id == UUID(baan_id),
@@ -302,7 +255,6 @@ async def get_baan(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Baan not found",
         )
-
     return {
         "id": str(baan.id),
         "nummer": baan.nummer,
@@ -313,8 +265,6 @@ async def get_baan(
         "actief": baan.actief,
         "notitie": baan.notitie,
     }
-
-
 @router.patch("/banen/{baan_id}")
 async def update_baan(
     baan_id: str,
@@ -323,7 +273,6 @@ async def update_baan(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(
         select(Baan).where(
             Baan.id == UUID(baan_id),
@@ -336,7 +285,6 @@ async def update_baan(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Baan not found",
         )
-
     if data.nummer is not None:
         baan.nummer = data.nummer
     if data.naam is not None:
@@ -351,10 +299,8 @@ async def update_baan(
         baan.actief = data.actief
     if data.notitie is not None:
         baan.notitie = data.notitie
-
     await db.commit()
     await db.refresh(baan)
-
     return {
         "id": str(baan.id),
         "nummer": baan.nummer,
@@ -365,8 +311,6 @@ async def update_baan(
         "actief": baan.actief,
         "notitie": baan.notitie,
     }
-
-
 @router.delete("/banen/{baan_id}")
 async def delete_baan(
     baan_id: str,
@@ -374,7 +318,6 @@ async def delete_baan(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(
         select(Baan).where(
             Baan.id == UUID(baan_id),
@@ -387,13 +330,9 @@ async def delete_baan(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Baan not found",
         )
-
     baan.actief = False
     await db.commit()
-
     return {"message": "Baan deactivated successfully"}
-
-
 @router.get("/users")
 async def list_users(
     current: tuple = CURRENT_TENANT_DEP,
@@ -417,16 +356,12 @@ async def list_users(
             for u in users
         ]
     }
-
-
 class UserUpdate(BaseModel):
     full_name: str | None = None
     role: str | None = None
     is_active: bool | None = None
     email_opt_out: bool | None = None
     onboarding_completed: bool | None = None
-
-
 @router.get("/users/{user_id}")
 async def get_user(
     user_id: str,
@@ -434,7 +369,6 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(
         select(User).where(
             User.id == UUID(user_id),
@@ -447,7 +381,6 @@ async def get_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-
     return {
         "id": str(user_obj.id),
         "email": user_obj.email,
@@ -457,8 +390,6 @@ async def get_user(
         "last_login": user_obj.last_login.isoformat() if user_obj.last_login else None,
         "created_at": user_obj.created_at.isoformat(),
     }
-
-
 @router.patch("/users/{user_id}")
 async def update_user(
     user_id: str,
@@ -467,7 +398,6 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     admin_user, club = current
-
     result = await db.execute(
         select(User).where(
             User.id == UUID(user_id),
@@ -480,7 +410,6 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-
     if str(user_obj.id) == str(admin_user.id):
         if data.role is not None and data.role != admin_user.role:
             raise HTTPException(
@@ -492,7 +421,6 @@ async def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You cannot deactivate yourself",
             )
-
     if data.full_name is not None:
         user_obj.full_name = data.full_name
     if data.role is not None:
@@ -503,10 +431,8 @@ async def update_user(
         user_obj.email_opt_out = data.email_opt_out
     if data.onboarding_completed is not None:
         user_obj.onboarding_completed = data.onboarding_completed
-
     await db.commit()
     await db.refresh(user_obj)
-
     log_audit(
         "user.update",
         actor_id=str(admin_user.id),
@@ -515,7 +441,6 @@ async def update_user(
         club_id=str(club.id),
         changed_fields=[k for k in data.model_dump(exclude_unset=True)],
     )
-
     return {
         "id": str(user_obj.id),
         "email": user_obj.email,
@@ -523,8 +448,6 @@ async def update_user(
         "role": user_obj.role,
         "is_active": user_obj.is_active,
     }
-
-
 @router.delete("/users/{user_id}")
 async def deactivate_user(
     user_id: str,
@@ -532,13 +455,11 @@ async def deactivate_user(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     admin_user, club = current
-
     if str(user_id) == str(admin_user.id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot deactivate yourself",
         )
-
     result = await db.execute(
         select(User).where(
             User.id == UUID(user_id),
@@ -551,10 +472,8 @@ async def deactivate_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-
     user_obj.is_active = False
     await db.commit()
-
     log_audit(
         "user.deactivate",
         actor_id=str(admin_user.id),
@@ -562,10 +481,7 @@ async def deactivate_user(
         target_id=user_id,
         club_id=str(club.id),
     )
-
     return {"message": "User deactivated successfully"}
-
-
 @router.get("/club")
 async def get_club(
     current: tuple = CURRENT_TENANT_DEP,

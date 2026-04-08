@@ -1,40 +1,31 @@
 from csv import reader
+
 from datetime import date
 from io import StringIO
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.models import Baan, Competitie, Speelronde, Team, Wedstrijd
 from app.schemas import WedstrijdCreate, WedstrijdUpdate
 from app.services.tenant_auth import get_current_tenant_user
-
 router = APIRouter(
     prefix="/tenant/wedstrijden",
-    tags=["wedstrijden"],
-    description="Match management endpoints. Handles CRUD operations for matches, result submission, and CSV import.",
+    tags=["wedstrijden"]
 )
-
-
 class WedstrijdFilterParams(BaseModel):
     competitie_id: str | None = None
     ronde_id: str | None = None
     thuisteam_id: str | None = None
     uitteam_id: str | None = None
     status: str | None = None
-
-
 class ImportResult(BaseModel):
     succes: bool
     geimporteerd: int = 0
     overgeslagen: int = 0
     fouten: list[dict] = []
-
-
 class RondeAgendaItem(BaseModel):
     ronde_id: str
     ronde_datum: date
@@ -45,8 +36,6 @@ class RondeAgendaItem(BaseModel):
     baan_nummer: int | None = None
     speeltijd: str | None = None
     status: str
-
-
 @router.get("")
 async def list_wedstrijden(
     competitie_id: str | None = None,
@@ -56,7 +45,6 @@ async def list_wedstrijden(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     if competitie_id:
         try:
             competitie_uuid = UUID(competitie_id)
@@ -65,7 +53,6 @@ async def list_wedstrijden(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid competitie ID",
             )
-
         result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
         competitie = result.scalar_one_or_none()
         if not competitie or competitie.club_id != club.id:
@@ -73,14 +60,12 @@ async def list_wedstrijden(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied",
             )
-
     query = select(Wedstrijd).options(
         Wedstrijd.thuisteam,
         Wedstrijd.uitteam,
         Wedstrijd.baan,
         Wedstrijd.ronde,
     )
-
     conditions = []
     if competitie_id:
         try:
@@ -94,13 +79,10 @@ async def list_wedstrijden(
             pass
     if status_filter:
         conditions.append(Wedstrijd.status == status_filter)
-
     if conditions:
         query = query.where(and_(*conditions))
-
     result = await db.execute(query)
     wedstrijden = result.scalars().all()
-
     return {
         "wedstrijden": [
             {
@@ -161,8 +143,6 @@ async def list_wedstrijden(
             for w in wedstrijden
         ]
     }
-
-
 @router.get("/{wedstrijd_id}")
 async def get_wedstrijd(
     wedstrijd_id: str,
@@ -170,7 +150,6 @@ async def get_wedstrijd(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         wedstrijd_uuid = UUID(wedstrijd_id)
     except ValueError:
@@ -178,7 +157,6 @@ async def get_wedstrijd(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid wedstrijd ID",
         )
-
     result = await db.execute(
         select(Wedstrijd)
         .where(Wedstrijd.id == wedstrijd_uuid)
@@ -195,7 +173,6 @@ async def get_wedstrijd(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Wedstrijd not found",
         )
-
     result = await db.execute(select(Speelronde).where(Speelronde.id == wedstrijd.ronde_id))
     ronde = result.scalar_one_or_none()
     if not ronde or ronde.club_id != club.id:
@@ -203,7 +180,6 @@ async def get_wedstrijd(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     return {
         "id": str(wedstrijd.id),
         "competitie_id": str(wedstrijd.competitie_id),
@@ -257,8 +233,6 @@ async def get_wedstrijd(
             else None
         ),
     }
-
-
 @router.post("")
 async def create_wedstrijd(
     data: WedstrijdCreate,
@@ -266,7 +240,6 @@ async def create_wedstrijd(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     result = await db.execute(select(Competitie).where(Competitie.id == data.competitie_id))
     competitie = result.scalar_one_or_none()
     if not competitie or competitie.club_id != club.id:
@@ -274,7 +247,6 @@ async def create_wedstrijd(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     result = await db.execute(select(Speelronde).where(Speelronde.id == data.ronde_id))
     ronde = result.scalar_one_or_none()
     if not ronde:
@@ -282,13 +254,11 @@ async def create_wedstrijd(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Speelronde not found",
         )
-
     if ronde.competitie_id != data.competitie_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ronde belongs to different competitie",
         )
-
     result = await db.execute(select(Team).where(Team.id == data.thuisteam_id))
     thuisteam = result.scalar_one_or_none()
     if not thuisteam:
@@ -296,7 +266,6 @@ async def create_wedstrijd(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Thuisteam not found",
         )
-
     result = await db.execute(select(Team).where(Team.id == data.uitteam_id))
     uitteam = result.scalar_one_or_none()
     if not uitteam:
@@ -304,7 +273,6 @@ async def create_wedstrijd(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Uitteam not found",
         )
-
     result = await db.execute(
         select(Wedstrijd).where(
             Wedstrijd.ronde_id == data.ronde_id,
@@ -318,7 +286,6 @@ async def create_wedstrijd(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Wedstrijd already exists for this combination",
         )
-
     wedstrijd = Wedstrijd(
         competitie_id=data.competitie_id,
         ronde_id=data.ronde_id,
@@ -336,7 +303,6 @@ async def create_wedstrijd(
     db.add(wedstrijd)
     await db.commit()
     await db.refresh(wedstrijd)
-
     return {
         "id": str(wedstrijd.id),
         "competitie_id": str(wedstrijd.competitie_id),
@@ -345,8 +311,6 @@ async def create_wedstrijd(
         "uitteam_id": str(wedstrijd.uitteam_id),
         "status": wedstrijd.status,
     }
-
-
 @router.patch("/{wedstrijd_id}")
 async def update_wedstrijd(
     wedstrijd_id: str,
@@ -355,7 +319,6 @@ async def update_wedstrijd(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         wedstrijd_uuid = UUID(wedstrijd_id)
     except ValueError:
@@ -363,7 +326,6 @@ async def update_wedstrijd(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid wedstrijd ID",
         )
-
     result = await db.execute(select(Wedstrijd).where(Wedstrijd.id == wedstrijd_uuid))
     wedstrijd = result.scalar_one_or_none()
     if not wedstrijd:
@@ -371,7 +333,6 @@ async def update_wedstrijd(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Wedstrijd not found",
         )
-
     result = await db.execute(select(Speelronde).where(Speelronde.id == wedstrijd.ronde_id))
     ronde = result.scalar_one_or_none()
     if not ronde or ronde.club_id != club.id:
@@ -379,7 +340,6 @@ async def update_wedstrijd(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     if data.competitie_id is not None:
         result = await db.execute(select(Competitie).where(Competitie.id == data.competitie_id))
         comp = result.scalar_one_or_none()
@@ -389,7 +349,6 @@ async def update_wedstrijd(
                 detail="Competitie not found",
             )
         wedstrijd.competitie_id = data.competitie_id
-
     if data.ronde_id is not None:
         result = await db.execute(select(Speelronde).where(Speelronde.id == data.ronde_id))
         rnd = result.scalar_one_or_none()
@@ -399,7 +358,6 @@ async def update_wedstrijd(
                 detail="Speelronde not found",
             )
         wedstrijd.ronde_id = data.ronde_id
-
     if data.thuisteam_id is not None:
         result = await db.execute(select(Team).where(Team.id == data.thuisteam_id))
         team = result.scalar_one_or_none()
@@ -409,7 +367,6 @@ async def update_wedstrijd(
                 detail="Team not found",
             )
         wedstrijd.thuisteam_id = data.thuisteam_id
-
     if data.uitteam_id is not None:
         result = await db.execute(select(Team).where(Team.id == data.uitteam_id))
         team = result.scalar_one_or_none()
@@ -419,7 +376,6 @@ async def update_wedstrijd(
                 detail="Team not found",
             )
         wedstrijd.uitteam_id = data.uitteam_id
-
     if data.baan_id is not None:
         if data.baan_id:
             result = await db.execute(select(Baan).where(Baan.id == data.baan_id))
@@ -430,31 +386,22 @@ async def update_wedstrijd(
                     detail="Baan not found",
                 )
         wedstrijd.baan_id = data.baan_id
-
     if data.status is not None:
         wedstrijd.status = data.status
-
     if data.speeldatum is not None:
         wedstrijd.speeldatum = data.speeldatum
-
     if data.speeltijd is not None:
         wedstrijd.speeltijd = data.speeltijd
-
     if data.uitslag_thuisteam is not None:
         wedstrijd.uitslag_thuisteam = data.uitslag_thuisteam
-
     if data.uitslag_uitteam is not None:
         wedstrijd.uitslag_uitteam = data.uitslag_uitteam
-
     if data.scorendetails is not None:
         wedstrijd.scorendetails = data.scorendetails
-
     if data.notitie is not None:
         wedstrijd.notitie = data.notitie
-
     await db.commit()
     await db.refresh(wedstrijd)
-
     return {
         "id": str(wedstrijd.id),
         "competitie_id": str(wedstrijd.competitie_id),
@@ -463,8 +410,6 @@ async def update_wedstrijd(
         "uitteam_id": str(wedstrijd.uitteam_id),
         "status": wedstrijd.status,
     }
-
-
 @router.delete("/{wedstrijd_id}")
 async def delete_wedstrijd(
     wedstrijd_id: str,
@@ -472,7 +417,6 @@ async def delete_wedstrijd(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         wedstrijd_uuid = UUID(wedstrijd_id)
     except ValueError:
@@ -480,7 +424,6 @@ async def delete_wedstrijd(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid wedstrijd ID",
         )
-
     result = await db.execute(select(Wedstrijd).where(Wedstrijd.id == wedstrijd_uuid))
     wedstrijd = result.scalar_one_or_none()
     if not wedstrijd:
@@ -488,7 +431,6 @@ async def delete_wedstrijd(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Wedstrijd not found",
         )
-
     result = await db.execute(select(Speelronde).where(Speelronde.id == wedstrijd.ronde_id))
     ronde = result.scalar_one_or_none()
     if not ronde or ronde.club_id != club.id:
@@ -496,13 +438,9 @@ async def delete_wedstrijd(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     await db.delete(wedstrijd)
     await db.commit()
-
     return {"message": "Wedstrijd deleted successfully"}
-
-
 @router.get("/competitie/{competitie_id}/thuis-per-ronde")
 async def get_thuis_wedstrijden_per_ronde(
     competitie_id: str,
@@ -510,7 +448,6 @@ async def get_thuis_wedstrijden_per_ronde(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -518,7 +455,6 @@ async def get_thuis_wedstrijden_per_ronde(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid competitie ID",
         )
-
     result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
     competitie = result.scalar_one_or_none()
     if not competitie or competitie.club_id != club.id:
@@ -526,7 +462,6 @@ async def get_thuis_wedstrijden_per_ronde(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     result = await db.execute(
         select(Wedstrijd)
         .where(
@@ -547,7 +482,6 @@ async def get_thuis_wedstrijden_per_ronde(
         .order_by(Wedstrijd.ronde_id, Wedstrijd.thuisteam_id)
     )
     wedstrijden = result.scalars().all()
-
     grouped: dict[str, list[dict]] = {}
     for w in wedstrijden:
         ronde_id_str = str(w.ronde_id)
@@ -570,12 +504,9 @@ async def get_thuis_wedstrijden_per_ronde(
                 "status": w.status,
             }
         )
-
     return {
         "rondes": list(grouped.values()),
     }
-
-
 @router.post("/competitie/{competitie_id}/import")
 async def import_wedstrijden(
     competitie_id: str,
@@ -584,7 +515,6 @@ async def import_wedstrijden(
     db: AsyncSession = Depends(get_db),
 ) -> ImportResult:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -592,7 +522,6 @@ async def import_wedstrijden(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid competitie ID",
         )
-
     result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
     competitie = result.scalar_one_or_none()
     if not competitie or competitie.club_id != club.id:
@@ -600,10 +529,8 @@ async def import_wedstrijden(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     content = await file.read()
     text = content.decode("utf-8")
-
     try:
         csv_reader = reader(StringIO(text))
         lines = list(csv_reader)
@@ -612,15 +539,12 @@ async def import_wedstrijden(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid CSV format: {str(e)}",
         )
-
     if len(lines) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="CSV file is empty",
         )
-
     headers = [h.strip().lower() for h in lines[0]]
-
     datum_idx = next(
         (i for i, h in enumerate(headers) if h in ["datum", "date", "speeldatum"]), None
     )
@@ -633,39 +557,31 @@ async def import_wedstrijden(
     )
     ronde_idx = next((i for i, h in enumerate(headers) if h in ["ronde", "round"]), None)  # noqa: F841
     poulee_idx = next((i for i, h in enumerate(headers) if h in ["poule", "poul"]), None)  # noqa: F841
-
     if datum_idx is None or thuis_idx is None or uit_idx is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Required columns missing: datum, thuisteam, uitteam",
         )
-
     result = await db.execute(
         select(Team).where(Team.competitie_id == competitie_uuid, Team.actief)
     )
     teams = list(result.scalars().all())
     team_name_map: dict[str, Team] = {t.naam.lower(): t for t in teams}
-
     result = await db.execute(select(Speelronde).where(Speelronde.competitie_id == competitie_uuid))
     rondes = list(result.scalars().all())
     ronde_datum_map: dict[str, Speelronde] = {r.datum.isoformat(): r for r in rondes}
-
     result = await db.execute(select(Baan).where(Baan.club_id == club.id, Baan.actief))
     _banen = list(result.scalars().all())  # noqa: F841
-
     imported = 0
     skipped = 0
     errors: list[dict] = []
-
     for i, line in enumerate(lines[1:], start=2):
         if not line or not line[0]:
             continue
-
         try:
             datum_str = line[datum_idx].strip() if datum_idx < len(line) else ""
             thuis_naam = line[thuis_idx].strip() if thuis_idx < len(line) else ""
             uit_naam = line[uit_idx].strip() if uit_idx < len(line) else ""
-
             if not datum_str or not thuis_naam or not uit_naam:
                 errors.append(
                     {
@@ -675,13 +591,10 @@ async def import_wedstrijden(
                 )
                 skipped += 1
                 continue
-
             thuis_naam_lower = thuis_naam.lower()
             uit_naam_lower = uit_naam.lower()
-
             thuisteam = team_name_map.get(thuis_naam_lower)
             uitteam = team_name_map.get(uit_naam_lower)
-
             if not thuisteam:
                 errors.append(
                     {
@@ -691,7 +604,6 @@ async def import_wedstrijden(
                 )
                 skipped += 1
                 continue
-
             if not uitteam:
                 errors.append(
                     {
@@ -701,7 +613,6 @@ async def import_wedstrijden(
                 )
                 skipped += 1
                 continue
-
             try:
                 ronde_datum = date.fromisoformat(datum_str)
             except ValueError:
@@ -716,7 +627,6 @@ async def import_wedstrijden(
                     )
                     skipped += 1
                     continue
-
             ronde = ronde_datum_map.get(ronde_datum.isoformat())
             if not ronde:
                 errors.append(
@@ -727,7 +637,6 @@ async def import_wedstrijden(
                 )
                 skipped += 1
                 continue
-
             result = await db.execute(
                 select(Wedstrijd).where(
                     Wedstrijd.ronde_id == ronde.id,
@@ -745,7 +654,6 @@ async def import_wedstrijden(
                 )
                 skipped += 1
                 continue
-
             thuis_uit_code = "thuis"
             if thuis_uit_idx is not None and thuis_uit_idx < len(line):
                 thuis_uit_code = line[thuis_uit_idx].strip().lower()
@@ -758,7 +666,6 @@ async def import_wedstrijden(
             else:
                 thuisteam_id = thuisteam.id
                 uitteam_id = uitteam.id
-
             wedstrijd = Wedstrijd(
                 competitie_id=competitie_uuid,
                 ronde_id=ronde.id,
@@ -768,7 +675,6 @@ async def import_wedstrijden(
             )
             db.add(wedstrijd)
             imported += 1
-
         except Exception as e:
             errors.append(
                 {
@@ -777,18 +683,14 @@ async def import_wedstrijden(
                 }
             )
             skipped += 1
-
     if imported > 0:
         await db.commit()
-
     return ImportResult(
         succes=imported > 0 and skipped == 0,
         geimporteerd=imported,
         overgeslagen=skipped,
         fouten=errors,
     )
-
-
 @router.get("/competitie/{competitie_id}/agenda-export")
 async def export_agenda(
     competitie_id: str,
@@ -796,7 +698,6 @@ async def export_agenda(
     db: AsyncSession = Depends(get_db),
 ) -> str:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -804,7 +705,6 @@ async def export_agenda(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid competitie ID",
         )
-
     result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
     competitie = result.scalar_one_or_none()
     if not competitie or competitie.club_id != club.id:
@@ -812,7 +712,6 @@ async def export_agenda(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     result = await db.execute(
         select(Wedstrijd)
         .where(Wedstrijd.competitie_id == competitie_uuid)
@@ -824,27 +723,22 @@ async def export_agenda(
         .order_by(Wedstrijd.ronde_id)
     )
     wedstrijden = result.scalars().all()
-
     ics_lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
         "PRODID:-//CompetitiePlanner//NL",
         f"X-WR-CALNAME:{competitie.naam} - Wedstrijden",
     ]
-
     for w in wedstrijden:
         if not w.ronde or not w.thuisteam or not w.uitteam:
             continue
-
         dt = w.ronde.datum
         if w.speeltijd:
             dt = f"{dt.isoformat()}T{w.speeltijd.isoformat()}"
         else:
             dt = f"{dt.isoformat()}T190000"
-
         thuis_uit = "Thuis" if w.thuisteam_id == w.thuisteam.id else "Uit"
         summary = f"Tennis: {w.thuisteam.naam} - {w.uitteam.naam} ({thuis_uit})"
-
         ics_lines.extend(
             [
                 "BEGIN:VEVENT",
@@ -854,12 +748,8 @@ async def export_agenda(
                 "END:VEVENT",
             ]
         )
-
     ics_lines.append("END:VCALENDAR")
-
     return "\n".join(ics_lines)
-
-
 @router.post("/competitie/{competitie_id}/validatie")
 async def validate_wedstrijden(
     competitie_id: str,
@@ -867,7 +757,6 @@ async def validate_wedstrijden(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -875,7 +764,6 @@ async def validate_wedstrijden(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid competitie ID",
         )
-
     result = await db.execute(select(Competitie).where(Competitie.id == competitie_uuid))
     competitie = result.scalar_one_or_none()
     if not competitie or competitie.club_id != club.id:
@@ -883,24 +771,18 @@ async def validate_wedstrijden(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-
     result = await db.execute(
         select(Team).where(Team.competitie_id == competitie_uuid, Team.actief)
     )
     teams = list(result.scalars().all())
-
     result = await db.execute(select(Speelronde).where(Speelronde.competitie_id == competitie_uuid))
     rondes = list(result.scalars().all())
-
     result = await db.execute(select(Wedstrijd).where(Wedstrijd.competitie_id == competitie_uuid))
     wedstrijden = list(result.scalars().all())
-
     issues: list[dict] = []
-
     for team in teams:
         team_wed = [w for w in wedstrijden if w.thuisteam_id == team.id or w.uitteam_id == team.id]
         team_wed_ids = set(w.ronde_id for w in team_wed)
-
         for ronde in rondes:
             if ronde.id not in team_wed_ids:
                 issues.append(
@@ -913,7 +795,6 @@ async def validate_wedstrijden(
                         "message": f"Team {team.naam} heeft geen wedstrijd in ronde {ronde.datum.isoformat()}",
                     }
                 )
-
     team_combos: dict[tuple[UUID, UUID], bool] = {}
     for w in wedstrijden:
         combo = tuple(sorted([w.thuisteam_id, w.uitteam_id]))
@@ -927,11 +808,9 @@ async def validate_wedstrijden(
                 }
             )
         team_combos[combo] = True
-
     for team in teams:
         team_wed = [w for w in wedstrijden if w.thuisteam_id == team.id]
         uit_wed = [w for w in wedstrijden if w.uitteam_id == team.id]
-
         if len(team_wed) < len(teams) - 1:
             issues.append(
                 {
@@ -941,7 +820,6 @@ async def validate_wedstrijden(
                     "message": f"Team {team.naam} heeft {len(team_wed)} thuiswedstrijden en {len(uit_wed)} uitwedstrijden",
                 }
             )
-
     return {
         "valid": len(issues) == 0,
         "issues": issues,

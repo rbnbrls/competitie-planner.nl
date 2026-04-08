@@ -1,47 +1,32 @@
 from uuid import UUID
-
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.models import Club, Payment, SepaMandate
 from app.routers.auth import get_current_superadmin
 from app.services.mollie import MollieService
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-
 router = APIRouter(
     prefix="/payments",
-    tags=["payments"],
-    description="Payment and subscription management endpoints. Handles Mollie integration, subscription status, SEPA mandates, and payment history.",
+    tags=["payments"]
 )
-
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
 CURRENT_SUPERADMIN_DEP = Depends(get_current_superadmin)
-
-
 class MollieConfigUpdate(BaseModel):
     api_key: str
-
-
 class CompetitionPriceUpdate(BaseModel):
     competitie_naam: str
     price_small_club: int
     price_large_club: int
-
-
 class MandateCreate(BaseModel):
     iban: str
     consumer_name: str
-
-
 class PaymentCreate(BaseModel):
     competitie_naam: str
-
-
 @router.get("/config")
 async def get_mollie_config(
     current: tuple = CURRENT_SUPERADMIN_DEP,
@@ -63,8 +48,6 @@ async def get_mollie_config(
         "configured": config is not None,
         "api_key": masked_key,
     }
-
-
 @router.post("/config")
 async def save_mollie_config(
     data: MollieConfigUpdate,
@@ -79,8 +62,6 @@ async def save_mollie_config(
     service = MollieService(db)
     await service.save_config(data.api_key)
     return {"message": "Mollie configuration saved"}
-
-
 @router.get("/prices")
 async def list_prices(
     current: tuple = CURRENT_SUPERADMIN_DEP,
@@ -99,8 +80,6 @@ async def list_prices(
             for p in prices
         ]
     }
-
-
 @router.post("/prices")
 async def save_price(
     data: CompetitionPriceUpdate,
@@ -117,8 +96,6 @@ async def save_price(
         "price_small_club": price.price_small_club,
         "price_large_club": price.price_large_club,
     }
-
-
 @router.get("/mandates")
 async def list_all_mandates(
     current: tuple = CURRENT_SUPERADMIN_DEP,
@@ -131,17 +108,14 @@ async def list_all_mandates(
         select(SepaMandate).order_by(SepaMandate.created_at.desc()).offset(skip).limit(limit)
     )
     mandates = result.scalars().all()
-
     total_result = await db.execute(select(func.count()).select_from(SepaMandate))
     total = total_result.scalar()
-
     mandate_data = []
     for m in mandates:
         club_result = await db.execute(select(Club).where(Club.id == m.club_id))
         club = club_result.scalar_one_or_none()
         payments_result = await db.execute(select(Payment).where(Payment.mandate_id == m.id))
         payments = payments_result.scalars().all()
-
         mandate_data.append(
             {
                 "id": str(m.id),
@@ -166,10 +140,7 @@ async def list_all_mandates(
                 ],
             }
         )
-
     return {"mandates": mandate_data, "total": total}
-
-
 @router.get("/mandates/{club_id}")
 async def get_club_mandate(
     club_id: str,
@@ -179,14 +150,11 @@ async def get_club_mandate(
     _, club = current
     if str(club.id) != club_id:
         raise HTTPException(status_code=403, detail="Access denied")
-
     service = MollieService(db)
     mandate = await service.get_club_mandate(club.id)
     if not mandate:
         return {"has_mandate": False}
-
     payments = await service.get_club_payments(club.id)
-
     return {
         "has_mandate": True,
         "mandate": {
@@ -205,8 +173,6 @@ async def get_club_mandate(
             for p in payments
         ],
     }
-
-
 @router.post("/mandates")
 async def create_mandate(
     data: MandateCreate,
@@ -214,12 +180,10 @@ async def create_mandate(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     service = MollieService(db)
     existing = await service.get_club_mandate(club.id)
     if existing and existing.status == "active":
         raise HTTPException(status_code=400, detail="Mandate already exists")
-
     try:
         result = await service.create_mandate(
             club_id=club.id,
@@ -230,8 +194,6 @@ async def create_mandate(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
 @router.post("/mandates/{mandate_id}/verify")
 async def verify_mandate(
     mandate_id: str,
@@ -239,15 +201,12 @@ async def verify_mandate(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     _, club = current
-
     service = MollieService(db)
     try:
         result = await service.check_mandate_status(UUID(mandate_id))
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
 @router.post("/payments")
 async def create_payment(
     data: PaymentCreate,
@@ -256,18 +215,14 @@ async def create_payment(
     webhook_url: str = Query(...),
 ) -> dict:
     user, club = current
-
     service = MollieService(db)
     mandate = await service.get_club_mandate(club.id)
     if not mandate or mandate.status != "active":
         raise HTTPException(status_code=400, detail="Active mandate required")
-
     price = await service.get_price(data.competitie_naam)
     if not price:
         raise HTTPException(status_code=400, detail="Price not configured for this competition")
-
     amount = price.price_large_club if club.max_banen > 7 else price.price_small_club
-
     try:
         result = await service.create_payment(
             club_id=club.id,
@@ -276,7 +231,6 @@ async def create_payment(
             amount=amount,
             webhook_url=webhook_url,
         )
-
         logger = structlog.get_logger()
         logger.info(
             "payment_created",
@@ -285,12 +239,9 @@ async def create_payment(
             amount=amount,
             payment_id=result.get("payment_id"),
         )
-
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
 @router.post("/webhook")
 async def mollie_webhook(
     payment_id: str = Query(...),
@@ -299,69 +250,52 @@ async def mollie_webhook(
     service = MollieService(db)
     try:
         result = await service.handle_webhook(payment_id)
-
         logger = structlog.get_logger()
         logger.info(
             "payment_webhook_received",
             payment_id=payment_id,
             status=result.get("status"),
         )
-
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
 @router.get("/checkout-status")
 async def get_checkout_status(
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     service = MollieService(db)
     mandate = await service.get_club_mandate(club.id)
     payments = await service.get_club_payments(club.id)
-
     has_active_mandate = mandate and mandate.status == "active"
     paid_competitions = {p.competitie_naam for p in payments if p.status == "paid"}
-
     return {
         "has_active_mandate": has_active_mandate,
         "paid_competitions": list(paid_competitions),
         "mandate_status": mandate.status if mandate else None,
         "iban": service.mask_iban(mandate.iban) if mandate else None,
     }
-
-
 class PaymentStatusResponse(BaseModel):
     competitie_naam: str
     status: str
     paid_at: str | None
     amount: int | None
-
-
 @router.get("/payment-status", response_model=list[PaymentStatusResponse])
 async def get_payment_status(
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     user, club = current
-
     from sqlalchemy import select
-
     from app.models import Competitie
-
     result = await db.execute(
         select(Competitie).where(Competitie.club_id == club.id, Competitie.actief)
     )
     competities = result.scalars().all()
-
     service = MollieService(db)
     payments = await service.get_club_payments(club.id)
-
     payment_by_competitie = {p.competitie_naam: p for p in payments}
-
     result_list = []
     for c in competities:
         payment = payment_by_competitie.get(c.naam)
@@ -383,5 +317,4 @@ async def get_payment_status(
                     amount=None,
                 )
             )
-
     return result_list

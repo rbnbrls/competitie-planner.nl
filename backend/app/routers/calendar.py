@@ -12,7 +12,6 @@ from app.models import BaanToewijzing, Competitie, Speelronde, Team, Wedstrijd
 
 router = APIRouter(
     tags=["calendar"],
-    description="Calendar integration endpoints for public competition schedules. Provides iCal export functionality.",
 )
 
 

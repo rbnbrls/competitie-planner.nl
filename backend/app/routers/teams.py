@@ -1,32 +1,23 @@
 import csv
 import io
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db import get_db
 from app.models import Team
 from app.schemas import TeamCreate, TeamUpdate
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-
 router = APIRouter(
     prefix="/tenant/teams",
-    tags=["teams"],
-    description="Team management endpoints for tenant users. Handles CRUD operations for teams, bulk activation, and CSV import.",
+    tags=["teams"]
 )
-
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
-
-
 class BulkActivateRequest(BaseModel):
     team_ids: list[str]
     activate: bool
-
-
 @router.get("")
 async def list_teams(
     competitie_id: str | None = None,
@@ -37,18 +28,14 @@ async def list_teams(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     from sqlalchemy import or_
-
     user, club = current
-
     if page < 1:
         page = 1
     if size < 1:
         size = 20
     if size > 100:
         size = 100
-
     offset = (page - 1) * size
-
     base_query = select(Team).where(Team.club_id == club.id)
     if competitie_id:
         try:
@@ -59,23 +46,18 @@ async def list_teams(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid competitie ID",
             )
-
     if search:
         base_query = base_query.where(
             or_(Team.naam.ilike(f"%{search}%"), Team.captain_naam.ilike(f"%{search}%"))
         )
-
     # Count total
     count_query = select(func.count()).select_from(base_query.subquery())
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
-
     # Get page results
     result = await db.execute(base_query.order_by(Team.naam).offset(offset).limit(size))
     teams = result.scalars().all()
-
     pages = (total + size - 1) // size
-
     return {
         "items": [
             {
@@ -95,8 +77,6 @@ async def list_teams(
         "size": size,
         "pages": pages,
     }
-
-
 @router.get("/{team_id}")
 async def get_team(
     team_id: str,
@@ -111,7 +91,6 @@ async def get_team(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid team ID",
         )
-
     result = await db.execute(
         select(Team).where(
             Team.id == team_uuid,
@@ -124,7 +103,6 @@ async def get_team(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Team not found",
         )
-
     return {
         "id": str(team.id),
         "competitie_id": str(team.competitie_id),
@@ -135,8 +113,6 @@ async def get_team(
         "knltb_team_id": team.knltb_team_id,
         "actief": team.actief,
     }
-
-
 @router.post("")
 async def create_team(
     data: TeamCreate,
@@ -144,12 +120,10 @@ async def create_team(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         data.club_id = club.id
     except Exception:
         pass
-
     team = Team(
         club_id=club.id,
         competitie_id=data.competitie_id,
@@ -162,13 +136,10 @@ async def create_team(
     db.add(team)
     await db.commit()
     await db.refresh(team)
-
     return {
         "id": str(team.id),
         "naam": team.naam,
     }
-
-
 @router.patch("/{team_id}")
 async def update_team(
     team_id: str,
@@ -184,7 +155,6 @@ async def update_team(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid team ID",
         )
-
     result = await db.execute(
         select(Team).where(
             Team.id == team_uuid,
@@ -197,7 +167,6 @@ async def update_team(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Team not found",
         )
-
     if data.naam is not None:
         team.naam = data.naam
     if data.captain_naam is not None:
@@ -210,16 +179,12 @@ async def update_team(
         team.knltb_team_id = data.knltb_team_id
     if data.actief is not None:
         team.actief = data.actief
-
     await db.commit()
     await db.refresh(team)
-
     return {
         "id": str(team.id),
         "naam": team.naam,
     }
-
-
 @router.delete("/{team_id}")
 async def delete_team(
     team_id: str,
@@ -234,7 +199,6 @@ async def delete_team(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid team ID",
         )
-
     result = await db.execute(
         select(Team).where(
             Team.id == team_uuid,
@@ -247,13 +211,9 @@ async def delete_team(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Team not found",
         )
-
     team.actief = False
     await db.commit()
-
     return {"message": "Team deactivated successfully"}
-
-
 @router.post("/bulk-activate")
 async def bulk_activate_teams(
     data: BulkActivateRequest,
@@ -261,17 +221,14 @@ async def bulk_activate_teams(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     results = []
     errors = []
-
     for team_id in data.team_ids:
         try:
             team_uuid = UUID(team_id)
         except ValueError:
             errors.append({"team_id": team_id, "error": "Invalid ID"})
             continue
-
         result = await db.execute(
             select(Team).where(
                 Team.id == team_uuid,
@@ -282,24 +239,17 @@ async def bulk_activate_teams(
         if not team:
             errors.append({"team_id": team_id, "error": "Not found"})
             continue
-
         team.actief = data.activate
         results.append({"team_id": str(team.id), "naam": team.naam, "actief": team.actief})
-
     await db.commit()
-
     return {
         "success": len(results),
         "errors": errors,
         "results": results,
     }
-
-
 class CSVImportRequest(BaseModel):
     competitie_id: str
     column_mapping: dict[str, str]
-
-
 @router.post("/import/csv")
 async def import_teams_csv(
     competitie_id: str,
@@ -309,7 +259,6 @@ async def import_teams_csv(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -317,34 +266,25 @@ async def import_teams_csv(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid competitie ID",
         )
-
     import json
-
     mapping = json.loads(column_mapping)
-
     csv_naam = mapping.get("naam", "Teamnaam")
     csv_captain = mapping.get("captain_naam", "Capitano")
     csv_email = mapping.get("captain_email", "Email")
     csv_klasse = mapping.get("speelklasse", "Klasse")
-
     content = await file.read()
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text))
-
     rows = list(reader)
-
     preview = []
     existing_count = 0
-
     for row in rows:
         team_naam = row.get(csv_naam, "").strip()
         if not team_naam:
             continue
-
         captain_naam = row.get(csv_captain, "").strip()
         captain_email = row.get(csv_email, "").strip()
         speelklasse = row.get(csv_klasse, "").strip()
-
         result = await db.execute(
             select(Team).where(
                 Team.club_id == club.id,
@@ -353,12 +293,10 @@ async def import_teams_csv(
             )
         )
         existing = result.scalar_one_or_none()
-
         status_type = "new"
         if existing:
             status_type = "existing"
             existing_count += 1
-
         preview.append(
             {
                 "naam": team_naam,
@@ -368,15 +306,12 @@ async def import_teams_csv(
                 "status": status_type,
             }
         )
-
     return {
         "preview": preview,
         "total_rows": len(preview),
         "new_teams": len([p for p in preview if p["status"] == "new"]),
         "existing_teams": existing_count,
     }
-
-
 @router.post("/import/csv/confirm")
 async def confirm_import_teams_csv(
     competitie_id: str,
@@ -387,7 +322,6 @@ async def confirm_import_teams_csv(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-
     try:
         competitie_uuid = UUID(competitie_id)
     except ValueError:
@@ -395,32 +329,24 @@ async def confirm_import_teams_csv(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid competitie ID",
         )
-
     import json
-
     mapping = json.loads(column_mapping)
-
     csv_naam = mapping.get("naam", "Teamnaam")
     csv_captain = mapping.get("captain_naam", "Capitano")
     csv_email = mapping.get("captain_email", "Email")
     csv_klasse = mapping.get("speelklasse", "Klasse")
-
     content = await file.read()
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text))
-
     created = 0
     skipped = 0
-
     for row in reader:
         team_naam = row.get(csv_naam, "").strip()
         if not team_naam:
             continue
-
         captain_naam = row.get(csv_captain, "").strip()
         captain_email = row.get(csv_email, "").strip()
         speelklasse = row.get(csv_klasse, "").strip()
-
         result = await db.execute(
             select(Team).where(
                 Team.club_id == club.id,
@@ -429,7 +355,6 @@ async def confirm_import_teams_csv(
             )
         )
         existing = result.scalar_one_or_none()
-
         if existing:
             if overwrite:
                 existing.captain_naam = captain_naam
@@ -437,7 +362,6 @@ async def confirm_import_teams_csv(
                 existing.speelklasse = speelklasse
             skipped += 1
             continue
-
         team = Team(
             club_id=club.id,
             competitie_id=competitie_uuid,
@@ -448,9 +372,7 @@ async def confirm_import_teams_csv(
         )
         db.add(team)
         created += 1
-
     await db.commit()
-
     return {
         "created": created,
         "skipped": skipped,
