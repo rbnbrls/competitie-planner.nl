@@ -10,7 +10,7 @@ from app.db import get_db
 from app.exceptions import ResourceNotFoundError
 from app.models import Club, User
 from app.routers.auth import get_current_superadmin
-from app.schemas import ClubResponse, UserResponse, UserUpdate
+from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 from app.services.audit import log_audit
 router = APIRouter(
     prefix="/superadmin",
@@ -96,6 +96,50 @@ async def get_club(
     club = result.scalar_one_or_none()
     if not club:
         raise ResourceNotFoundError("Club niet gevonden")
+    return club
+@router.post("/clubs", response_model=ClubResponse, status_code=201)
+async def create_club(
+    club_data: ClubCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> Club:
+    club = Club(**club_data.model_dump())
+    db.add(club)
+    await db.commit()
+    await db.refresh(club)
+    log_audit(
+        "club.create",
+        actor_id=str(current_user.id),
+        actor_email=current_user.email,
+        target_type="club",
+        target_id=str(club.id),
+        changed_fields=list(club_data.model_dump().keys()),
+    )
+    return club
+@router.patch("/clubs/{club_id}", response_model=ClubResponse)
+async def update_club(
+    club_id: UUID,
+    club_data: ClubUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> Club:
+    result = await db.execute(select(Club).where(Club.id == club_id))
+    club = result.scalar_one_or_none()
+    if not club:
+        raise ResourceNotFoundError("Club niet gevonden")
+    update_data = club_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(club, field, value)
+    await db.commit()
+    await db.refresh(club)
+    log_audit(
+        "club.update",
+        actor_id=str(current_user.id),
+        actor_email=current_user.email,
+        target_type="club",
+        target_id=str(club_id),
+        changed_fields=list(update_data.keys()),
+    )
     return club
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(

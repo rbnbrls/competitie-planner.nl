@@ -6,7 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CompetitionPrice, MollieConfig, Payment, SepaMandate
+from app.logging_config import get_logger
 from app.services.encryption import get_encryption_service
+
+logger = get_logger("mollie")
 
 
 class MollieService:
@@ -57,8 +60,10 @@ class MollieService:
         iban: str,
         consumer_name: str,
     ) -> dict:
+        logger.info("creating_mandate", club_id=str(club_id), club_name=club_name)
         api_key = await self.get_api_key()
         if not api_key:
+            logger.error("mollie_not_configured")
             raise ValueError("Mollie not configured")
 
         mandate_ref = f"CLUB-{club_id.hex[:8].upper()}"
@@ -85,6 +90,11 @@ class MollieService:
             )
 
         if response.status_code not in (201, 200):
+            logger.error(
+                "mollie_mandate_creation_failed",
+                status_code=response.status_code,
+                response=response.text[:200],
+            )
             raise ValueError(f"Mollie mandate creation failed: {response.text}")
 
         mollie_data = response.json()
@@ -160,8 +170,12 @@ class MollieService:
         amount: int,
         webhook_url: str,
     ) -> dict:
+        logger.info(
+            "creating_payment", club_id=str(club_id), competitie_naam=competitie_naam, amount=amount
+        )
         api_key = await self.get_api_key()
         if not api_key:
+            logger.error("mollie_not_configured")
             raise ValueError("Mollie not configured")
 
         result = await self.db.execute(select(SepaMandate).where(SepaMandate.id == mandate_id))

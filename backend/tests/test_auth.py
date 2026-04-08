@@ -54,7 +54,7 @@ class TestRegisterAdmin:
         """Test registering first admin."""
         response = await client.post(
             "/api/v1/auth/register-admin",
-            params={
+            json={
                 "email": "newadmin@test.nl",
                 "password": "securepassword123",
                 "full_name": "New Admin",
@@ -69,25 +69,25 @@ class TestRegisterAdmin:
         """Test registering admin when one already exists."""
         response = await client.post(
             "/api/v1/auth/register-admin",
-            params={
+            json={
                 "email": "another@test.nl",
                 "password": "password123",
                 "full_name": "Another Admin",
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
 
     async def test_register_admin_duplicate_email(self, client: AsyncClient, superadmin_user):
         """Test registering with duplicate email."""
         response = await client.post(
             "/api/v1/auth/register-admin",
-            params={
+            json={
                 "email": "superadmin@test.nl",
                 "password": "password123",
                 "full_name": "Duplicate",
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
 
 
 class TestRefreshToken:

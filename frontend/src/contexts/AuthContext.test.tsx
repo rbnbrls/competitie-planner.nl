@@ -1,7 +1,24 @@
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '../test/msw/server'
 import { AuthProvider, useAuth } from './AuthContext'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+})
+
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TestWrapper>{children}</TestWrapper>
+    </QueryClientProvider>
+  )
+}
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }))
 afterEach(() => {
@@ -66,9 +83,9 @@ describe('AuthContext', () => {
 
   it('starts with no user when no token in localStorage', async () => {
     render(
-      <AuthProvider>
+      <TestWrapper>
         <TestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
     await waitFor(() => {
       expect(screen.getByTestId('user')).toHaveTextContent('geen gebruiker')
@@ -77,9 +94,9 @@ describe('AuthContext', () => {
 
   it('initializes as loading then resolves', async () => {
     render(
-      <AuthProvider>
+      <TestWrapper>
         <TestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
     await waitFor(() => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
@@ -91,9 +108,9 @@ describe('AuthContext', () => {
     localStorage.setItem('club_slug', 'testclub')
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <TestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
 
     await waitFor(() => {
@@ -107,9 +124,9 @@ describe('AuthContext', () => {
     localStorage.setItem('access_token', 'test_token')
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <TestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
 
     await waitFor(() => {
@@ -130,9 +147,9 @@ describe('AuthContext', () => {
     localStorage.setItem('club_slug', 'testclub')
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <TestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
 
     await waitFor(() => {
@@ -146,9 +163,9 @@ describe('AuthContext', () => {
     const { fireEvent: fe } = await import('@testing-library/react')
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginTestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
 
     await waitFor(() => {
@@ -172,9 +189,9 @@ describe('AuthContext', () => {
     localStorage.setItem('club_slug', 'testclub')
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LogoutTestComponent />
-      </AuthProvider>
+      </TestWrapper>
     )
 
     await waitFor(() => {

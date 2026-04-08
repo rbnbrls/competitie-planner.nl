@@ -1,11 +1,11 @@
 import logging
 import os
+import psutil
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
-import structlog
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,6 +18,7 @@ from app.config import settings
 from app.db import engine, get_db
 from app.exceptions import BaseAPIExceptionError, RateLimitError
 from app.limiter import limiter
+from app.logging_config import get_logger, setup_logging
 from app.middleware.logging import LoggingMiddleware
 from app.routers import (
     auth,
@@ -37,32 +38,10 @@ from app.routers import (
 )
 
 
-# Configure structlog
-def setup_logging():
-    processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.add_log_level,
-        structlog.processors.StackInfoRenderer(),
-        structlog.dev.set_exc_info,
-        structlog.processors.TimeStamper(fmt="iso"),
-    ]
-
-    if settings.ENVIRONMENT.lower() == "production":
-        processors.append(structlog.processors.dict_tracebacks)
-        processors.append(structlog.processors.JSONRenderer())
-    else:
-        processors.append(structlog.dev.ConsoleRenderer())
-
-    structlog.configure(
-        processors=processors,
-        logger_factory=structlog.PrintLoggerFactory(),
-        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
-        cache_logger_on_first_use=True,
-    )
-
+from app.logging_config import get_logger, setup_logging
 
 setup_logging()
-logger = structlog.get_logger()
+logger = get_logger()
 
 
 @asynccontextmanager
@@ -373,3 +352,107 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
 @app.get("/")
 async def root():
     return {"message": "Competitie-Planner API", "version": settings.VERSION}
+
+
+async def check_database(db: AsyncSession) -> dict:
+    """Check database connectivity."""
+    try:
+        await db.execute(text("SELECT 1"))
+        return {"status": "ok", "type": "postgresql"}
+    except Exception as e:
+        logger.error("Database health check failed", error=str(e))
+        return {"status": "error", "type": "postgresql", "error": str(e)}
+
+
+async def check_redis() -> dict:
+    """Check Redis connectivity."""
+    try:
+        client = await cache.get_client()
+        await client.ping()
+        return {"status": "ok", "type": "redis"}
+    except Exception as e:
+        logger.warning("Redis health check failed", error=str(e))
+        return {"status": "error", "type": "redis", "error": str(e)}
+
+
+async def check_email_service() -> dict:
+    """Check email service availability."""
+    try:
+        smtp_host = os.getenv("SMTP_HOST")
+        smtp_port = os.getenv("SMTP_PORT")
+        resend_api_key = os.getenv("RESEND_API_KEY")
+
+        if not smtp_host and not resend_api_key:
+            return {"status": "skipped", "type": "email", "reason": "No email service configured"}
+
+        if resend_api_key:
+            return {"status": "ok", "type": "email", "provider": "resend"}
+        elif smtp_host:
+            return {
+                "status": "ok",
+                "type": "email",
+                "provider": "smtp",
+                "host": smtp_host,
+                "port": smtp_port or "587",
+            }
+
+        return {"status": "skipped", "type": "email", "reason": "No email service configured"}
+    except Exception as e:
+        logger.warning("Email service check failed", error=str(e))
+        return {"status": "error", "type": "email", "error": str(e)}
+
+
+def get_system_metrics() -> dict:
+    """Get system metrics (memory, CPU)."""
+    try:
+        process = psutil.Process()
+        memory_info = process.memory_info()
+        return {
+            "memory": {
+                "rss_mb": round(memory_info.rss / 1024 / 1024, 2),
+                "vms_mb": round(memory_info.vms / 1024 / 1024, 2),
+            },
+            "cpu": {
+                "percent": process.cpu_percent(interval=0.1),
+            },
+        }
+    except Exception as e:
+        logger.warning("Failed to get system metrics", error=str(e))
+        return {"memory": None, "cpu": None}
+
+
+@app.get("/health/details")
+async def detailed_health_check(db: AsyncSession = Depends(get_db)):
+    """
+    Detailed health check with dependency status and system metrics.
+    Includes database, Redis, email service, and system metrics.
+    """
+    checks = {
+        "database": await check_database(db),
+        "redis": await check_redis(),
+        "email": await check_email_service(),
+    }
+    metrics = get_system_metrics()
+
+    overall_status = "healthy"
+    if checks["database"]["status"] == "error":
+        overall_status = "unhealthy"
+    elif checks["redis"]["status"] == "error":
+        overall_status = "degraded"
+    elif checks["email"]["status"] == "error":
+        overall_status = "degraded"
+
+    response = {
+        "status": overall_status,
+        "version": settings.VERSION,
+        "checks": checks,
+        "metrics": metrics,
+    }
+
+    if overall_status != "healthy":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=response,
+        )
+
+    return response

@@ -2,10 +2,14 @@ import os
 from datetime import datetime
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Baan, BaanToewijzing, Club, Speelronde, Team
+from app.logging_config import get_logger
+
+logger = get_logger("email")
 
 
 class EmailService:
@@ -19,9 +23,11 @@ class EmailService:
         self,
         ronde_id: UUID,
     ) -> dict:
+        logger.info("sending_publication_notification", ronde_id=str(ronde_id))
         result = await self.db.execute(select(Speelronde).where(Speelronde.id == ronde_id))
         ronde = result.scalar_one_or_none()
         if not ronde:
+            logger.warning("ronde_not_found_for_email", ronde_id=str(ronde_id))
             return {"sent": 0, "error": "Ronde not found"}
 
         result = await self.db.execute(select(Club).where(Club.id == ronde.club_id))
@@ -201,7 +207,7 @@ class EmailService:
         html: str,
     ) -> int:
         if not self.resend_api_key:
-            print(f"[EMAIL MOCK] To: {to}, Subject: {subject}")
+            logger.warning("email_mock_send", to=to, subject=subject)
             return len(to)
 
         try:
@@ -209,6 +215,7 @@ class EmailService:
 
             resend.api_key = self.resend_api_key
 
+            logger.debug("sending_email", to=to, subject=subject)
             params = {
                 "from": f"{self.from_email}",
                 "to": to,
@@ -217,7 +224,8 @@ class EmailService:
             }
 
             resend.Emails.send(params)
+            logger.info("email_sent", to=to, subject=subject)
             return 1
         except Exception as e:
-            print(f"Email send error: {e}")
+            logger.error("email_send_error", error=str(e), to=to)
             return 0

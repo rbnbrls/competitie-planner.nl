@@ -2,6 +2,7 @@ import uuid
 from datetime import date, time
 from typing import Protocol
 
+import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,6 +16,9 @@ from app.models import (
     Speelronde,
     Wedstrijd,
 )
+from app.logging_config import get_logger
+
+logger = get_logger("planning")
 
 
 class PlanningResult(Protocol):
@@ -28,9 +32,11 @@ async def get_standaard_tijdslot_config(competitie_id: uuid.UUID, db: AsyncSessi
     """
     Haalt de standaard tijdslot configuratie op voor een competitie.
     """
+    logger.debug("fetching_tijdslot_config", competitie_id=str(competitie_id))
     result = await db.execute(select(Competitie).where(Competitie.id == competitie_id))
     competitie = result.scalar_one_or_none()
     if not competitie:
+        logger.warning("competitie_not_found", competitie_id=str(competitie_id))
         raise ValueError(f"Competitie {competitie_id} not found")
 
     return {
@@ -114,6 +120,8 @@ async def plan_competitie(
     - Geen zelfde baan twee keer achter elkaar voor een team
     - Eerlijke verdeling van goede banen
     """
+    logger.info("starting_competitie_planning", competitie_id=str(competitie_id), apply=apply)
+
     # 1. Fetch competition, club and all rounds
     result = await db.execute(
         select(Competitie)
@@ -122,9 +130,11 @@ async def plan_competitie(
     )
     competitie = result.scalar_one_or_none()
     if not competitie:
+        logger.error("competitie_not_found_for_planning", competitie_id=str(competitie_id))
         raise ValueError("Competitie not found")
 
     club = competitie.club
+    logger.debug("found_club_for_planning", club_id=str(club.id), club_name=club.naam)
 
     query = select(Speelronde).where(Speelronde.competitie_id == competitie_id)
     if ronde_ids:
@@ -328,6 +338,17 @@ async def plan_competitie(
         await db.commit()
 
     # 7. Return summary
+    logger.info(
+        "competitie_planning_completed",
+        competitie_id=str(competitie_id),
+        counts={
+            "rondes": len(rondes),
+            "toewijzingen": len(new_toewijzingen),
+            "errors": len([log for log in logs if log["severity"] == "error"]),
+            "warnings": len([log for log in logs if log["severity"] == "warning"]),
+        },
+    )
+
     return {
         "success": True,
         "toewijzingen": [

@@ -65,12 +65,12 @@ class HistorieResponse(BaseModel):
     banen: list[dict]
 
 
-@router.post("/rondes/{ronde_id}/genereer")
+@router.post("/rondes/{ronde_id}/genereer", response_model=SpeelrondeDetailResponse)
 async def generate_indeling(
     ronde_id: str,
     current: tuple = Depends(get_current_tenant_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> SpeelrondeDetailResponse:
     user, club = current
     try:
         ronde_uuid = UUID(ronde_id)
@@ -95,6 +95,9 @@ async def generate_indeling(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
+
+    await genereer_indeling(ronde_uuid, db)
+
     toewijzing_result = await db.execute(
         select(BaanToewijzing)
         .where(BaanToewijzing.ronde_id == ronde_uuid)
@@ -463,6 +466,65 @@ async def list_banen_for_planning(
         }
         for b in banen
     ]
+
+
+@router.get("/rondes/{ronde_id}")
+async def get_ronde(
+    ronde_id: str,
+    current: tuple = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> SpeelrondeDetailResponse:
+    user, club = current
+    try:
+        ronde_uuid = UUID(ronde_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid ronde ID",
+        )
+    result = await db.execute(
+        select(Speelronde)
+        .where(Speelronde.id == ronde_uuid)
+        .options(selectinload(Speelronde.competitie))
+    )
+    ronde = result.scalar_one_or_none()
+    if not ronde:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Speelronde not found",
+        )
+    if ronde.club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    result = await db.execute(
+        select(BaanToewijzing)
+        .options(selectinload(BaanToewijzing.team), selectinload(BaanToewijzing.baan))
+        .where(BaanToewijzing.ronde_id == ronde_uuid)
+    )
+    toewijzingen = result.scalars().all()
+    return SpeelrondeDetailResponse(
+        id=str(ronde.id),
+        competitie_id=str(ronde.competitie_id),
+        club_id=str(ronde.club_id),
+        datum=ronde.datum.isoformat(),
+        week_nummer=ronde.week_nummer,
+        is_inhaalronde=ronde.is_inhaalronde,
+        status=ronde.status,
+        public_token=ronde.public_token,
+        toewijzingen=[
+            BaanToewijzingResponse(
+                id=str(t.id),
+                team_id=str(t.team_id),
+                baan_id=str(t.baan_id),
+                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "",
+                tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
+                notitie=t.notitie,
+            )
+            for t in toewijzingen
+        ],
+    )
 
 
 @router.get("/rondes/{ronde_id}/pdf")
