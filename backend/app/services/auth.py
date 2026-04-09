@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from jose import ExpiredSignatureError, JWTError, jwt
 
 from app.config import settings
+from app.models import Club
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -77,3 +78,7 @@ class TokenPayload:
     @property
     def user_id(self) -> UUID | None:
         return UUID(self.sub) if self.sub else None
+
+
+def has_full_access(club: Club) -> bool:
+    return club.payment_enabled or club.is_sponsored

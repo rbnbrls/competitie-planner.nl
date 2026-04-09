@@ -12,10 +12,15 @@ from app.models import Club, User, InviteToken
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 from app.services.audit import log_audit
-router = APIRouter(
-    prefix="/superadmin",
-    tags=["superadmin"]
-)
+
+
+class SponsorUpdate(BaseModel):
+    is_sponsored: bool
+
+
+router = APIRouter(prefix="/superadmin", tags=["superadmin"])
+
+
 @router.get("/dashboard")
 async def get_dashboard(
     db: AsyncSession = Depends(get_db),
@@ -68,6 +73,8 @@ async def get_dashboard(
             for u in recent_logins
         ],
     }
+
+
 @router.get("/clubs", response_model=list[ClubResponse])
 async def list_clubs(
     status_filter: str | None = None,
@@ -86,6 +93,8 @@ async def list_clubs(
     query = query.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     return result.scalars().all()
+
+
 @router.get("/clubs/{club_id}", response_model=ClubResponse)
 async def get_club(
     club_id: UUID,
@@ -97,6 +106,8 @@ async def get_club(
     if not club:
         raise ResourceNotFoundError("Club niet gevonden")
     return club
+
+
 @router.post("/clubs", response_model=ClubResponse, status_code=201)
 async def create_club(
     club_data: ClubCreate,
@@ -106,7 +117,7 @@ async def create_club(
     # Extract admin info if provided
     admin_email = club_data.admin_email
     admin_full_name = club_data.admin_full_name
-    
+
     # Create club without extra fields
     club_dict = club_data.model_dump(exclude={"admin_email", "admin_full_name"})
     club = Club(**club_dict)
@@ -137,6 +148,8 @@ async def create_club(
         changed_fields=list(club_data.model_dump().keys()),
     )
     return club
+
+
 @router.patch("/clubs/{club_id}", response_model=ClubResponse)
 async def update_club(
     club_id: UUID,
@@ -162,6 +175,40 @@ async def update_club(
         changed_fields=list(update_data.keys()),
     )
     return club
+
+
+@router.patch("/clubs/{club_id}/sponsor", response_model=ClubResponse)
+async def update_sponsor_status(
+    club_id: UUID,
+    data: SponsorUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> Club:
+    result = await db.execute(select(Club).where(Club.id == club_id))
+    club = result.scalar_one_or_none()
+    if not club:
+        raise ResourceNotFoundError("Club niet gevonden")
+
+    if data.is_sponsored and not club.is_sponsored:
+        club.sponsored_since = datetime.now(UTC)
+    elif not data.is_sponsored:
+        club.sponsored_since = None
+
+    club.is_sponsored = data.is_sponsored
+    await db.commit()
+    await db.refresh(club)
+
+    log_audit(
+        "club.sponsor.update",
+        actor_id=str(current_user.id),
+        actor_email=current_user.email,
+        target_type="club",
+        target_id=str(club_id),
+        changed_fields=["is_sponsored", "sponsored_since"],
+    )
+    return club
+
+
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     club_id: UUID | None = None,
@@ -182,6 +229,8 @@ async def list_users(
     query = query.order_by(User.created_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
+
+
 @router.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
@@ -193,6 +242,8 @@ async def get_user(
     if not user:
         raise ResourceNotFoundError("Gebruiker niet gevonden")
     return user
+
+
 @router.patch("/users/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: UUID,
@@ -218,6 +269,8 @@ async def update_user(
         changed_fields=list(update_data.keys()),
     )
     return user
+
+
 @router.get("/clubs/{club_id}/users-count")
 async def get_club_users_count(
     club_id: UUID,
@@ -227,8 +280,12 @@ async def get_club_users_count(
     result = await db.execute(select(func.count(User.id)).where(User.club_id == club_id))
     count = result.scalar()
     return {"count": count}
+
+
 class BillingUpdate(BaseModel):
     billing_info: str | None = None
+
+
 @router.get("/billing")
 async def get_billing_overview(
     db: AsyncSession = Depends(get_db),
@@ -265,6 +322,8 @@ async def get_billing_overview(
             "total_suspended": len(suspended),
         },
     }
+
+
 @router.post("/clubs/{club_id}/billing")
 async def update_club_billing(
     club_id: UUID,
@@ -292,6 +351,8 @@ async def update_club_billing(
         "id": str(club.id),
         "billing_info": club.billing_info,
     }
+
+
 @router.get("/billing/export")
 async def export_billing_csv(
     db: AsyncSession = Depends(get_db),
@@ -301,6 +362,7 @@ async def export_billing_csv(
     clubs = result.scalars().all()
     import csv
     import io
+
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["ID", "Naam", "Slug", "Status", "Trial ends", "Billing info"])

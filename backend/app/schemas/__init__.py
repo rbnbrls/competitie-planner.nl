@@ -188,6 +188,8 @@ class ClubResponse(ClubBase):
     banen_types: list[str]
     billing_info: str | None = None
     payment_enabled: bool
+    is_sponsored: bool = False
+    sponsored_since: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

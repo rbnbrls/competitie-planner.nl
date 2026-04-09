@@ -29,6 +29,7 @@ frontend/vite.config.js
 
 # Frontend test results
 frontend/test-results/
+frontend/playwright-report/
 
 # IDE
 .vscode/

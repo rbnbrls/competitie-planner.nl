@@ -47,6 +47,8 @@ class Club(Base):
     banen_types: Mapped[list[str]] = mapped_column(ARRAY(String(20)), default=["gravel"])
     billing_info: Mapped[str | None] = mapped_column(Text, default=None)
     payment_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_sponsored: Mapped[bool] = mapped_column(Boolean, default=False)
+    sponsored_since: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
