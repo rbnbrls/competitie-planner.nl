@@ -23,13 +23,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: [".lvh.me", "meppers.lvh.me", "localhost", "127.0.0.1"],
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://backend:8000",
         changeOrigin: true,
       },
       "/health": {
-        target: "http://localhost:8000",
+        target: "http://backend:8000",
         changeOrigin: true,
       },
     },

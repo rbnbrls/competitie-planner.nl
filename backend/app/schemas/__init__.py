@@ -149,7 +149,8 @@ class ClubBase(BaseModel):
 
 
 class ClubCreate(ClubBase):
-    pass
+    admin_email: EmailStr | None = None
+    admin_full_name: str | None = None
 
 
 class ClubUpdate(BaseModel):

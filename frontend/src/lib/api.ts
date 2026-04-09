@@ -59,9 +59,7 @@ export const authApi = {
   me: () => api.get("/auth/me"),
   adminExists: () => api.get("/auth/admin-exists"),
   registerAdmin: (email: string, password: string, fullName: string) =>
-    api.post("/auth/register-admin", null, {
-      params: { email, password, full_name: fullName },
-    }),
+    api.post("/auth/register-admin", { email, password, full_name: fullName }),
 };
 
 export const tenantApi = {
@@ -280,6 +278,8 @@ export const superadminApi = {
   createClub: (data: {
     naam: string;
     slug: string;
+    admin_email?: string;
+    admin_full_name?: string;
     adres?: string;
     postcode?: string;
     stad?: string;

@@ -45,6 +45,8 @@ export default function NewClubPage() {
       await superadminApi.createClub({
         naam: naam.trim(),
         slug,
+        admin_email: contactEmail.trim() || undefined,
+        admin_full_name: contactNaam.trim() || undefined,
       });
       navigate("/clubs");
     } catch (err: unknown) {

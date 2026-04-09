@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 # Force override settings for tests BEFORE importing anything from app
 os.environ["DATABASE_URL"] = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/competitieplanner_test"
+    "TEST_DATABASE_URL", "postgresql+asyncpg://cpuser:cpdevpass@localhost:5432/competitieplanner_test"
 )
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-minimum-64-characters-long-value-here"
 os.environ["ENVIRONMENT"] = "test"

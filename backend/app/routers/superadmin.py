@@ -1,5 +1,5 @@
+import secrets
 from datetime import UTC, datetime, timedelta
-
 from typing import Any
 from uuid import UUID
 from fastapi import APIRouter, Depends
@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.exceptions import ResourceNotFoundError
-from app.models import Club, User
+from app.models import Club, User, InviteToken
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 from app.services.audit import log_audit
@@ -103,10 +103,31 @@ async def create_club(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superadmin),
 ) -> Club:
-    club = Club(**club_data.model_dump())
+    # Extract admin info if provided
+    admin_email = club_data.admin_email
+    admin_full_name = club_data.admin_full_name
+    
+    # Create club without extra fields
+    club_dict = club_data.model_dump(exclude={"admin_email", "admin_full_name"})
+    club = Club(**club_dict)
     db.add(club)
     await db.commit()
     await db.refresh(club)
+
+    # Create invitation if admin_email is provided
+    if admin_email:
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now() + timedelta(hours=48)
+        invite = InviteToken(
+            club_id=club.id,
+            email=admin_email,
+            role="vereniging_admin",
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(invite)
+        await db.commit()
+        # In a real app, we would send an email here
     log_audit(
         "club.create",
         actor_id=str(current_user.id),
