@@ -52,7 +52,7 @@ function TenantRoutes() {
     if (!user) {
       return;
     }
-    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding"];
+    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding", "/display"];
     if (publicPaths.some(p => location.pathname.startsWith(p))) {
       setIsLoading(false);
       return;
@@ -228,6 +228,9 @@ function AppRoutes() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/captain/:token" element={<CaptainPortaalPage />} />
+          <Route path="/display" element={<DisplayPage />} />
+          <Route path="/display/:slug" element={<DisplayPage />} />
+          <Route path="/display/:slug/:token" element={<DisplayPage />} />
           <Route element={<TenantLayout />}>
             <Route element={<TenantRoutes />}>
               <Route path="/onboarding" element={<OnboardingPage />} />

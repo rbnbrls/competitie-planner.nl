@@ -22,6 +22,8 @@ export default function ClubDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Club>>({});
 
   useEffect(() => {
     if (!clubId) return;
@@ -67,6 +69,41 @@ export default function ClubDetailPage() {
     }
   };
 
+  const startEdit = () => {
+    if (!club) return;
+    setEditForm({
+      naam: club.naam,
+      slug: club.slug,
+      adres: club.adres,
+      postcode: club.postcode,
+      stad: club.stad,
+      telefoon: club.telefoon,
+      website: club.website,
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditForm({});
+  };
+
+  const saveEdit = async () => {
+    if (!club || !clubId || !editForm.naam || !editForm.slug) return;
+    setIsSaving(true);
+    try {
+      const res = await superadminApi.updateClub(clubId, editForm);
+      setClub(res.data);
+      setIsEditing(false);
+      setEditForm({});
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update club");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) return <div>Loading...</div>;
   if (!club) return <div>Club not found</div>;
 
@@ -89,21 +126,130 @@ export default function ClubDetailPage() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h2 className="text-2xl font-bold">{club.naam}</h2>
-            <p className="text-gray-500">{club.slug}.competitie-planner.nl</p>
+            {isEditing ? (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm text-gray-600">Naam</label>
+                  <input
+                    type="text"
+                    value={editForm.naam || ""}
+                    onChange={(e) => setEditForm({ ...editForm, naam: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600">Subdomein</label>
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      value={editForm.slug || ""}
+                      onChange={(e) => setEditForm({ ...editForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                    <span className="ml-2 text-gray-500">.competitie-planner.nl</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold">{club.naam}</h2>
+                <p className="text-gray-500">{club.slug}.competitie-planner.nl</p>
+              </>
+            )}
           </div>
-          <span className={`px-3 py-1 rounded ${getStatusBadge(club.status)}`}>
-            {club.status}
-          </span>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={cancelEdit}
+                  disabled={isSaving}
+                  className="px-4 py-2 border rounded hover:bg-gray-100"
+                >
+                  Annuleren
+                </button>
+                <button
+                  onClick={saveEdit}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  {isSaving ? "Opslaan..." : "Opslaan"}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={startEdit}
+                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+              >
+                Bewerken
+              </button>
+            )}
+            <span className={`px-3 py-1 rounded ${getStatusBadge(club.status)}`}>
+              {club.status}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div>
             <h3 className="font-semibold mb-2">Contactgegevens</h3>
-            <p className="text-gray-600">{club.adres || "-"}</p>
-            <p className="text-gray-600">{club.postcode} {club.stad}</p>
-            <p className="text-gray-600">{club.telefoon || "-"}</p>
-            <p className="text-gray-600">{club.website || "-"}</p>
+            {isEditing ? (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm text-gray-600">Adres</label>
+                  <input
+                    type="text"
+                    value={editForm.adres || ""}
+                    onChange={(e) => setEditForm({ ...editForm, adres: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-600">Postcode</label>
+                    <input
+                      type="text"
+                      value={editForm.postcode || ""}
+                      onChange={(e) => setEditForm({ ...editForm, postcode: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-600">Stad</label>
+                    <input
+                      type="text"
+                      value={editForm.stad || ""}
+                      onChange={(e) => setEditForm({ ...editForm, stad: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600">Telefoon</label>
+                  <input
+                    type="text"
+                    value={editForm.telefoon || ""}
+                    onChange={(e) => setEditForm({ ...editForm, telefoon: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600">Website</label>
+                  <input
+                    type="text"
+                    value={editForm.website || ""}
+                    onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-600">{club.adres || "-"}</p>
+                <p className="text-gray-600">{club.postcode} {club.stad}</p>
+                <p className="text-gray-600">{club.telefoon || "-"}</p>
+                <p className="text-gray-600">{club.website || "-"}</p>
+              </>
+            )}
           </div>
           <div>
             <h3 className="font-semibold mb-2">Platform</h3>
@@ -115,20 +261,24 @@ export default function ClubDetailPage() {
         </div>
 
         <div className="border-t pt-6">
-          <h3 className="font-semibold mb-4">Status wijzigen</h3>
-          <div className="flex gap-2">
-            <select
-              value={club.status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={isSaving}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="trial">Trial</option>
-              <option value="active">Actief</option>
-              <option value="suspended">Gesuspendeerd</option>
-              <option value="inactive">Inactief</option>
-            </select>
-          </div>
+          {!isEditing && (
+            <>
+              <h3 className="font-semibold mb-4">Status wijzigen</h3>
+              <div className="flex gap-2">
+                <select
+                  value={club.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  disabled={isSaving}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="trial">Trial</option>
+                  <option value="active">Actief</option>
+                  <option value="suspended">Gesuspendeerd</option>
+                  <option value="inactive">Inactief</option>
+                </select>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
