@@ -24,8 +24,9 @@ export default function NewClubPage() {
 
   const handleNaamChange = (value: string) => {
     setNaam(value);
-    if (!slug || slug === generateSlug(naam)) {
-      setSlug(generateSlug(value));
+    const newSlug = generateSlug(value);
+    if (!slug || slug === newSlug) {
+      setSlug(newSlug);
     }
   };
 

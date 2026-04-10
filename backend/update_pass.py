@@ -19,5 +19,5 @@ async def update_superadmin_password(email: str, password: str, database_url: st
             print(f"User {email} not found")
 
 if __name__ == "__main__":
-    db_url = "postgresql+asyncpg://cpuser:cpdevpass@localhost:5432/competitieplanner"
-    asyncio.run(update_superadmin_password("admin@test.com", "adminpass123", db_url))
+    db_url = "postgresql+asyncpg://cpuser:cpdevpass@db:5432/competitieplanner"
+    asyncio.run(update_superadmin_password("user@meppers.nl", "admin", db_url))

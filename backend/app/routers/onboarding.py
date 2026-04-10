@@ -3,66 +3,68 @@ from datetime import date
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.db import get_db
 from app.models import Baan, Club, Competitie, Team
 from app.services.tenant_auth import get_current_tenant_user
-router = APIRouter(
-    prefix="/tenant/onboarding",
-    tags=["onboarding"]
-)
+
+router = APIRouter(prefix="/tenant/onboarding", tags=["onboarding"])
 CURRENT_USER_DEP = Depends(get_current_tenant_user)
+
+
 class ClubInfo(BaseModel):
-    naam: str = Field(..., min_length=2
-)
+    naam: str = Field(..., min_length=2)
     adres: str | None = None
     postcode: str | None = None
     stad: str | None = None
     telefoon: str | None = None
     email: str | None = None
+
+
 class CourtInput(BaseModel):
-    naam: str = Field(...
-)
-    ondergrond: str = Field(...
-)
-    prioriteit_score: int = Field(..., ge=1, le=10
-)
+    naam: str = Field(...)
+    ondergrond: str = Field(...)
+    prioriteit_score: int = Field(..., ge=1, le=10)
     nummer: int | None = None
+
+
 class CourtsInput(BaseModel):
-    banen: list[CourtInput] = Field(..., min_length=1
-)
+    banen: list[CourtInput] = Field(..., min_length=1)
+
+
 class CompetitionInput(BaseModel):
-    naam: str = Field(...
-)
-    speeldag: str = Field(...
-)
-    start_datum: str = Field(...
-)
-    eind_datum: str = Field(...
-)
+    naam: str = Field(...)
+    speeldag: str = Field(...)
+    start_datum: str = Field(...)
+    eind_datum: str = Field(...)
+
+
 class TeamInput(BaseModel):
-    naam: str = Field(...
-)
+    naam: str = Field(...)
     captain_naam: str | None = None
     captain_email: str | None = None
     speelklasse: str | None = None
+
+
 class TeamsInput(BaseModel):
-    teams: list[TeamInput] = Field(..., min_length=1
-)
+    teams: list[TeamInput] = Field(..., min_length=1)
+
+
 @router.get("/status")
 async def get_onboarding_status(
     current: tuple = CURRENT_USER_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    result = await db.execute(select(Competitie).where(Competitie.club_id == club.id))
+    result = await db.execute(
+        select(Competitie)
+        .where(Competitie.club_id == club.id)
+        .options(selectinload(Competitie.teams))
+    )
     competities = result.scalars().all()
-    has_teams = False
-    for comp in competities:
-        if comp.teams:
-            has_teams = True
-            break
+    has_teams = any(len(comp.teams) > 0 for comp in competities)
     return {
         "onboarding_completed": user.onboarding_completed,
         "step1_completed": club.naam is not None and len(club.naam) >= 2,
@@ -74,6 +76,8 @@ async def get_onboarding_status(
         "has_competition": len(competities) > 0,
         "has_teams": has_teams,
     }
+
+
 @router.post("/club")
 async def save_club_info(
     data: ClubInfo,
@@ -98,6 +102,8 @@ async def save_club_info(
     await db.commit()
     await db.refresh(club)
     return {"step": 1, "completed": True, "club_naam": club.naam}
+
+
 @router.post("/courts")
 async def save_courts(
     data: CourtsInput,
@@ -136,6 +142,8 @@ async def save_courts(
         existing_nummers.add(nummer)
     await db.commit()
     return {"step": 2, "completed": True, "banen_toegevoegd": len(toegevoegd)}
+
+
 @router.post("/competition")
 async def save_competition(
     data: CompetitionInput,
@@ -188,6 +196,8 @@ async def save_competition(
         "competitie_id": str(competitie.id),
         "competitie_naam": competitie.naam,
     }
+
+
 @router.post("/teams")
 async def save_teams(
     data: TeamsInput,
@@ -229,6 +239,8 @@ async def save_teams(
         teams_toegevoegd.append(team_data.naam)
     await db.commit()
     return {"step": 4, "completed": True, "teams_toegevoegd": len(teams_toegevoegd)}
+
+
 @router.post("/complete")
 async def complete_onboarding(
     current: tuple = CURRENT_USER_DEP,
@@ -262,6 +274,8 @@ async def complete_onboarding(
     await db.commit()
     await db.refresh(user)
     return {"completed": True, "message": "Onboarding voltooid!"}
+
+
 @router.post("/skip")
 async def skip_onboarding(
     current: tuple = CURRENT_USER_DEP,
@@ -272,6 +286,8 @@ async def skip_onboarding(
     await db.commit()
     await db.refresh(user)
     return {"skipped": True, "message": "Onboarding overgeslagen."}
+
+
 @router.post("/reset")
 async def reset_onboarding(
     current: tuple = CURRENT_USER_DEP,

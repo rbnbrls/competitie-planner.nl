@@ -70,6 +70,8 @@ export default function BanenPage() {
 
     try {
       if (editingBaan) {
+        const updatedBaan = { ...editingBaan, ...formData };
+        setBanen(banen.map((b) => (b.id === editingBaan.id ? updatedBaan : b)));
         await tenantApi.updateBaan(editingBaan.id, formData);
         showToast.success("Baan bijgewerkt");
       } else {
@@ -80,6 +82,7 @@ export default function BanenPage() {
       setShowModal(false);
       resetForm();
     } catch {
+      loadBanen();
       showToast.error("Fout bij opslaan");
     } finally {
       setIsSaving(false);
@@ -113,10 +116,12 @@ export default function BanenPage() {
     if (!confirm(`Weet je zeker dat je baan ${baan.nummer} wilt deactiveren?`)) return;
     
     try {
+      setBanen(banen.map((b) => (b.id === baan.id ? { ...b, actief: false } : b)));
       await tenantApi.deleteBaan(baan.id);
       showToast.success("Baan gedeactiveerd");
       loadBanen();
     } catch {
+      loadBanen();
       showToast.error("Fout bij deactiveren");
     }
   };

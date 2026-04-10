@@ -56,7 +56,7 @@ export default function UsersPage() {
       <h2 className="text-2xl font-bold mb-6">Gebruikers</h2>
 
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <input
             type="text"
             placeholder="Zoek op naam of email..."
@@ -79,30 +79,30 @@ export default function UsersPage() {
       {isLoading ? (
         <div>Loading...</div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Naam</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vereniging</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Laatste Login</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acties</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Naam</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vereniging</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Laatste Login</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acties</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.full_name || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">{user.full_name || "-"}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded text-xs ${getRoleBadge(user.role)}`}>
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-gray-500">
                     {user.club_id ? (
                       <Link to={`/clubs/${user.club_id}`} className="text-blue-600 hover:underline">
                         Bekijk
@@ -111,12 +111,12 @@ export default function UsersPage() {
                       "-"
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-gray-500">
                     {user.last_login
                       ? new Date(user.last_login).toLocaleDateString("nl-NL")
                       : "Nooit"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 rounded text-xs ${
                         user.is_active
@@ -127,7 +127,7 @@ export default function UsersPage() {
                       {user.is_active ? "Actief" : "Inactief"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <button
                       onClick={() => handleToggleActive(user.id, user.is_active)}
                       className="text-sm text-gray-600 hover:text-gray-800"

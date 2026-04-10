@@ -9,24 +9,32 @@ from app.models import Club, Payment, SepaMandate
 from app.routers.auth import get_current_superadmin
 from app.services.mollie import MollieService
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-router = APIRouter(
-    prefix="/payments",
-    tags=["payments"]
-)
+
+router = APIRouter(prefix="/payments", tags=["payments"])
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
 CURRENT_SUPERADMIN_DEP = Depends(get_current_superadmin)
+
+
 class MollieConfigUpdate(BaseModel):
     api_key: str
+
+
 class CompetitionPriceUpdate(BaseModel):
     competitie_naam: str
     price_small_club: int
     price_large_club: int
+
+
 class MandateCreate(BaseModel):
     iban: str
     consumer_name: str
+
+
 class PaymentCreate(BaseModel):
     competitie_naam: str
+
+
 @router.get("/config")
 async def get_mollie_config(
     current: tuple = CURRENT_SUPERADMIN_DEP,
@@ -48,6 +56,8 @@ async def get_mollie_config(
         "configured": config is not None,
         "api_key": masked_key,
     }
+
+
 @router.post("/config")
 async def save_mollie_config(
     data: MollieConfigUpdate,
@@ -62,6 +72,8 @@ async def save_mollie_config(
     service = MollieService(db)
     await service.save_config(data.api_key)
     return {"message": "Mollie configuration saved"}
+
+
 @router.get("/prices")
 async def list_prices(
     current: tuple = CURRENT_SUPERADMIN_DEP,
@@ -80,6 +92,8 @@ async def list_prices(
             for p in prices
         ]
     }
+
+
 @router.post("/prices")
 async def save_price(
     data: CompetitionPriceUpdate,
@@ -96,6 +110,8 @@ async def save_price(
         "price_small_club": price.price_small_club,
         "price_large_club": price.price_large_club,
     }
+
+
 @router.get("/mandates")
 async def list_all_mandates(
     current: tuple = CURRENT_SUPERADMIN_DEP,
@@ -141,6 +157,8 @@ async def list_all_mandates(
             }
         )
     return {"mandates": mandate_data, "total": total}
+
+
 @router.get("/mandates/{club_id}")
 async def get_club_mandate(
     club_id: str,
@@ -173,6 +191,8 @@ async def get_club_mandate(
             for p in payments
         ],
     }
+
+
 @router.post("/mandates")
 async def create_mandate(
     data: MandateCreate,
@@ -194,6 +214,8 @@ async def create_mandate(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/mandates/{mandate_id}/verify")
 async def verify_mandate(
     mandate_id: str,
@@ -207,6 +229,8 @@ async def verify_mandate(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/payments")
 async def create_payment(
     data: PaymentCreate,
@@ -242,6 +266,8 @@ async def create_payment(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/webhook")
 async def mollie_webhook(
     payment_id: str = Query(...),
@@ -259,6 +285,8 @@ async def mollie_webhook(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/checkout-status")
 async def get_checkout_status(
     current: tuple = CURRENT_TENANT_DEP,
@@ -275,12 +303,17 @@ async def get_checkout_status(
         "paid_competitions": list(paid_competitions),
         "mandate_status": mandate.status if mandate else None,
         "iban": service.mask_iban(mandate.iban) if mandate else None,
+        "is_sponsored": club.is_sponsored,
     }
+
+
 class PaymentStatusResponse(BaseModel):
     competitie_naam: str
     status: str
     paid_at: str | None
     amount: int | None
+
+
 @router.get("/payment-status", response_model=list[PaymentStatusResponse])
 async def get_payment_status(
     current: tuple = CURRENT_TENANT_DEP,
@@ -289,6 +322,7 @@ async def get_payment_status(
     user, club = current
     from sqlalchemy import select
     from app.models import Competitie
+
     result = await db.execute(
         select(Competitie).where(Competitie.club_id == club.id, Competitie.actief)
     )

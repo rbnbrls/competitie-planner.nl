@@ -1,5 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { paymentApi } from "../../lib/api";
 import { 
   BarChart3, 
   Settings, 
@@ -17,6 +19,18 @@ import {
 export default function TenantLayout() {
   const { club, logout } = useAuth();
   const location = useLocation();
+
+  const { data: paymentStatus } = useQuery({
+    queryKey: ["paymentStatus"],
+    queryFn: async () => {
+      const res = await paymentApi.getCheckoutStatus();
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isDevMode = import.meta.env.DEV;
+  const hasAccess = isDevMode || (paymentStatus?.is_sponsored) || (paymentStatus?.has_active_mandate && paymentStatus?.paid_competitions && paymentStatus.paid_competitions.length > 0);
 
   const parts = location.pathname.split("/");
   let competitieId = null;
@@ -53,15 +67,24 @@ export default function TenantLayout() {
                <div className="text-white font-black text-xl">A</div>
              )}
            </div>
-           <div>
-              <h2 className="text-sm font-black text-gray-900 leading-tight truncate w-36">
-                 {club?.naam || "Vereniging"}
-              </h2>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Systeem Actief</span>
-              </div>
-           </div>
+            <div>
+               <h2 className="text-sm font-black text-gray-900 leading-tight truncate w-36">
+                  {club?.naam || "Vereniging"}
+               </h2>
+               <div className="flex items-center gap-1.5 mt-0.5">
+                  {hasAccess ? (
+                    <>
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Systeem Actief</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Betaling Required</span>
+                    </>
+                  )}
+               </div>
+            </div>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">

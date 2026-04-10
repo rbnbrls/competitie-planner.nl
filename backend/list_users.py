@@ -13,5 +13,5 @@ async def list_users(database_url: str):
             print(f"Email: {u.email}, Superadmin: {u.is_superadmin}")
 
 if __name__ == "__main__":
-    db_url = "postgresql+asyncpg://cpuser:cpdevpass@localhost:5432/competitieplanner"
+    db_url = "postgresql+asyncpg://cpuser:cpdevpass@db:5432/competitieplanner"
     asyncio.run(list_users(db_url))

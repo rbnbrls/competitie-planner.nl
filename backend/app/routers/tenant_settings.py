@@ -9,12 +9,12 @@ from app.db import get_db
 from app.models import Baan, User
 from app.services.audit import log_audit
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-router = APIRouter(
-    prefix="/tenant",
-    tags=["tenant-settings"]
-)
+
+router = APIRouter(prefix="/tenant", tags=["tenant-settings"])
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
+
+
 class ClubSettingsUpdate(BaseModel):
     naam: str | None = None
     adres: str | None = None
@@ -24,6 +24,8 @@ class ClubSettingsUpdate(BaseModel):
     website: str | None = None
     max_thuisteams_per_dag: int | None = None
     max_banen: int | None = None
+
+
 @router.get("/settings")
 async def get_settings(
     current: tuple = CURRENT_TENANT_DEP,
@@ -43,6 +45,8 @@ async def get_settings(
         "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
         "max_banen": club.max_banen,
     }
+
+
 @router.patch("/settings")
 async def update_settings(
     data: ClubSettingsUpdate,
@@ -90,11 +94,15 @@ async def update_settings(
         "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
         "max_banen": club.max_banen,
     }
+
+
 class BrandingUpdate(BaseModel):
     primary_color: str | None = None
     secondary_color: str | None = None
     accent_color: str | None = None
     font_choice: str | None = None
+
+
 @router.get("/branding")
 async def get_branding(
     current: tuple = CURRENT_TENANT_DEP,
@@ -108,6 +116,8 @@ async def get_branding(
         "font_choice": club.font_choice,
         "logo_url": club.logo_url,
     }
+
+
 @router.patch("/branding")
 async def update_branding(
     data: BrandingUpdate,
@@ -132,6 +142,8 @@ async def update_branding(
         "font_choice": club.font_choice,
         "logo_url": club.logo_url,
     }
+
+
 @router.post("/branding/logo")
 async def upload_logo(
     file: UploadFile = File(...),
@@ -160,6 +172,8 @@ async def upload_logo(
     club.logo_url = f"/uploads/{club.id}/{filename}"
     await db.commit()
     return {"logo_url": club.logo_url}
+
+
 @router.get("/banen")
 async def list_banen(
     current: tuple = CURRENT_TENANT_DEP,
@@ -183,12 +197,16 @@ async def list_banen(
             for b in banen
         ]
     }
+
+
 class BaanCreate(BaseModel):
     nummer: int
     naam: str | None = None
     verlichting_type: str = "geen"
     overdekt: bool = False
     prioriteit_score: int = 5
+
+
 class BaanUpdate(BaseModel):
     nummer: int | None = None
     naam: str | None = None
@@ -197,6 +215,8 @@ class BaanUpdate(BaseModel):
     prioriteit_score: int | None = None
     actief: bool | None = None
     notitie: str | None = None
+
+
 @router.post("/banen")
 async def create_banen(
     data: BaanCreate,
@@ -236,6 +256,8 @@ async def create_banen(
         "prioriteit_score": baan.prioriteit_score,
         "actief": baan.actief,
     }
+
+
 @router.get("/banen/{baan_id}")
 async def get_baan(
     baan_id: str,
@@ -265,6 +287,8 @@ async def get_baan(
         "actief": baan.actief,
         "notitie": baan.notitie,
     }
+
+
 @router.patch("/banen/{baan_id}")
 async def update_baan(
     baan_id: str,
@@ -311,6 +335,8 @@ async def update_baan(
         "actief": baan.actief,
         "notitie": baan.notitie,
     }
+
+
 @router.delete("/banen/{baan_id}")
 async def delete_baan(
     baan_id: str,
@@ -333,6 +359,8 @@ async def delete_baan(
     baan.actief = False
     await db.commit()
     return {"message": "Baan deactivated successfully"}
+
+
 @router.get("/users")
 async def list_users(
     current: tuple = CURRENT_TENANT_DEP,
@@ -356,12 +384,16 @@ async def list_users(
             for u in users
         ]
     }
+
+
 class UserUpdate(BaseModel):
     full_name: str | None = None
     role: str | None = None
     is_active: bool | None = None
     email_opt_out: bool | None = None
     onboarding_completed: bool | None = None
+
+
 @router.get("/users/{user_id}")
 async def get_user(
     user_id: str,
@@ -390,6 +422,8 @@ async def get_user(
         "last_login": user_obj.last_login.isoformat() if user_obj.last_login else None,
         "created_at": user_obj.created_at.isoformat(),
     }
+
+
 @router.patch("/users/{user_id}")
 async def update_user(
     user_id: str,
@@ -448,6 +482,8 @@ async def update_user(
         "role": user_obj.role,
         "is_active": user_obj.is_active,
     }
+
+
 @router.delete("/users/{user_id}")
 async def deactivate_user(
     user_id: str,
@@ -482,6 +518,8 @@ async def deactivate_user(
         club_id=str(club.id),
     )
     return {"message": "User deactivated successfully"}
+
+
 @router.get("/club")
 async def get_club(
     current: tuple = CURRENT_TENANT_DEP,
@@ -498,4 +536,5 @@ async def get_club(
         "accent_color": club.accent_color,
         "logo_url": club.logo_url,
         "font_choice": club.font_choice,
+        "is_sponsored": club.is_sponsored,
     }
