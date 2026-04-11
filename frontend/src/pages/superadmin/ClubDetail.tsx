@@ -119,6 +119,16 @@ export default function ClubDetailPage() {
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      active: "actief",
+      trial: "trial",
+      suspended: "gesuspendeerd",
+      inactive: "inactief",
+    };
+    return labels[status] || status;
+  };
+
   return (
     <div>
       <div className="mb-4">
@@ -186,7 +196,7 @@ export default function ClubDetailPage() {
               </button>
             )}
             <span className={`px-3 py-1 rounded ${getStatusBadge(club.status)}`}>
-              {club.status}
+              {getStatusLabel(club.status)}
             </span>
           </div>
         </div>

@@ -15,9 +15,10 @@ from app.schemas import (
     DisplayClubInfo,
     ResultSubmission,
 )
-router = APIRouter(
-    tags=["display"]
-)
+
+router = APIRouter(tags=["display"])
+
+
 class DisplayToewijzing(BaseModel):
     baan_nummer: int
     baan_naam: str | None
@@ -25,6 +26,8 @@ class DisplayToewijzing(BaseModel):
     tijdslot_start: str
     tijdslot_eind: str | None = None
     notitie: str | None = None
+
+
 class DisplayRonde(BaseModel):
     id: str
     competitie_naam: str
@@ -33,77 +36,13 @@ class DisplayRonde(BaseModel):
     week_nummer: int | None
     is_inhaalronde: bool
     toewijzingen: list[DisplayToewijzing]
+
+
 class DisplayResponse(BaseModel):
     club: DisplayClubInfo
     ronde: DisplayRonde | None
-@router.get("/display/{slug}/{token}")
-async def get_display_by_token(
-    slug: str,
-    token: str,
-    db: AsyncSession = Depends(get_db),
-) -> DisplayResponse:
-    result = await db.execute(select(Club).where(Club.slug == slug))
-    club = result.scalar_one_or_none()
-    if not club:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Club not found",
-        )
-    result = await db.execute(
-        select(Speelronde)
-        .options(joinedload(Speelronde.competitie))
-        .where(
-            and_(
-                Speelronde.club_id == club.id,
-                Speelronde.public_token == token,
-                Speelronde.status == "gepubliceerd",
-            )
-        )
-    )
-    ronde = result.scalar_one_or_none()
-    if not ronde:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ronde not found",
-        )
-    result = await db.execute(
-        select(BaanToewijzing)
-        .options(joinedload(BaanToewijzing.baan), joinedload(BaanToewijzing.team))
-        .where(BaanToewijzing.ronde_id == ronde.id)
-    )
-    toewijzingen = list(result.scalars().all())
-    toewijzingen_with_details = []
-    for t in toewijzingen:
-        toewijzingen_with_details.append(
-            DisplayToewijzing(
-                baan_nummer=t.baan.nummer,
-                baan_naam=t.baan.naam,
-                team_naam=t.team.naam,
-                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
-                tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
-                notitie=t.notitie,
-            )
-        )
-    toewijzingen_with_details.sort(key=lambda x: (x.baan_nummer, x.baan_naam or ""))
-    return DisplayResponse(
-        club=DisplayClubInfo(
-            naam=club.naam,
-            slug=club.slug,
-            primary_color=club.primary_color,
-            secondary_color=club.secondary_color,
-            accent_color=club.accent_color,
-            logo_url=club.logo_url,
-        ),
-        ronde=DisplayRonde(
-            id=str(ronde.id),
-            competitie_naam=ronde.competitie.naam,
-            club_naam=club.naam,
-            datum=ronde.datum.isoformat(),
-            week_nummer=ronde.week_nummer,
-            is_inhaalronde=ronde.is_inhaalronde,
-            toewijzingen=toewijzingen_with_details,
-        ),
-    )
+
+
 @router.get("/display/{slug}/actueel")
 async def get_display_current(
     slug: str,
@@ -195,15 +134,91 @@ async def get_display_current(
             toewijzingen=toewijzingen_with_details,
         ),
     )
+
+
+@router.get("/display/{slug}/{token}")
+async def get_display_by_token(
+    slug: str,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> DisplayResponse:
+    result = await db.execute(select(Club).where(Club.slug == slug))
+    club = result.scalar_one_or_none()
+    if not club:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Club not found",
+        )
+    result = await db.execute(
+        select(Speelronde)
+        .options(joinedload(Speelronde.competitie))
+        .where(
+            and_(
+                Speelronde.club_id == club.id,
+                Speelronde.public_token == token,
+                Speelronde.status == "gepubliceerd",
+            )
+        )
+    )
+    ronde = result.scalar_one_or_none()
+    if not ronde:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ronde not found",
+        )
+    result = await db.execute(
+        select(BaanToewijzing)
+        .options(joinedload(BaanToewijzing.baan), joinedload(BaanToewijzing.team))
+        .where(BaanToewijzing.ronde_id == ronde.id)
+    )
+    toewijzingen = list(result.scalars().all())
+    toewijzingen_with_details = []
+    for t in toewijzingen:
+        toewijzingen_with_details.append(
+            DisplayToewijzing(
+                baan_nummer=t.baan.nummer,
+                baan_naam=t.baan.naam,
+                team_naam=t.team.naam,
+                tijdslot_start=t.tijdslot_start.isoformat() if t.tijdslot_start else "19:00:00",
+                tijdslot_eind=t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
+                notitie=t.notitie,
+            )
+        )
+    toewijzingen_with_details.sort(key=lambda x: (x.baan_nummer, x.baan_naam or ""))
+    return DisplayResponse(
+        club=DisplayClubInfo(
+            naam=club.naam,
+            slug=club.slug,
+            primary_color=club.primary_color,
+            secondary_color=club.secondary_color,
+            accent_color=club.accent_color,
+            logo_url=club.logo_url,
+        ),
+        ronde=DisplayRonde(
+            id=str(ronde.id),
+            competitie_naam=ronde.competitie.naam,
+            club_naam=club.naam,
+            datum=ronde.datum.isoformat(),
+            week_nummer=ronde.week_nummer,
+            is_inhaalronde=ronde.is_inhaalronde,
+            toewijzingen=toewijzingen_with_details,
+        ),
+    )
+
+
 class CalendarRonde(BaseModel):
     id: str
     datum: str
     competitie_naam: str
     is_inhaalronde: bool
     public_token: str | None
+
+
 class ClubCalendarResponse(BaseModel):
     club: DisplayClubInfo
     rondes: list[CalendarRonde]
+
+
 @router.get("/display/{slug}/kalender")
 async def get_club_calendar(
     slug: str,
@@ -240,6 +255,8 @@ async def get_club_calendar(
             for r in rondes
         ],
     )
+
+
 @router.get("/captain/{token}", response_model=CaptainPortalResponse)
 async def get_captain_portal(
     token: str,
@@ -311,6 +328,8 @@ async def get_captain_portal(
         alle_wedstrijden=alle_wedstrijden,
         beschikbaarheden=[BeschikbaarheidResponse.model_validate(b) for b in beschikbaarheden],
     )
+
+
 @router.post("/captain/{token}/beschikbaarheid", response_model=BeschikbaarheidResponse)
 async def submit_beschikbaarheid(
     token: str,
@@ -347,6 +366,8 @@ async def submit_beschikbaarheid(
     await db.commit()
     await db.refresh(beschikbaarheid)
     return BeschikbaarheidResponse.model_validate(beschikbaarheid)
+
+
 @router.post("/captain/{token}/uitslag")
 async def submit_uitslag(
     token: str,

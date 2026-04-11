@@ -95,15 +95,11 @@ function AdminWrapper() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      setIsChecking(false);
-      return;
-    }
     authApi.adminExists()
       .then((res) => setAdminExists(res.data.exists))
       .catch(() => setAdminExists(false))
       .finally(() => setIsChecking(false));
-  }, [user]);
+  }, []);
 
   if (isChecking || authLoading) {
     return <LoadingFallback />;

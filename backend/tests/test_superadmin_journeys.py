@@ -190,6 +190,23 @@ class TestDisplayJourney:
         data = display_response.json()
         assert data["ronde"]["id"] == str(ronde.id)
 
+    async def test_view_current_display_without_published_ronde_returns_empty_state(
+        self, client: AsyncClient, db_session
+    ):
+        """Journey: Public current display endpoint returns 200 with empty state for new clubs."""
+        from app.models import Club
+
+        club = Club(naam="Nieuwe Club", slug="nieuwedisplay", status="trial")
+        db_session.add(club)
+        await db_session.commit()
+
+        response = await client.get(f"/api/v1/display/{club.slug}/actueel")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["club"]["slug"] == club.slug
+        assert data["ronde"] is None
+
 
 class TestTenantSettingsJourney:
     """Tests for tenant branding and settings."""

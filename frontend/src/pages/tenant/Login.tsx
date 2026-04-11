@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { api } from "../../lib/api";
 import { loginSchema, zodErrors } from "../../lib/schemas";
 
 export default function TenantLoginPage() {
@@ -11,6 +12,8 @@ export default function TenantLoginPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isSlugValid, setIsSlugValid] = useState(true);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -20,6 +23,39 @@ export default function TenantLoginPage() {
     if (slug && slug !== "localhost" && slug !== "competitie-planner") {
       setClubName(slug);
     }
+  }, [slug]);
+
+  useEffect(() => {
+    const validateSlug = async () => {
+      if (!slug || slug === "localhost" || slug === "competitie-planner") {
+        setIsSlugValid(false);
+        setError("Ongeldige vereniging in URL");
+        return;
+      }
+
+      setIsCheckingSlug(true);
+      setError("");
+
+      try {
+        await api.get(`/display/${slug}/actueel`);
+        setIsSlugValid(true);
+      } catch (err: unknown) {
+        if (err && typeof err === "object" && "response" in err) {
+          const axiosErr = err as { response?: { status?: number } };
+          if (axiosErr.response?.status === 404) {
+            setIsSlugValid(false);
+            setError("Vereniging niet gevonden");
+            return;
+          }
+        }
+
+        setIsSlugValid(true);
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    };
+
+    void validateSlug();
   }, [slug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,6 +70,11 @@ export default function TenantLoginPage() {
     if (!validation.success) {
       const errs = zodErrors(validation);
       setFieldErrors({ email: errs.email, password: errs.password });
+      return;
+    }
+
+    if (!isSlugValid) {
+      setError("Vereniging niet gevonden");
       return;
     }
 
@@ -122,10 +163,10 @@ export default function TenantLoginPage() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isCheckingSlug || !isSlugValid}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {isLoading ? "Inloggen..." : "Inloggen"}
+            {isCheckingSlug ? "Vereniging controleren..." : isLoading ? "Inloggen..." : "Inloggen"}
           </button>
         </form>
 
