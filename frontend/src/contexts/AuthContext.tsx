@@ -39,6 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSuperadminSession, setIsSuperadminSession] = useState(false);
   const storedClubSlug = localStorage.getItem("club_slug");
 
   const {
@@ -50,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await tenantApi.getClub();
       return response.data;
     },
-    enabled: !!storedClubSlug,
+    enabled: !!storedClubSlug && !isSuperadminSession,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
   });
@@ -67,10 +68,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .then((res) => {
             setUser({ ...res.data, club_slug: storedClubSlug, is_superadmin: false });
           })
-          .catch(() => {
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
-            localStorage.removeItem("club_slug");
+          .catch(async (err) => {
+            const axiosErr = err as { response?: { status?: number } };
+            if (axiosErr.response?.status === 401 || axiosErr.response?.status === 403) {
+              try {
+                const response = await tenantApi.superadminLogin(storedClubSlug);
+                const { user: superadminUser, club: superadminClub } = response.data;
+                localStorage.setItem("club_slug", storedClubSlug);
+                setUser({ ...superadminUser, club_slug: storedClubSlug });
+                setIsSuperadminSession(true);
+                if (superadminClub) {
+                  applyClubTheme(superadminClub);
+                }
+              } catch {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
+                localStorage.removeItem("club_slug");
+              }
+            } else {
+              localStorage.removeItem("access_token");
+              localStorage.removeItem("refresh_token");
+              localStorage.removeItem("club_slug");
+            }
           })
           .finally(() => setIsLoading(false));
       } else {
@@ -95,16 +114,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, slug?: string) => {
     if (slug) {
-      const response = await tenantApi.login(email, password, slug);
-      const { access_token, refresh_token } = response.data;
-      localStorage.setItem("access_token", access_token);
-      localStorage.setItem("refresh_token", refresh_token);
-      localStorage.setItem("club_slug", slug);
-      const meRes = await tenantApi.me();
-      setUser({ ...meRes.data, is_superadmin: false, club_slug: slug });
-      await refetchClub();
-      const clubData = club || (await tenantApi.getClub()).data;
-      applyClubTheme(clubData as Club);
+      try {
+        const response = await tenantApi.login(email, password, slug);
+        const { access_token, refresh_token } = response.data;
+        localStorage.setItem("access_token", access_token);
+        localStorage.setItem("refresh_token", refresh_token);
+        localStorage.setItem("club_slug", slug);
+        const meRes = await tenantApi.me();
+        setUser({ ...meRes.data, is_superadmin: false, club_slug: slug });
+        await refetchClub();
+        const clubData = club || (await tenantApi.getClub()).data;
+        applyClubTheme(clubData as Club);
+      } catch (err) {
+        const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+        if (axiosErr.response?.status === 400 && axiosErr.response?.data?.detail?.includes("superadmin")) {
+          throw new Error("ongeldige inloggegevens");
+        }
+        throw err;
+      }
     } else {
       const response = await authApi.login(email, password);
       const { access_token, refresh_token } = response.data;

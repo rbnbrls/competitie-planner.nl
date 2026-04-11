@@ -45,6 +45,11 @@ export default function DisplayPage() {
   const [countdown, setCountdown] = useState(60);
 
   const fetchData = useCallback(async () => {
+    if (!slug) {
+      setError("Geen club gevonden");
+      setIsLoading(false);
+      return;
+    }
     try {
       const url = token
         ? `${API_BASE_URL}/display/${slug}/${token}`

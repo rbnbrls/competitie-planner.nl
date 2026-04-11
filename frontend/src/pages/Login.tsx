@@ -17,7 +17,10 @@ export default function LoginPage() {
     setError("");
     setFieldErrors({});
 
-    const validation = loginSchema.safeParse({ email, password });
+    const emailValue = email || (document.getElementById("email") as HTMLInputElement)?.value || "";
+    const passwordValue = password || (document.getElementById("password") as HTMLInputElement)?.value || "";
+
+    const validation = loginSchema.safeParse({ email: emailValue, password: passwordValue });
     if (!validation.success) {
       const errs = zodErrors(validation);
       setFieldErrors({ email: errs.email, password: errs.password });
@@ -27,12 +30,12 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(emailValue, passwordValue);
       navigate("/dashboard");
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Login failed");
+        setError(axiosErr.response?.data?.detail || "Login mislukt");
       } else {
         setError("An unexpected error occurred");
       }

@@ -403,13 +403,13 @@ export default function CompetitiesPage() {
             label="Naam competitie"
             placeholder="Bijv. Zomercompetitie 2025"
             value={formData.naam}
-            onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, naam: e.target.value }))}
             required
           />
           <Select
             label="Speeldag"
             value={formData.speeldag}
-            onChange={(e) => setFormData({ ...formData, speeldag: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, speeldag: e.target.value }))}
             options={DAGEN}
           />
           <div className="grid grid-cols-2 gap-4">
@@ -417,14 +417,14 @@ export default function CompetitiesPage() {
               type="date"
               label="Startdatum"
               value={formData.start_datum}
-              onChange={(e) => setFormData({ ...formData, start_datum: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, start_datum: e.target.value }))}
               required
             />
             <Input
               type="date"
               label="Einddatum"
               value={formData.eind_datum}
-              onChange={(e) => setFormData({ ...formData, eind_datum: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, eind_datum: e.target.value }))}
               required
             />
           </div>

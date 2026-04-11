@@ -553,27 +553,27 @@ export default function TeamsPage() {
           <Input
             label="Teamnaam"
             value={formData.naam}
-            onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, naam: e.target.value }))}
             required
             placeholder="Bijv. Heren 1 Zaterdag"
           />
           <Input
             label="Captain naam"
             value={formData.captain_naam}
-            onChange={(e) => setFormData({ ...formData, captain_naam: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, captain_naam: e.target.value }))}
             placeholder="Naam van de teamleider"
           />
           <Input
             type="email"
             label="Captain email"
             value={formData.captain_email}
-            onChange={(e) => setFormData({ ...formData, captain_email: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, captain_email: e.target.value }))}
             placeholder="email@voorbeeld.nl"
           />
           <Input
             label="Speelklasse"
             value={formData.speelklasse}
-            onChange={(e) => setFormData({ ...formData, speelklasse: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, speelklasse: e.target.value }))}
             placeholder="Bijv. 3e klasse heren"
           />
         </form>

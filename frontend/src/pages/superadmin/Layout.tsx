@@ -64,29 +64,29 @@ export default function SuperadminLayout() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Superadmin Panel</h1>
-              <div className="ml-8 flex space-x-4">
-                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+          <div className="flex flex-wrap items-center justify-between gap-y-2 py-2 min-h-16">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <h1 className="text-xl font-bold text-gray-900 whitespace-nowrap">Superadmin Panel</h1>
+              <div className="flex flex-wrap gap-x-1">
+                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap">
                   Dashboard
                 </Link>
-                <Link to="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                <Link to="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap">
                   Verenigingen
                 </Link>
-                <Link to="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                <Link to="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap">
                   Gebruikers
                 </Link>
-                <Link to="/payments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                <Link to="/payments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap">
                   Betalingen
                 </Link>
               </div>
             </div>
-            <div className="flex items-center">
-              <span className="text-sm text-gray-600 mr-4">{user?.email}</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-sm text-gray-600 truncate max-w-[180px]">{user?.email}</span>
               <button
                 onClick={handleLogout}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap"
               >
                 Uitloggen
               </button>

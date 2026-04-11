@@ -43,7 +43,7 @@ export default function BrandingPage() {
   }, []);
 
   const handleColorChange = (field: keyof Branding, value: string) => {
-    setBranding({ ...branding, [field]: value });
+    setBranding(prev => ({ ...prev, [field]: value }));
   };
 
   const handleLogoUpload = async () => {
@@ -51,7 +51,7 @@ export default function BrandingPage() {
     setIsSaving(true);
     try {
       const res = await tenantApi.uploadLogo(logoFile);
-      setBranding({ ...branding, logo_url: res.data.logo_url });
+      setBranding(prev => ({ ...prev, logo_url: res.data.logo_url }));
       showToast.success("Logo succesvol geüpload");
       setLogoFile(null);
     } catch {
@@ -128,7 +128,7 @@ export default function BrandingPage() {
                           variant="ghost" 
                           size="icon" 
                           className="absolute -top-2 -right-2 bg-white shadow-md text-red-500 hover:bg-red-50 h-8 w-8 rounded-full"
-                          onClick={() => setBranding({...branding, logo_url: null})}
+                          onClick={() => setBranding(prev => ({...prev, logo_url: null}))}
                         >
                           <Trash2 size={14} />
                         </Button>
@@ -248,7 +248,7 @@ export default function BrandingPage() {
                 <Select
                   label="Lettertype familie"
                   value={branding.font_choice}
-                  onChange={(e) => setBranding({ ...branding, font_choice: e.target.value })}
+                  onChange={(e) => setBranding(prev => ({ ...prev, font_choice: e.target.value }))}
                   options={[
                     { value: "default", label: "Inter (Systeem standaard)" },
                     { value: "modern", label: "Montserrat (Modern & Open)" },

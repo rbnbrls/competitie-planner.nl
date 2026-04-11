@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from uuid import UUID
 
@@ -57,6 +57,36 @@ async def create_competitie(
     db.add(competitie)
     await db.commit()
     await db.refresh(competitie)
+
+    # Auto-generate Speelronde records for each occurrence of speeldag
+    _SPEELDAG_TO_WEEKDAY = {
+        "maandag": 0, "dinsdag": 1, "woensdag": 2, "donderdag": 3,
+        "vrijdag": 4, "zaterdag": 5, "zondag": 6,
+    }
+    weekday_target = _SPEELDAG_TO_WEEKDAY.get(data.speeldag.lower())
+    if weekday_target is not None:
+        if data.eerste_datum:
+            first_date = data.eerste_datum
+        else:
+            days_ahead = (weekday_target - data.start_datum.weekday()) % 7
+            first_date = data.start_datum + timedelta(days=days_ahead)
+        feestdagen_set = set(data.feestdagen)
+        current_date = first_date
+        week_nummer = 1
+        while current_date <= data.eind_datum:
+            if current_date not in feestdagen_set:
+                db.add(Speelronde(
+                    competitie_id=competitie.id,
+                    club_id=club.id,
+                    datum=current_date,
+                    week_nummer=week_nummer,
+                    is_inhaalronde=False,
+                    status="concept",
+                ))
+                week_nummer += 1
+            current_date += timedelta(weeks=1)
+        await db.commit()
+
     return {
         "id": str(competitie.id),
         "naam": competitie.naam,

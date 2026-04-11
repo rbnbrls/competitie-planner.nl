@@ -258,35 +258,16 @@ async def add_security_headers(request: Request, call_next):
 @app.middleware("http")
 async def caching_middleware(request: Request, call_next):
     """
-    Middleware to add caching headers and handle ETag/If-None-Match.
+    Middleware to prevent caching of authenticated API responses.
+    All /api/v1 endpoints return user/tenant-specific data and must never be
+    served from a browser or proxy cache.
     """
+    response = await call_next(request)
+
     if request.method == "GET" and request.url.path.startswith("/api/v1"):
-        cache_key = f"response:{request.url.path}:{request.url.query or ''}"
-        etag = request.headers.get("If-None-Match")
+        response.headers["Cache-Control"] = "no-store"
 
-        cached_response = await cache.get(cache_key)
-        if cached_response and etag:
-            current_etag = f'"{uuid.uuid4().hex}"'
-            if etag == current_etag:
-                return JSONResponse(
-                    status_code=304,
-                    headers={
-                        "ETag": current_etag,
-                        "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
-                    },
-                )
-
-        response = await call_next(request)
-
-        if response.status_code == 200:
-            current_etag = f'"{uuid.uuid4().hex}"'
-            response.headers["ETag"] = current_etag
-            response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
-            response.headers["Vary"] = "Accept-Encoding"
-
-        return response
-
-    return await call_next(request)
+    return response
 
 
 app.add_middleware(

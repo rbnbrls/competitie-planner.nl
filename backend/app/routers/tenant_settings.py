@@ -32,6 +32,11 @@ async def get_settings(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    if club is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Club ID required. Specify club_id query parameter for superadmin access.",
+        )
     return {
         "id": str(club.id),
         "naam": club.naam,
@@ -133,8 +138,17 @@ async def update_branding(
         club.accent_color = data.accent_color
     if data.font_choice is not None:
         club.font_choice = data.font_choice
-    await db.commit()
-    await db.refresh(club)
+
+    try:
+        await db.commit()
+        await db.refresh(club)
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save branding: {str(e)}",
+        )
+
     return {
         "primary_color": club.primary_color,
         "secondary_color": club.secondary_color,
@@ -526,6 +540,11 @@ async def get_club(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    if club is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Club ID required. Specify club_id query parameter for superadmin access.",
+        )
     return {
         "id": str(club.id),
         "naam": club.naam,

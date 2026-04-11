@@ -1,5 +1,6 @@
 import structlog
-from fastapi import Depends, HTTPException, status
+from uuid import UUID
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/tenant/login")
 async def get_current_tenant_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-) -> tuple[User, Club]:
+    club_id: UUID | None = Query(None, description="Club ID for superadmin access"),
+) -> tuple[User, Club | None]:
     payload = decode_token(token)
     token_payload = TokenPayload(payload)
 
@@ -35,6 +37,28 @@ async def get_current_tenant_user(
         )
 
     if not user.club_id:
+        if user.is_superadmin:
+            if club_id:
+                result = await db.execute(
+                    select(Club).where(Club.id == club_id).options(selectinload(Club.banen))
+                )
+                club = result.scalar_one_or_none()
+                if not club:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Club not found",
+                    )
+                if club.status == "suspended":
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Uw verenigingsaccount is niet actief. Neem contact op met de platformbeheerder.",
+                    )
+                structlog.contextvars.bind_contextvars(
+                    user_id=str(user.id),
+                    club_id=str(club.id),
+                )
+                return user, club
+            return user, None
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tenant access required",
@@ -66,9 +90,13 @@ async def get_current_tenant_user(
 
 
 async def get_current_tenant_admin(
-    current: tuple[User, Club] = Depends(get_current_tenant_user),
-) -> tuple[User, Club]:
-    user, club = current
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+    club_id: UUID | None = Query(None, description="Club ID for superadmin access"),
+) -> tuple[User, Club | None]:
+    user, club = await get_current_tenant_user(token, db, club_id)
+    if user.is_superadmin:
+        return user, club
     if user.role != "vereniging_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

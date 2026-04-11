@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { superadminApi } from "../../lib/api";
 
@@ -18,18 +18,53 @@ export default function ClubsPage() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const perPage = 25;
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  useEffect(() => {
+  const fetchClubs = useCallback(() => {
     setIsLoading(true);
     superadminApi
       .listClubs({ search: search || undefined, status_filter: statusFilter || undefined, page, per_page: perPage })
       .then((res) => {
         setClubs(res.data);
-        setTotalCount(res.data.length);
+        setTotalCount((res.data as unknown as { metadata?: { total: number } }).metadata?.total ?? res.data.length);
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [search, statusFilter, page]);
+
+  useEffect(() => {
+    fetchClubs();
+  }, [fetchClubs]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchClubs();
+    }, 300);
+  };
+
+  const handleClearSearch = () => {
+    setSearch("");
+    setPage(1);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    fetchClubs();
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchClubs();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [fetchClubs]);
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -55,13 +90,24 @@ export default function ClubsPage() {
 
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
-          <input
-            type="text"
-            placeholder="Zoek op naam of slug..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Zoek op naam of slug..."
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}

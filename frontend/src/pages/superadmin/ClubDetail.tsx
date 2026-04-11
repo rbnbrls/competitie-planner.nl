@@ -12,6 +12,7 @@ interface Club {
   stad?: string;
   telefoon?: string;
   website?: string;
+  max_banen?: number;
   trial_ends_at?: string;
   created_at: string;
 }
@@ -79,6 +80,7 @@ export default function ClubDetailPage() {
       stad: club.stad,
       telefoon: club.telefoon,
       website: club.website,
+      max_banen: club.max_banen,
     });
     setIsEditing(true);
   };
@@ -241,6 +243,16 @@ export default function ClubDetailPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-600">Max. banen</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editForm.max_banen || ""}
+                    onChange={(e) => setEditForm({ ...editForm, max_banen: e.target.value ? parseInt(e.target.value) : undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
               </div>
             ) : (
               <>
@@ -248,6 +260,7 @@ export default function ClubDetailPage() {
                 <p className="text-gray-600">{club.postcode} {club.stad}</p>
                 <p className="text-gray-600">{club.telefoon || "-"}</p>
                 <p className="text-gray-600">{club.website || "-"}</p>
+                <p className="text-gray-600">Max. banen: {club.max_banen || "-"}</p>
               </>
             )}
           </div>

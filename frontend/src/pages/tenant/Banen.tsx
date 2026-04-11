@@ -50,6 +50,7 @@ export default function BanenPage() {
     overdekt: false,
     prioriteit_score: 5,
   });
+  const [deletingBaan, setDeletingBaan] = useState<Baan | null>(null);
 
   useEffect(() => {
     loadBanen();
@@ -112,17 +113,21 @@ export default function BanenPage() {
     setShowModal(true);
   };
 
-  const handleDeactivate = async (baan: Baan) => {
-    if (!confirm(`Weet je zeker dat je baan ${baan.nummer} wilt deactiveren?`)) return;
+  const handleDeactivate = async () => {
+    if (!deletingBaan) return;
     
+    setIsSaving(true);
     try {
-      setBanen(banen.map((b) => (b.id === baan.id ? { ...b, actief: false } : b)));
-      await tenantApi.deleteBaan(baan.id);
+      setBanen(banen.map((b) => (b.id === deletingBaan.id ? { ...b, actief: false } : b)));
+      await tenantApi.deleteBaan(deletingBaan.id);
       showToast.success("Baan gedeactiveerd");
       loadBanen();
     } catch {
       loadBanen();
       showToast.error("Fout bij deactiveren");
+    } finally {
+      setIsSaving(false);
+      setDeletingBaan(null);
     }
   };
 
@@ -198,7 +203,7 @@ export default function BanenPage() {
                       <Edit size={16} />
                     </Button>
                     {baan.actief && (
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeactivate(baan)}>
+                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setDeletingBaan(baan)}>
                         <Trash2 size={16} />
                       </Button>
                     )}
@@ -252,7 +257,7 @@ export default function BanenPage() {
                   Bewerken
                 </Button>
                 {baan.actief && (
-                  <Button variant="ghost" className="text-red-500 h-11" onClick={() => handleDeactivate(baan)}>
+                  <Button variant="ghost" className="text-red-500 h-11" onClick={() => setDeletingBaan(baan)}>
                     <Trash2 size={18} />
                   </Button>
                 )}
@@ -279,14 +284,14 @@ export default function BanenPage() {
                 type="number"
                 label="Baannummer"
                 value={formData.nummer}
-                onChange={(e) => setFormData({ ...formData, nummer: parseInt(e.target.value) })}
+                onChange={(e) => setFormData(prev => ({ ...prev, nummer: parseInt(e.target.value) }))}
                 required
                 min="1"
               />
               <Select
                 label="Verlichting"
                 value={formData.verlichting_type}
-                onChange={(e) => setFormData({ ...formData, verlichting_type: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, verlichting_type: e.target.value }))}
                 options={VERLICHTING_TYPES}
               />
            </div>
@@ -294,7 +299,7 @@ export default function BanenPage() {
           <Input
             label="Naam (optioneel)"
             value={formData.naam}
-            onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, naam: e.target.value }))}
             placeholder="Bijv. Baan 1 - Centre"
           />
 
@@ -306,7 +311,7 @@ export default function BanenPage() {
              <input
                 type="checkbox"
                 checked={formData.overdekt}
-                onChange={(e) => setFormData({ ...formData, overdekt: e.target.checked })}
+                onChange={(e) => setFormData(prev => ({ ...prev, overdekt: e.target.checked }))}
                 className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
               />
           </div>
@@ -320,7 +325,7 @@ export default function BanenPage() {
             <input
               type="range"
               value={formData.prioriteit_score}
-              onChange={(e) => setFormData({ ...formData, prioriteit_score: parseInt(e.target.value) })}
+              onChange={(e) => setFormData(prev => ({ ...prev, prioriteit_score: parseInt(e.target.value) }))}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               min="1"
               max="10"
@@ -331,6 +336,25 @@ export default function BanenPage() {
             </div>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deletingBaan}
+        onClose={() => setDeletingBaan(null)}
+        title="Baan deactiveren"
+        description={`Weet je zeker dat je baan ${deletingBaan?.nummer} wilt deactiveren?`}
+        maxWidth="xs"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeletingBaan(null)}>Annuleren</Button>
+            <Button variant="danger" onClick={handleDeactivate} isLoading={isSaving}>Deactiveren</Button>
+          </>
+        }
+      >
+        <p className="text-gray-600">
+          De baan wordt gemarkeerd als inactief en kan niet meer worden gebruikt voor wedstrijden.
+        </p>
       </Modal>
     </div>
   );

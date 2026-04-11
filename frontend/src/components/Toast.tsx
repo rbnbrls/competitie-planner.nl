@@ -26,7 +26,7 @@ export const ToastContainer = () => {
 };
 
 export const showToast = {
-  success: (message: string) => toast.success(message),
-  error: (message: string) => toast.error(message, { duration: Infinity }),
-  info: (message: string) => toast(message),
+  success: (message: string) => toast.success(message, { id: message }),
+  error: (message: string) => toast.error(message, { id: message, duration: Infinity }),
+  info: (message: string) => toast(message, { id: message }),
 };

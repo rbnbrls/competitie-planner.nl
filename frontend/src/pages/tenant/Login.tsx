@@ -27,7 +27,10 @@ export default function TenantLoginPage() {
     setError("");
     setFieldErrors({});
 
-    const validation = loginSchema.safeParse({ email, password });
+    const emailValue = email || (document.getElementById("email") as HTMLInputElement)?.value || "";
+    const passwordValue = password || (document.getElementById("password") as HTMLInputElement)?.value || "";
+
+    const validation = loginSchema.safeParse({ email: emailValue, password: passwordValue });
     if (!validation.success) {
       const errs = zodErrors(validation);
       setFieldErrors({ email: errs.email, password: errs.password });
@@ -37,13 +40,15 @@ export default function TenantLoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password, slug);
+      await login(emailValue, passwordValue, slug);
       navigate("/tenant/dashboard");
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
         if (axiosErr.response?.status === 401) {
           setError("ongeldige inloggegevens");
+        } else if (axiosErr.response?.status === 400 && axiosErr.response?.data?.detail?.includes("superadmin")) {
+          setError("Gebruik het superadmin portaal voor superadmin accounts");
         } else {
           setError(axiosErr.response?.data?.detail || "Login mislukt");
         }

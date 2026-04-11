@@ -1,6 +1,6 @@
 from uuid import UUID
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -159,14 +159,14 @@ async def list_all_mandates(
     return {"mandates": mandate_data, "total": total}
 
 
-@router.get("/mandates/{club_id}")
+@router.get("/mandates/{mandate_club_id}")
 async def get_club_mandate(
-    club_id: str,
+    mandate_club_id: str,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     _, club = current
-    if str(club.id) != club_id:
+    if str(club.id) != mandate_club_id:
         raise HTTPException(status_code=403, detail="Access denied")
     service = MollieService(db)
     mandate = await service.get_club_mandate(club.id)

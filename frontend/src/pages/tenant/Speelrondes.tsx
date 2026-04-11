@@ -42,7 +42,7 @@ export default function SpeelrondesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
-  const [lazy, setLazy] = useState(true);
+  const [lazy, setLazy] = useState(false);
   
   const loadData = useCallback(() => {
     if (!competitieId) return;
@@ -52,7 +52,7 @@ export default function SpeelrondesPage() {
       tenantApi.getCompetition(competitieId),
       tenantApi.listSpeelrondes(competitieId, { lazy }),
     ]).then(([compRes, rondesRes]) => {
-      setCompetitie(compRes.data.competitie);
+      setCompetitie(compRes.data);
       setRondes(rondesRes.data.rondes || []);
     }).catch(() => {
       showToast.error("Fout bij laden van speelrondes");

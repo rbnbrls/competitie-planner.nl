@@ -71,6 +71,9 @@ export const tenantApi = {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
   },
+  superadminLogin: (slug: string) => {
+    return api.post(`/tenant/superadmin-login?slug=${slug}`);
+  },
   refresh: () =>
     api.post("/tenant/refresh"),
   me: () => api.get("/tenant/me"),
@@ -285,6 +288,7 @@ export const superadminApi = {
     stad?: string;
     telefoon?: string;
     website?: string;
+    max_banen?: number;
   }) => api.post("/superadmin/clubs", data),
   updateClub: (clubId: string, data: Record<string, unknown>) =>
     api.patch(`/superadmin/clubs/${clubId}`, data),

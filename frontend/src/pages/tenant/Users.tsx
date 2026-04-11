@@ -242,13 +242,13 @@ export default function UsersPage() {
             <Input
               label="Volledige naam"
               value={formData.full_name}
-              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
               placeholder="Bijv. Jan de Vries"
             />
             <Select
               label="Rol"
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
               options={ROLES}
             />
             <div className="flex items-center gap-2 p-1 pt-2">
@@ -256,7 +256,7 @@ export default function UsersPage() {
                   type="checkbox"
                   id="user-active"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                   className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                 />
                 <label htmlFor="user-active" className="text-sm font-bold text-gray-700 cursor-pointer flex items-center gap-2">

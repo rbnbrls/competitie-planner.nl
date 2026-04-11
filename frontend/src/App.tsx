@@ -52,7 +52,7 @@ function TenantRoutes() {
     if (!user) {
       return;
     }
-    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding", "/display"];
+    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding", "/display/"];
     if (publicPaths.some(p => location.pathname.startsWith(p))) {
       setIsLoading(false);
       return;
@@ -95,22 +95,26 @@ function AdminWrapper() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    if (!user) {
+      setIsChecking(false);
+      return;
+    }
     authApi.adminExists()
       .then((res) => setAdminExists(res.data.exists))
       .catch(() => setAdminExists(false))
       .finally(() => setIsChecking(false));
-  }, []);
+  }, [user]);
 
   if (isChecking || authLoading) {
     return <LoadingFallback />;
   }
 
-  if (!adminExists) {
-    return <RegisterAdminPage onRegisterSuccess={() => window.location.reload()} />;
-  }
-
   if (!user) {
     return <LoginPage />;
+  }
+
+  if (!adminExists) {
+    return <RegisterAdminPage onRegisterSuccess={() => window.location.reload()} />;
   }
 
   if (!user.is_superadmin) {
@@ -131,17 +135,17 @@ function AdminRoutesInner() {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <h1 className="text-xl font-bold text-gray-900">Superadmin Panel</h1>
-              <div className="hidden md:ml-8 md:flex md:space-x-4">
+              <div className="hidden lg:ml-8 lg:flex lg:space-x-4">
                 <a href="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
                 <a href="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
                 <a href="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</a>
               </div>
             </div>
-            <div className="hidden md:flex items-center">
+            <div className="hidden lg:flex items-center">
               <span className="text-sm text-gray-600 mr-4">{auth.user?.email}</span>
               <button onClick={() => { auth.logout(); window.location.href = '/login'; }} className="text-sm text-gray-600 hover:text-gray-900">Uitloggen</button>
             </div>
-            <div className="flex items-center md:hidden">
+            <div className="flex items-center lg:hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="text-gray-600 hover:text-gray-900 p-2"
@@ -158,7 +162,7 @@ function AdminRoutesInner() {
           </div>
         </div>
         {mobileMenuOpen && (
-          <div className="md:hidden border-t">
+          <div className="lg:hidden border-t">
             <div className="px-2 pt-2 pb-3 space-y-1">
               <a href="/dashboard" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
               <a href="/clubs" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
@@ -228,7 +232,6 @@ function AppRoutes() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/captain/:token" element={<CaptainPortaalPage />} />
-          <Route path="/display" element={<DisplayPage />} />
           <Route path="/display/:slug" element={<DisplayPage />} />
           <Route path="/display/:slug/:token" element={<DisplayPage />} />
           <Route element={<TenantLayout />}>

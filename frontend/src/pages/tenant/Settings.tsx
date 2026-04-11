@@ -130,7 +130,7 @@ export default function SettingsPage() {
                 <Input
                   label="Verenigingsnaam"
                   value={formData.naam}
-                  onChange={(e) => setFormData({ ...formData, naam: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, naam: e.target.value }))}
                   required
                   placeholder="Bijv. T.V. De Meppers"
                 />
@@ -165,7 +165,7 @@ export default function SettingsPage() {
                 <Input
                   label="Adres"
                   value={formData.adres}
-                  onChange={(e) => setFormData({ ...formData, adres: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, adres: e.target.value }))}
                   placeholder="Straatnaam en nummer"
                   icon={<MapPin size={16} />}
                 />
@@ -174,13 +174,13 @@ export default function SettingsPage() {
                   <Input
                     label="Postcode"
                     value={formData.postcode}
-                    onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, postcode: e.target.value }))}
                     placeholder="1234 AB"
                   />
                   <Input
                     label="Stad"
                     value={formData.stad}
-                    onChange={(e) => setFormData({ ...formData, stad: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, stad: e.target.value }))}
                     placeholder="Woonplaats"
                   />
                 </div>
@@ -190,14 +190,14 @@ export default function SettingsPage() {
                     label="Telefoon"
                     type="tel"
                     value={formData.telefoon}
-                    onChange={(e) => setFormData({ ...formData, telefoon: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, telefoon: e.target.value }))}
                     icon={<Phone size={16} />}
                   />
                   <Input
                     label="Website"
                     type="url"
                     value={formData.website}
-                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
                     placeholder="https://www.clubsite.nl"
                     icon={<Globe size={16} />}
                   />
@@ -230,7 +230,7 @@ export default function SettingsPage() {
                         type="number"
                         label="Max. thuisteams per dag"
                         value={formData.max_thuisteams_per_dag}
-                        onChange={(e) => setFormData({ ...formData, max_thuisteams_per_dag: parseInt(e.target.value) || 3 })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, max_thuisteams_per_dag: parseInt(e.target.value) || 3 }))}
                         min="1"
                         max="20"
                         helperText="Maximum aantal thuiswedstrijden per competitie-dag."
@@ -244,7 +244,7 @@ export default function SettingsPage() {
                         type="number"
                         label="Aantal banen"
                         value={formData.max_banen}
-                        onChange={(e) => setFormData({ ...formData, max_banen: parseInt(e.target.value) || 8 })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, max_banen: parseInt(e.target.value) || 8 }))}
                         min="1"
                         max="50"
                         helperText="Het totaal aantal fysieke banen dat de club beschikbaar heeft."

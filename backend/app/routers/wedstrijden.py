@@ -629,14 +629,16 @@ async def import_wedstrijden(
                     continue
             ronde = ronde_datum_map.get(ronde_datum.isoformat())
             if not ronde:
-                errors.append(
-                    {
-                        "rij": i,
-                        "fout": f"Speelronde not found for date: {datum_str}",
-                    }
+                # Create the round on-the-fly when importing a schedule
+                ronde = Speelronde(
+                    competitie_id=competitie_uuid,
+                    club_id=club.id,
+                    datum=ronde_datum,
+                    status="concept",
                 )
-                skipped += 1
-                continue
+                db.add(ronde)
+                await db.flush()
+                ronde_datum_map[ronde_datum.isoformat()] = ronde
             result = await db.execute(
                 select(Wedstrijd).where(
                     Wedstrijd.ronde_id == ronde.id,

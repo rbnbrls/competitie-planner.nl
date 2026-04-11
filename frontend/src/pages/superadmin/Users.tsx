@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { superadminApi } from "../../lib/api";
 
@@ -19,8 +19,9 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const clubFilter = "";
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  useEffect(() => {
+  const fetchUsers = useCallback(() => {
     setIsLoading(true);
     superadminApi
       .listUsers({
@@ -32,6 +33,28 @@ export default function UsersPage() {
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [search, roleFilter, clubFilter]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchUsers();
+    }, 300);
+  };
+
+  const handleClearSearch = () => {
+    setSearch("");
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    fetchUsers();
+  };
 
   const handleToggleActive = async (userId: string, currentActive: boolean) => {
     try {
@@ -57,13 +80,24 @@ export default function UsersPage() {
 
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
-          <input
-            type="text"
-            placeholder="Zoek op naam of email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Zoek op naam of email..."
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}

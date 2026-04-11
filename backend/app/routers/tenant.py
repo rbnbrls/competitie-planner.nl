@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta
+from uuid import UUID
+import structlog
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.db import get_db
 from app.limiter import limiter
 from app.models import Club, InviteToken, PasswordResetToken, User
@@ -18,13 +21,15 @@ from app.services.auth import (
     get_password_hash,
     verify_password,
 )
-router = APIRouter(
-    prefix="/tenant",
-    tags=["tenant"]
-)
+
+router = APIRouter(prefix="/tenant", tags=["tenant"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/tenant/login")
+
+
 class TenantLoginRequest(BaseModel):
     slug: str
+
+
 def get_slug_from_request(slug: str | None = Query(None)) -> str:
     if not slug:
         raise HTTPException(
@@ -32,10 +37,13 @@ def get_slug_from_request(slug: str | None = Query(None)) -> str:
             detail="Tenant slug is required",
         )
     return slug
+
+
 async def get_current_tenant_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-) -> tuple[User, Club]:
+    club_id: UUID | None = Query(None, description="Club ID for superadmin access"),
+) -> tuple[User, Club | None]:
     payload = decode_token(token)
     token_payload = TokenPayload(payload)
     if token_payload.type != "access":
@@ -51,33 +59,70 @@ async def get_current_tenant_user(
             detail="User not found or inactive",
         )
     if not user.club_id:
+        if user.is_superadmin:
+            if club_id:
+                result = await db.execute(
+                    select(Club).where(Club.id == club_id).options(selectinload(Club.banen))
+                )
+                club = result.scalar_one_or_none()
+                if not club:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Club not found",
+                    )
+                if club.status == "suspended":
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Uw verenigingsaccount is niet actief. Neem contact op met de platformbeheerder.",
+                    )
+                structlog.contextvars.bind_contextvars(
+                    user_id=str(user.id),
+                    club_id=str(club.id),
+                )
+                return user, club
+            return user, None
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tenant access required",
         )
+
     result = await db.execute(select(Club).where(Club.id == user.club_id))
     club = result.scalar_one_or_none()
+
     if not club:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Club not found",
         )
+
     if club.status == "suspended":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Uw verenigingsaccount is niet actief. Neem contact op met de platformbeheerder.",
         )
+    structlog.contextvars.bind_contextvars(
+        user_id=str(user.id),
+        club_id=str(club.id),
+    )
     return user, club
+
+
 async def get_current_tenant_admin(
-    current: tuple[User, Club] = Depends(get_current_tenant_user),
-) -> tuple[User, Club]:
-    user, club = current
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+    club_id: UUID | None = Query(None, description="Club ID for superadmin access"),
+) -> tuple[User, Club | None]:
+    user, club = await get_current_tenant_user(token, db, club_id)
+    if user.is_superadmin:
+        return user, club
     if user.role != "vereniging_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
     return user, club
+
+
 @router.post("/login")
 @limiter.limit("5/minute")
 async def login(
@@ -98,6 +143,20 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Uw verenigingsaccount is niet actief. Neem contact op met de platformbeheerder.",
         )
+
+    result = await db.execute(
+        select(User).where(
+            User.email == form_data.username,
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if user and user.is_superadmin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gebruik het superadmin portaal voor superadmin accounts",
+        )
+
     result = await db.execute(
         select(User).where(
             User.email == form_data.username,
@@ -190,6 +249,8 @@ async def login(
             "logo_url": club.logo_url,
         },
     }
+
+
 @router.post("/refresh")
 async def refresh_token(
     token: str = Depends(oauth2_scheme),
@@ -225,16 +286,25 @@ async def refresh_token(
         "access_token": access_token,
         "token_type": "bearer",
     }
+
+
 class InviteRequest(BaseModel):
     email: EmailStr
     role: str
+
+
 @router.post("/invite")
 async def create_invite(
     invite_data: InviteRequest,
-    current: tuple[User, Club] = Depends(get_current_tenant_admin),
+    current: tuple[User, Club | None] = Depends(get_current_tenant_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    if user.is_superadmin or club is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmins cannot invite users to clubs",
+        )
     if invite_data.role not in ["vereniging_admin", "planner"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -253,6 +323,7 @@ async def create_invite(
             detail="User with this email already exists in this club",
         )
     import secrets
+
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now() + timedelta(hours=48)
     invite = InviteToken(
@@ -269,9 +340,13 @@ async def create_invite(
         "expires_at": expires_at.isoformat(),
         "invite_url": f"https://{club.slug}.competitie-planner.nl/invite/{token}",
     }
+
+
 class AcceptInviteRequest(BaseModel):
     token: str
     password: str
+
+
 @router.post("/accept-invite")
 async def accept_invite(
     data: AcceptInviteRequest,
@@ -300,6 +375,7 @@ async def accept_invite(
             detail="Password must be at least 8 characters",
         )
     import re
+
     if not re.search(r"\d", data.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -352,9 +428,13 @@ async def accept_invite(
         "access_token": access_token,
         "token_type": "bearer",
     }
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
     slug: str
+
+
 @router.post("/forgot-password")
 async def forgot_password(
     data: ForgotPasswordRequest,
@@ -389,6 +469,7 @@ async def forgot_password(
                 detail="Te veel aanvragen voor wachtwoordherstel. Probeer het later opnieuw.",
             )
         import secrets
+
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now() + timedelta(hours=1)
         reset_token = PasswordResetToken(
@@ -404,9 +485,13 @@ async def forgot_password(
             "reset_url": f"https://{club.slug}.competitie-planner.nl/reset-password/{token}",
         }
     return {"message": "If the email exists, a reset link has been sent"}
+
+
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
 @router.post("/reset-password")
 async def reset_password(
     data: ResetPasswordRequest,
@@ -435,6 +520,7 @@ async def reset_password(
             detail="Password must be at least 8 characters",
         )
     import re
+
     if not re.search(r"\d", data.new_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -457,8 +543,97 @@ async def reset_password(
         club_id=str(reset_token.club_id),
     )
     return {"message": "Password reset successfully"}
+
+
+@router.post("/superadmin-login")
+async def superadmin_login(
+    request: Request,
+    slug: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    auth_header = request.headers.get("Authorization")
+
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = auth_header.replace("Bearer ", "")
+
+    payload = decode_token(token)
+    token_payload = TokenPayload(payload)
+
+    if token_payload.type != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+        )
+
+    if not token_payload.is_superadmin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmin access required",
+        )
+
+    result = await db.execute(select(User).where(User.id == token_payload.user_id))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active or not user.is_superadmin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+
+    result = await db.execute(select(Club).where(Club.slug == slug))
+    club = result.scalar_one_or_none()
+
+    if not club:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vereniging niet gevonden",
+        )
+
+    if club.status == "suspended":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Uw verenigingsaccount is niet actief. Neem contact op met de platformbeheerder.",
+        )
+
+    structlog.contextvars.bind_contextvars(
+        user_id=str(user.id),
+        club_id=str(club.id),
+    )
+
+    log_audit(
+        "auth.superadmin_tenant_login",
+        actor_id=str(user.id),
+        actor_email=user.email,
+        club_id=str(club.id),
+    )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": "superadmin",
+            "is_superadmin": True,
+        },
+        "club": {
+            "id": str(club.id),
+            "naam": club.naam,
+            "slug": club.slug,
+            "status": club.status,
+        },
+    }
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    current: tuple[User, Club] = Depends(get_current_tenant_user),
+    current: tuple[User, Club | None] = Depends(get_current_tenant_user),
 ) -> User:
     return current[0]

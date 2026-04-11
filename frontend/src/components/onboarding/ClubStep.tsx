@@ -26,33 +26,39 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const validate = () => {
-    const result = clubSchema.safeParse(formData);
-    const newErrors = zodErrors(result);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const validateField = (field: string, value: string) => {
     const result = clubSchema.safeParse({ ...formData, [field]: value });
     const fieldError = zodErrors(result)[field];
     setErrors((prev) => ({ ...prev, [field]: fieldError || "" }));
   };
 
+  const getFormValues = () => ({
+    naam: formData.naam || (document.getElementById("naam") as HTMLInputElement)?.value || "",
+    adres: formData.adres || (document.getElementById("adres") as HTMLInputElement)?.value || "",
+    postcode: formData.postcode || (document.getElementById("postcode") as HTMLInputElement)?.value || "",
+    stad: formData.stad || (document.getElementById("stad") as HTMLInputElement)?.value || "",
+    telefoon: formData.telefoon || (document.getElementById("telefoon") as HTMLInputElement)?.value || "",
+    email: formData.email || (document.getElementById("email") as HTMLInputElement)?.value || "",
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validate()) return;
+    const values = getFormValues();
+    const result = clubSchema.safeParse(values);
+    const newErrors = zodErrors(result);
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
     setIsLoading(true);
     try {
       await onboardingApi.saveClub({
-        naam: formData.naam.trim(),
-        adres: formData.adres.trim() || undefined,
-        postcode: formData.postcode.trim() || undefined,
-        stad: formData.stad.trim() || undefined,
-        telefoon: formData.telefoon.trim() || undefined,
-        email: formData.email.trim() || undefined,
+        naam: values.naam.trim(),
+        adres: values.adres.trim() || undefined,
+        postcode: values.postcode.trim() || undefined,
+        stad: values.stad.trim() || undefined,
+        telefoon: values.telefoon.trim() || undefined,
+        email: values.email.trim() || undefined,
       });
       onNext();
     } catch (error: unknown) {

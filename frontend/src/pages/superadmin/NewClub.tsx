@@ -9,6 +9,10 @@ export default function NewClubPage() {
   const [slug, setSlug] = useState("");
   const [contactNaam, setContactNaam] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [adres, setAdres] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [stad, setStad] = useState("");
+  const [maxBanen, setMaxBanen] = useState<number | "">("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +52,10 @@ export default function NewClubPage() {
         slug,
         admin_email: contactEmail.trim() || undefined,
         admin_full_name: contactNaam.trim() || undefined,
+        adres: adres.trim() || undefined,
+        postcode: postcode.trim() || undefined,
+        stad: stad.trim() || undefined,
+        max_banen: maxBanen || undefined,
       });
       navigate("/clubs");
     } catch (err: unknown) {
@@ -139,6 +147,61 @@ export default function NewClubPage() {
               ? <p className="text-red-500 text-sm mt-1">{fieldErrors.contactEmail}</p>
               : <p className="text-sm text-gray-500 mt-1">Er wordt een uitnodigingsemail verstuurd naar dit emailadres</p>
             }
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="adres" className="block text-gray-700 font-medium mb-2">
+              Adres
+            </label>
+            <input
+              id="adres"
+              type="text"
+              value={adres}
+              onChange={(e) => setAdres(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex gap-4 mb-4">
+            <div className="flex-1">
+              <label htmlFor="postcode" className="block text-gray-700 font-medium mb-2">
+                Postcode
+              </label>
+              <input
+                id="postcode"
+                type="text"
+                value={postcode}
+                onChange={(e) => setPostcode(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="stad" className="block text-gray-700 font-medium mb-2">
+                Stad
+              </label>
+              <input
+                id="stad"
+                type="text"
+                value={stad}
+                onChange={(e) => setStad(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="maxBanen" className="block text-gray-700 font-medium mb-2">
+              Max. banen
+            </label>
+            <input
+              id="maxBanen"
+              type="number"
+              min="1"
+              value={maxBanen}
+              onChange={(e) => setMaxBanen(e.target.value ? parseInt(e.target.value) : "")}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Bijv. 4"
+            />
           </div>
 
           <div className="flex justify-end gap-2">
