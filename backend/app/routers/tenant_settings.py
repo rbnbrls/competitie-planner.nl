@@ -1,14 +1,19 @@
 import os
 import shutil
+import traceback
+import logging
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db import get_db
 from app.models import Baan, User
 from app.services.audit import log_audit
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tenant", tags=["tenant-settings"])
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
@@ -107,6 +112,18 @@ class BrandingUpdate(BaseModel):
     accent_color: str | None = None
     font_choice: str | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def validate_hex_colors(cls, values):
+        if values is None:
+            return values
+        for field in ["primary_color", "secondary_color", "accent_color"]:
+            val = values.get(field)
+            if val is not None and isinstance(val, str):
+                if not val.startswith("#") or len(val) not in (4, 7):
+                    logger.warning(f"Invalid hex color format for {field}: {val}")
+        return values
+
 
 @router.get("/branding")
 async def get_branding(
@@ -130,6 +147,9 @@ async def update_branding(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    logger.info(
+        f"branding_update_started: club_id={club.id}, fields={data.model_dump(exclude_unset=True)}"
+    )
     if data.primary_color is not None:
         club.primary_color = data.primary_color
     if data.secondary_color is not None:
@@ -142,12 +162,28 @@ async def update_branding(
     try:
         await db.commit()
         await db.refresh(club)
+        logger.info(f"branding_update_success: club_id={club.id}")
     except Exception as e:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save branding: {str(e)}",
+        error_type = type(e).__name__
+        logger.error(
+            f"branding_update_failed: club_id={club.id}, error={str(e)}, error_type={error_type}, trace={traceback.format_exc()}"
         )
+        if "unique" in str(e).lower() or "integrity" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Conflict: {str(e)}",
+            )
+        elif "timeout" in str(e).lower() or "pool" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database temporarily unavailable. Please try again.",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save branding: {str(e)}",
+            )
 
     return {
         "primary_color": club.primary_color,

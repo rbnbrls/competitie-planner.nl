@@ -137,9 +137,9 @@ export default function SettingsPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1">Display URL (Subdomein)</label>
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm font-mono text-gray-500">
-                    <Globe size={14} className="text-gray-400" />
-                    {settings?.slug}.competitie-planner.nl
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm font-mono text-gray-500 overflow-hidden">
+                    <Globe size={14} className="text-gray-400 shrink-0" />
+                    <span className="truncate">{settings?.slug}.competitie-planner.nl</span>
                   </div>
                   <p className="text-[10px] text-gray-400 font-medium italic pl-1">Deze URL is uniek voor jouw club en kan niet worden gewijzigd.</p>
                 </div>
@@ -227,9 +227,10 @@ export default function SettingsPage() {
                          <Users size={14} /> Thuisbezetting
                       </div>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         label="Max. thuisteams per dag"
-                        value={formData.max_thuisteams_per_dag}
+                        value={String(formData.max_thuisteams_per_dag)}
                         onChange={(e) => setFormData(prev => ({ ...prev, max_thuisteams_per_dag: parseInt(e.target.value) || 3 }))}
                         min="1"
                         max="20"
@@ -241,9 +242,10 @@ export default function SettingsPage() {
                          <Activity size={14} /> Park Capaciteit
                       </div>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         label="Aantal banen"
-                        value={formData.max_banen}
+                        value={String(formData.max_banen)}
                         onChange={(e) => setFormData(prev => ({ ...prev, max_banen: parseInt(e.target.value) || 8 }))}
                         min="1"
                         max="50"

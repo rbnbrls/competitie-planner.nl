@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -13,12 +14,15 @@ import {
   CreditCard,
   Target,
   LogOut,
-  Layers
+  Layers,
+  Menu,
+  X
 } from "lucide-react";
 
 export default function TenantLayout() {
   const { club, logout } = useAuth();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: paymentStatus } = useQuery({
     queryKey: ["paymentStatus"],
@@ -119,11 +123,71 @@ export default function TenantLayout() {
         </div>
       </aside>
 
+      {/* Mobile Sidebar Drawer */}
+      {sidebarOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white z-50 md:hidden transform transition-transform duration-300 ease-in-out shadow-xl">
+            <div className="p-4 flex items-center justify-between border-b border-gray-100">
+              <h2 className="text-sm font-black text-gray-900">Menu</h2>
+              <button 
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path.split('/').slice(0, 2).join('/'));
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                      isActive
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                        : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon size={18} className={isActive ? "text-blue-100" : "text-gray-400 group-hover:text-blue-600"} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setSidebarOpen(false);
+                  logout();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
+              >
+                <LogOut size={18} className="text-red-300 group-hover:text-red-500" />
+                Uitloggen
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col">
-          {/* Mobile Header */}
+          {/* Mobile/Tablet Header */}
           <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-white/80">
              <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => setSidebarOpen(true)}
+                 className="p-1.5 -ml-1 mr-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+               >
+                 <Menu size={24} />
+               </button>
                <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center p-1.5">
                  <div className="w-full h-full bg-white rounded-[2px]" />
                </div>

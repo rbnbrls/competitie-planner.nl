@@ -62,8 +62,20 @@ export default function ClubsPage() {
         fetchClubs();
       }
     };
+    const handlePopState = () => {
+      fetchClubs();
+    };
+    const handleFocus = () => {
+      fetchClubs();
+    };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [fetchClubs]);
 
   const getStatusBadge = (status: string) => {

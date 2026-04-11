@@ -293,7 +293,7 @@ app.include_router(teams, prefix="/api/v1")
 app.include_router(onboarding, prefix="/api/v1")
 app.include_router(payments, prefix="/api/v1")
 app.include_router(wedstrijden, prefix="/api/v1")
-app.include_router(dagoverzicht, prefix="/api/v1")
+app.include_router(dagoverzicht)
 
 
 @app.get("/health")

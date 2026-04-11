@@ -88,7 +88,8 @@ export default function UsersPage() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validation = inviteUserSchema.safeParse({ email: inviteData.email });
+    const email = inviteData.email.trim();
+    const validation = inviteUserSchema.safeParse({ email });
     if (!validation.success) {
       showToast.error(zodErrors(validation).email || "Voer een geldig e-mailadres in");
       return;

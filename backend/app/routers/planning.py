@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db import get_db
 from app.models import Baan, BaanToewijzing, Competitie, Speelronde, Team
-from app.routers.tenant import get_current_tenant_user
+from app.services.tenant_auth import get_current_tenant_user
 from app.services.audit import log_audit
 from app.services.email import EmailService
 from app.services.mollie import MollieService

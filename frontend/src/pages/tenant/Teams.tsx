@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
+import { getErrorMessage } from "../../lib/utils";
 import { Search, Plus, Upload, User, Mail, Shield, Edit, ToggleLeft, ToggleRight } from "lucide-react";
 import { showToast } from "../../components/Toast";
 import { 
@@ -126,8 +127,7 @@ export default function TeamsPage() {
       setShowModal(false);
       resetForm();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij opslaan");
+      showToast.error(getErrorMessage(err, "Fout bij opslaan"));
     } finally {
       setIsSaving(false);
     }
@@ -230,8 +230,7 @@ export default function TeamsPage() {
       setImportPreview([]);
       loadData();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij importeren");
+      showToast.error(getErrorMessage(err, "Fout bij importeren"));
     } finally {
       setIsSaving(false);
     }
