@@ -1,14 +1,15 @@
 import secrets
 from datetime import UTC, datetime, timedelta
+import os
 from typing import Any
 from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.exceptions import ResourceNotFoundError
-from app.models import Club, User, InviteToken
+from app.models import Club, CompetitionPrice, InviteToken, MollieConfig, Payment, SepaMandate, User
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
 from app.services.audit import log_audit
@@ -16,6 +17,10 @@ from app.services.audit import log_audit
 
 class SponsorUpdate(BaseModel):
     is_sponsored: bool
+
+
+class ResetDatabaseRequest(BaseModel):
+    confirm: bool = False
 
 
 router = APIRouter(prefix="/superadmin", tags=["superadmin"])
@@ -350,6 +355,43 @@ async def update_club_billing(
     return {
         "id": str(club.id),
         "billing_info": club.billing_info,
+    }
+
+
+@router.post("/reset-local-database")
+async def reset_local_database(
+    data: ResetDatabaseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+) -> dict[str, Any]:
+    if not data.confirm:
+        return {
+            "ok": False,
+            "message": "Bevestiging vereist om de lokale database te resetten.",
+        }
+
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    if environment == "production":
+        return {
+            "ok": False,
+            "message": "Database reset is geblokkeerd in productie.",
+        }
+
+    await db.execute(delete(Payment))
+    await db.execute(delete(SepaMandate))
+    await db.execute(delete(CompetitionPrice))
+    await db.execute(delete(MollieConfig))
+
+    deleted_users_result = await db.execute(delete(User).where(User.is_superadmin.is_(False)))
+    deleted_clubs_result = await db.execute(delete(Club))
+
+    await db.commit()
+
+    return {
+        "ok": True,
+        "message": "Lokale database opgeschoond. Klaar voor onboarding test.",
+        "deleted_non_superadmin_users": deleted_users_result.rowcount or 0,
+        "deleted_clubs": deleted_clubs_result.rowcount or 0,
     }
 
 

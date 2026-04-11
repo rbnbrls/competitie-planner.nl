@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { authApi, tenantApi } from "../lib/api";
 
@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSuperadminSession, setIsSuperadminSession] = useState(false);
+  const sessionRestoreAttemptedRef = useRef(false);
   const storedClubSlug = localStorage.getItem("club_slug");
 
   const {
@@ -59,10 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperadmin = user?.is_superadmin === true;
 
   useEffect(() => {
+    if (sessionRestoreAttemptedRef.current) {
+      return;
+    }
+
+    sessionRestoreAttemptedRef.current = true;
+
     const token = localStorage.getItem("access_token");
     if (token) {
       const storedClubSlug = localStorage.getItem("club_slug");
-      
+
       if (storedClubSlug) {
         tenantApi.me()
           .then((res) => {

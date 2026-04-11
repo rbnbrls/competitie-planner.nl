@@ -29,6 +29,8 @@ interface DashboardData {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     superadminApi.getDashboard()
@@ -49,6 +51,29 @@ export default function DashboardPage() {
 
   const { metrics, recent_clubs, recent_logins } = data;
 
+  const handleResetLocalDatabase = async () => {
+    const confirmed = window.confirm(
+      "Dit verwijdert alle verenigingen en niet-superadmin gebruikers in de lokale database. Doorgaan?"
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsResetting(true);
+    setResetMessage(null);
+    try {
+      const res = await superadminApi.resetLocalDatabase(true);
+      setResetMessage(res.data?.message || "Lokale database reset voltooid.");
+      const dashboardRes = await superadminApi.getDashboard();
+      setData(dashboardRes.data);
+    } catch (err) {
+      console.error("Failed to reset local database:", err);
+      setResetMessage("Reset mislukt. Controleer backend logs of probeer opnieuw.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       active: "bg-green-100 text-green-800",
@@ -61,7 +86,23 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <button
+          type="button"
+          onClick={handleResetLocalDatabase}
+          disabled={isResetting}
+          className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isResetting ? "Bezig met resetten..." : "Reset lokale database"}
+        </button>
+      </div>
+
+      {resetMessage && (
+        <div className="mb-6 p-3 rounded bg-blue-50 text-blue-900 border border-blue-200">
+          {resetMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <div className="bg-white p-4 rounded-lg shadow">

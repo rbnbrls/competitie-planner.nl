@@ -308,6 +308,8 @@ export const superadminApi = {
   }) => api.post("/payments/prices", data),
   listMandates: (params?: { skip?: number; limit?: number }) =>
     api.get("/payments/mandates", { params }),
+  resetLocalDatabase: (confirm = true) =>
+    api.post("/superadmin/reset-local-database", { confirm }),
 };
 
 export const paymentApi = {

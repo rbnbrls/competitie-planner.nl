@@ -204,9 +204,11 @@ function AppRoutes() {
 
   if (isAdminPanel) {
     return (
-      <Routes>
-        <Route path="*" element={<AdminWrapper />} />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="*" element={<AdminWrapper />} />
+        </Routes>
+      </Suspense>
     );
   }
 
