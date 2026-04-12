@@ -83,10 +83,21 @@ export default function DagoverzichtPage() {
 
   const getStatusConfig = () => {
     if (!dagoverzicht) return { color: "bg-gray-100", label: "Onbekend", icon: Info, variant: "default" as const };
-    if (dagoverzicht.conflict_warning) return { color: "bg-red-50 text-red-800 border-red-200", label: "Capaciteitsoverschrijding", icon: AlertTriangle, variant: "danger" as const };
+    
+    const hasValidCapacity = dagoverzicht.beschikbare_banen > 0;
+    
+    if (!hasValidCapacity) {
+      return { color: "bg-gray-100 text-gray-600 border-gray-200", label: "Geen banen ingesteld", icon: Info, variant: "default" as const };
+    }
+    
+    if (dagoverzicht.conflict_warning) {
+      return { color: "bg-red-50 text-red-800 border-red-200", label: "Capaciteitsoverschrijding", icon: AlertTriangle, variant: "danger" as const };
+    }
+    
     if (dagoverzicht.totaal_banen_nodig > dagoverzicht.beschikbare_banen * 0.75) {
       return { color: "bg-amber-50 text-amber-800 border-amber-200", label: "Hoge parkdruk", icon: Clock, variant: "warning" as const };
     }
+    
     return { color: "bg-emerald-50 text-emerald-800 border-emerald-200", label: "Parkruimte beschikbaar", icon: CheckCircle2, variant: "success" as const };
   };
 
@@ -110,6 +121,9 @@ export default function DagoverzichtPage() {
 
   const status = getStatusConfig();
   const StatusIcon = status.icon;
+
+  const hasValidCapacity = dagoverzicht && Number.isFinite(dagoverzicht.beschikbare_banen) && dagoverzicht.beschikbare_banen > 0;
+  const parkdrukPercentage = hasValidCapacity ? Math.round((dagoverzicht.totaal_banen_nodig / dagoverzicht.beschikbare_banen) * 100) : null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -162,7 +176,7 @@ export default function DagoverzichtPage() {
             <div className="flex gap-4">
                <div className="text-center px-4 py-2 bg-white/30 rounded-xl border border-current/5">
                  <div className="text-[10px] font-black uppercase tracking-tighter opacity-60">Park Druk</div>
-                 <div className="text-2xl font-black">{Math.round((dagoverzicht.totaal_banen_nodig / dagoverzicht.beschikbare_banen) * 100)}%</div>
+                 <div className="text-2xl font-black">{parkdrukPercentage !== null ? `${parkdrukPercentage}%` : "—"}</div>
                </div>
             </div>
           </div>

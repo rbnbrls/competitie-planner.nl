@@ -2,6 +2,15 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import axios from 'axios'
+import { TransformStream, WritableStream } from 'node:stream/web'
+
+if (!globalThis.TransformStream) {
+  globalThis.TransformStream = TransformStream as typeof globalThis.TransformStream
+}
+
+if (!globalThis.WritableStream) {
+  globalThis.WritableStream = WritableStream as typeof globalThis.WritableStream
+}
 
 // Force axios to use the Node http adapter so MSW can intercept requests
 // (jsdom environment uses XHR by default, which bypasses MSW's Node server)

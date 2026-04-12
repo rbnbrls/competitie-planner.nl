@@ -2,7 +2,7 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '../test/msw/server'
-import { useAuth } from './AuthContext'
+import { AuthProvider, useAuth } from './AuthContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,7 +15,7 @@ const queryClient = new QueryClient({
 function TestWrapper({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <TestWrapper>{children}</TestWrapper>
+      <AuthProvider>{children}</AuthProvider>
     </QueryClientProvider>
   )
 }
@@ -135,7 +135,7 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('superadmin')).toHaveTextContent('superadmin')
   })
 
-  it('clears localStorage when session restore fails', async () => {
+  it('falls back to superadmin tenant session when tenant restore is unauthorized', async () => {
     const { http, HttpResponse } = await import('msw')
     server.use(
       http.get('http://localhost:8000/api/v1/tenant/club', () =>
@@ -153,10 +153,10 @@ describe('AuthContext', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('geen gebruiker')
+      expect(screen.getByTestId('user')).toHaveTextContent('admin@testclub.nl')
     })
-    expect(localStorage.getItem('access_token')).toBeNull()
-    expect(localStorage.getItem('club_slug')).toBeNull()
+    expect(screen.getByTestId('club')).toHaveTextContent('Test Club')
+    expect(localStorage.getItem('club_slug')).toBe('testclub')
   })
 
   it('logs in as tenant user and sets user + club', async () => {

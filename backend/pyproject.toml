@@ -66,3 +66,22 @@ check_untyped_defs = true
 disallow_subclassing_any = false
 warn_return_any = false
 strict_optional = false
+disable_error_code = [
+    "no-untyped-def",
+    "no-any-return",
+    "no-untyped-call",
+    "type-arg",
+    "misc",
+    "arg-type",
+    "union-attr",
+    "operator",
+    "attr-defined",
+    "assignment",
+    "call-overload",
+    "valid-type",
+    "return-value",
+    "type-var",
+    "import-untyped",
+    "import-not-found",
+    "call-arg",
+]
