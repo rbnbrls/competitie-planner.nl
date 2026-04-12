@@ -195,7 +195,7 @@ async def update_sponsor_status(
         raise ResourceNotFoundError("Club niet gevonden")
 
     if data.is_sponsored and not club.is_sponsored:
-        club.sponsored_since = datetime.now(UTC)
+        club.sponsored_since = datetime.utcnow()
     elif not data.is_sponsored:
         club.sponsored_since = None
 

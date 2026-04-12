@@ -305,6 +305,8 @@ export const superadminApi = {
   }) => api.post("/superadmin/clubs", data),
   updateClub: (clubId: string, data: Record<string, unknown>) =>
     api.patch(`/superadmin/clubs/${clubId}`, data),
+  updateSponsor: (clubId: string, isSponsored: boolean) =>
+    api.patch(`/superadmin/clubs/${clubId}/sponsor`, { is_sponsored: isSponsored }),
   listUsers: (params?: { club_id?: string; role?: string; search?: string }) =>
     api.get("/superadmin/users", { params }),
   getUser: (userId: string) => api.get(`/superadmin/users/${userId}`),

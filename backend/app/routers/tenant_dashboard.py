@@ -41,9 +41,9 @@ class DashboardActie(BaseModel):
     titel: str
     beschrijving: str
     prioriteit: str
-    ronde_id: str | None
-    competitie_id: str | None
-    url: str
+    ronde_id: str | None = None
+    competitie_id: str | None = None
+    url: str | None = None
 
 
 class DashboardCompetitieVoortgang(BaseModel):
@@ -62,7 +62,7 @@ class DashboardWaarschuwing(BaseModel):
     titel: str
     bericht: str
     prioriteit: str
-    url: str | None
+    url: str | None = None
 
 
 class DashboardResponse(BaseModel):

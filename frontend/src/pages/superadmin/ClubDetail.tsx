@@ -7,6 +7,7 @@ interface Club {
   naam: string;
   slug: string;
   status: string;
+  is_sponsored?: boolean;
   adres?: string;
   postcode?: string;
   stad?: string;
@@ -65,6 +66,20 @@ export default function ClubDetailPage() {
     } catch (err) {
       console.error(err);
       alert("Failed to update status");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSponsorToggle = async (checked: boolean) => {
+    if (!club || !clubId) return;
+    setIsSaving(true);
+    try {
+      const res = await superadminApi.updateSponsor(clubId, checked);
+      setClub({ ...club, is_sponsored: res.data.is_sponsored });
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update sponsor status");
     } finally {
       setIsSaving(false);
     }
@@ -299,6 +314,18 @@ export default function ClubDetailPage() {
                   <option value="suspended">Gesuspendeerd</option>
                   <option value="inactive">Inactief</option>
                 </select>
+              </div>
+              <div className="mt-4 flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={club.is_sponsored || false}
+                    onChange={(e) => handleSponsorToggle(e.target.checked)}
+                    disabled={isSaving}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Gesponsord (gratis platform)</span>
+                </label>
               </div>
             </>
           )}

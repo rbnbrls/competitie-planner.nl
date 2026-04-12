@@ -553,15 +553,6 @@ async def update_competitie(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Competitie not found",
         )
-    from app.services.mollie import MollieService
-
-    mollie_service = MollieService(db)
-    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if not is_paid:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
-        )
     if data.naam is not None:
         competitie.naam = data.naam
     if data.speeldag is not None:
@@ -678,18 +669,10 @@ async def delete_competitie(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Competitie not found",
         )
-    from app.services.mollie import MollieService
-
-    mollie_service = MollieService(db)
-    is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if not is_paid:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
-        )
-    competitie.actief = False
+    # Removed payment requirement for deletion to allow removing draft/mistaken competitions
+    await db.delete(competitie)
     await db.commit()
-    return {"message": "Competitie deactivated successfully"}
+    return {"message": "Competitie and all associated data deleted successfully"}
 
 
 class TijdslotConfig(BaseModel):

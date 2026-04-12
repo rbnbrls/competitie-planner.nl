@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Baan, BaanToewijzing, Club, Speelronde, Team
+from app.models import Baan, BaanToewijzing, Club, Speelronde, Team, User
 from app.logging_config import get_logger
 
 logger = get_logger("email")
@@ -39,36 +39,35 @@ class EmailService:
         )
         toewijzingen = list(result.scalars().all())
 
-        recipient_emails = set()
-        for t in toewijzingen:
-            result = await self.db.execute(select(Team).where(Team.id == t.team_id))
-            team = result.scalar_one_or_none()
-            if team and team.captain_email:
-                result = await self.db.execute(
-                    select(Team).where(
-                        Team.competitie_id == ronde.competitie_id,
-                        Team.captain_email == team.captain_email,
-                    )
+        team_ids = {t.team_id for t in toewijzingen}
+        baan_ids = {t.baan_id for t in toewijzingen}
+
+        teams_dict: dict[UUID, Team] = {}
+        if team_ids:
+            result = await self.db.execute(select(Team).where(Team.id.in_(team_ids)))
+            teams_dict = {team.id: team for team in result.scalars().all()}
+
+        banen_dict: dict[UUID, Baan] = {}
+        if baan_ids:
+            result = await self.db.execute(select(Baan).where(Baan.id.in_(baan_ids)))
+            banen_dict = {baan.id: baan for baan in result.scalars().all()}
+
+        captain_emails = {team.captain_email for team in teams_dict.values() if team.captain_email}
+
+        opted_out_emails: set[str] = set()
+        if captain_emails:
+            result = await self.db.execute(
+                select(User.email).where(
+                    User.email.in_(captain_emails),
+                    User.email_opt_out.is_(True),
                 )
-                if result.scalar_one_or_none() and not result.scalar_one().email_opt_out:
-                    recipient_emails.add(team.captain_email)
+            )
+            opted_out_emails = set(result.scalars().all())
+
+        recipient_emails = {email for email in captain_emails if email not in opted_out_emails}
 
         if not recipient_emails:
             return {"sent": 0, "recipients": []}
-
-        banen_dict = {}
-        for t in toewijzingen:
-            result = await self.db.execute(select(Baan).where(Baan.id == t.baan_id))
-            baan = result.scalar_one_or_none()
-            if baan:
-                banen_dict[baan.id] = baan
-
-        teams_dict = {}
-        for t in toewijzingen:
-            result = await self.db.execute(select(Team).where(Team.id == t.team_id))
-            team = result.scalar_one_or_none()
-            if team:
-                teams_dict[team.id] = team
 
         html_body = self._build_email_html(
             club=club,

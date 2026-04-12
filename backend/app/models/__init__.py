@@ -63,6 +63,7 @@ class Club(Base):
     users: Mapped[list["User"]] = relationship("User", back_populates="club")
     banen: Mapped[list["Baan"]] = relationship("Baan", back_populates="club")
     competities: Mapped[list["Competitie"]] = relationship("Competitie", back_populates="club")
+    teams: Mapped[list["Team"]] = relationship("Team", back_populates="club")
 
 
 class User(Base):
@@ -186,10 +187,10 @@ class Competitie(Base):
         "Team", back_populates="competitie", cascade="all, delete-orphan"
     )
     speelrondes: Mapped[list["Speelronde"]] = relationship(
-        "Speelronde", back_populates="competitie"
+        "Speelronde", back_populates="competitie", cascade="all, delete-orphan"
     )
     planninghistorie: Mapped[list["PlanningHistorie"]] = relationship(
-        "PlanningHistorie", back_populates="competitie"
+        "PlanningHistorie", back_populates="competitie", cascade="all, delete-orphan"
     )
 
 
@@ -231,11 +232,21 @@ class Team(Base):
     )
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="teams")
+    club: Mapped["Club"] = relationship("Club", back_populates="teams")
     wedstrijden_thuis: Mapped[list["Wedstrijd"]] = relationship(
-        "Wedstrijd", foreign_keys="Wedstrijd.thuisteam_id", back_populates="thuisteam"
+        "Wedstrijd",
+        foreign_keys="Wedstrijd.thuisteam_id",
+        back_populates="thuisteam",
+        cascade="all, delete-orphan",
     )
     wedstrijden_uit: Mapped[list["Wedstrijd"]] = relationship(
-        "Wedstrijd", foreign_keys="Wedstrijd.uitteam_id", back_populates="uitteam"
+        "Wedstrijd",
+        foreign_keys="Wedstrijd.uitteam_id",
+        back_populates="uitteam",
+        cascade="all, delete-orphan",
+    )
+    baantoewijzingen: Mapped[list["BaanToewijzing"]] = relationship(
+        "BaanToewijzing", back_populates="team", cascade="all, delete-orphan"
     )
     beschikbaarheden: Mapped[list["Beschikbaarheid"]] = relationship(
         "Beschikbaarheid", back_populates="team", cascade="all, delete-orphan"
@@ -345,9 +356,11 @@ class Speelronde(Base):
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="speelrondes")
     baantoewijzingen: Mapped[list["BaanToewijzing"]] = relationship(
-        "BaanToewijzing", back_populates="ronde"
+        "BaanToewijzing", back_populates="ronde", cascade="all, delete-orphan"
     )
-    wedstrijden: Mapped[list["Wedstrijd"]] = relationship("Wedstrijd", back_populates="ronde")
+    wedstrijden: Mapped[list["Wedstrijd"]] = relationship(
+        "Wedstrijd", back_populates="ronde", cascade="all, delete-orphan"
+    )
 
 
 class BaanToewijzing(Base):

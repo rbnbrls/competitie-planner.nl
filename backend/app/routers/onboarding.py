@@ -257,14 +257,18 @@ async def complete_onboarding(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Geen banen toegevoegd. Voeg minimaal 1 baan toe.",
         )
-    result = await db.execute(select(Competitie).where(Competitie.club_id == club.id))
+    result = await db.execute(
+        select(Competitie)
+        .where(Competitie.club_id == club.id)
+        .options(selectinload(Competitie.teams))
+    )
     competities = result.scalars().all()
     if not competities:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Geen competitie aangemaakt. Maak eerst een competitie aan.",
         )
-    has_teams = any(comp.teams for comp in competities if comp.teams)
+    has_teams = any(len(comp.teams) > 0 for comp in competities)
     if not has_teams:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

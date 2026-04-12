@@ -63,113 +63,221 @@ Dit genereert types in `frontend/src/types/api.ts`. Herhaal na elke API-wijzigin
 
 ## Wat is Competitie-Planner?
 
-## Wat is Competitie-Planner?
-
-Competitie-Planner is een online tool waarmee tennisverenigingen eenvoudig hun competitie-roosters kunnen maken en publiceren. Of je nu tennisclublid, teamcaptain of baanplanner bent — met deze website kun je:
-
-- Teams en spelers indelen over beschikbare banen
-- Wedstrijdroosters automatisch laten genereren
-- Het rooster publiceren zodat iedereen het kan zien
-- Het rooster tonen op een scherm in de club (bijvoorbeeld bij de bar of ingang)
+Competitie-Planner is een online platform waarmee tennisverenigingen hun competitieroosters eenvoudig kunnen plannen en publiceren. Het systeem werkt multi-tenant: elke vereniging heeft een eigen omgeving op een eigen subdomein (`[slug].competitie-planner.nl`).
 
 ---
 
-## Hoe werkt het?
+## Rollen
 
-### Stap 1: Inloggen
+Het platform kent drie rollen met elk eigen rechten en mogelijkheden:
 
-Je ontvangt een inloglink van je verenigingsbeheerder. Klik op de link en log in met je e-mailadres en wachtwoord.
-
-### Stap 2: Jouw vereniging openen
-
-Na het inloggen kom je op het dashboard van jouw vereniging. Hier zie je een overzicht van:
-
-- De banen die beschikbaar zijn
-- De teams die meedoen aan de competitie
-- De geplande wedstrijden
-
-### Stap 3: Een nieuw rooster maken
-
-1. Klik op **Nieuw rooster** om een nieuwe competitie-week te plannen.
-2. Kies de datums waarvoor je het rooster wilt maken.
-3. Geef aan welke banen beschikbaar zijn en welke tijden.
-4. Selecteer de teams die willen spelen.
-
-Het systeem genereert automatisch een eerlijk rooster waarbij teams zoveel mogelijk gelijk verdeeld worden over alle beschikbare banen.
-
-### Stap 4: Rooster controleren en aanpassen
-
-Na het genereren zie je het rooster in een overzichtelijke tabel. Wil je iets veranderen? Dan kun je:
-
-- Teams verslepen naar een andere baan of tijdstip
-- Datums aanpassen
-- Bepaalde wedstrijden verplaatsen
-
-### Stap 5: Rooster publiceren
-
-Klik op **Publiceren** om het rooster live te zetten. Nu kan iedereen het rooster bekijken via de openbare link van jouw vereniging.
+| | Superadmin | Vereniging Admin | Planner |
+|---|---|---|---|
+| Platform beheren | ✅ | — | — |
+| Alle clubs inzien | ✅ | — | — |
+| Betalingen beheren | ✅ | — | — |
+| Clubinstellingen & branding | — | ✅ | — |
+| Gebruikers beheren | — | ✅ | — |
+| Banen beheren | — | ✅ | — |
+| Competities aanmaken | — | ✅ | ✅ |
+| Teams beheren | — | ✅ | ✅ |
+| Banenindeling maken & publiceren | — | ✅ | ✅ |
+| Publieke display bekijken | — | ✅ | ✅ |
 
 ---
 
-## Functies
+## Functies per rol
 
-### Banen beheren
+### Superadmin
 
-Je kunt alle banen van jouw vereniging toevoegen en bewerken. Geef elke baan een naam (bijvoorbeeld "Baal 1" of "Centrecourt") en geef aan of het een binnenbaan of buitenbaan is.
+De superadmin beheert het hele platform via `admin.competitie-planner.nl`.
 
-### Teams aanmaken
+**Dashboard**
+- Platformstatistieken: totaal clubs, actieve clubs, proefaccounts, opgeschorte clubs, totaal gebruikers en actieve gebruikers afgelopen 7 dagen
+- Overzicht recent aangemelde clubs en recente inlogs
 
-Maak teams aan voor de competitie en wijs spelers toe aan elk team. Geef ook de contactgegevens van de teamcaptain op, zodat andere leden weten bij wie ze terecht kunnen.
+**Clubs beheren**
+- Lijst van alle clubs met status (actief / trial / opgeschort)
+- Club aanmaken met naam, slug en initieel admin-account
+- Clubdetails inzien en bewerken (inclusief sponsorinformatie)
+- Club sponsoren/ontsponsoren via clubdetail om betaalplicht te overrulen (gratis platformtoegang)
+- Gesponsorde status zichtbaar in clubdetail met directe update van platformtoegang
 
-### Seizoensinstellingen
+**Gebruikers beheren**
+- Platform-breed overzicht van alle gebruikers
+- Gebruikersgegevens inzien en bewerken
 
-Stel in wanneer het seizoen begint en eindigt, welke feestdagen er zijn (dan wordt er niet gespeeld), en of er inhaalrondes zijn ingepland.
+**Betalingen (Mollie)**
+- Prijsconfiguratie per competitietype (klein / groot club)
+- Overzicht van IBAN-mandaten per club
+- Betalingshistorie per club
 
-### Automatische indeling
+---
 
-Het systeem gebruikt een slim algoritme dat teams eerlijk verdeelt over alle beschikbare banen. Geen team krijgt constant de minst ideale tijdstippen.
+### Vereniging Admin
 
-### Handmatige correctie
+De verenigingsbeheerder beheert de eigen club via `[slug].competitie-planner.nl`.
 
-Na de automatische indeling kun je altijd handmatig aanpassingen doen. Sleep teams eenvoudig naar een andere plek in het rooster.
+**Onboarding**
 
-### Publieke weergave
+Bij het eerste gebruik wordt een begeleide setup-wizard gestart met vier stappen:
+1. Clubgegevens invullen (naam, adres, contactinfo)
+2. Banen toevoegen (naam, ondergrond, prioriteit)
+3. Eerste competitie aanmaken
+4. Teams aanmaken
 
-Het gepubliceerde rooster is te zien op een speciale openbare pagina. Deze pagina is speciaal ontworpen voor weergave op een scherm in de club:
+**Dashboard**
+- Overzicht van geplande acties en komende speelrondes
+- Directe links naar openstaande taken (rondes zonder baanindeling, niet-gepubliceerde rondes)
+- Weersignalen voor aankomende rondes
 
-- Grote letters, goed leesbaar vanaf een afstand
-- Automatisch verversen zodat wijzigingen direct zichtbaar zijn
-- Kleuren in de stijl van jouw vereniging
+**Clubinstellingen**
+- Naam, adres, website, telefoon
+- Maximum thuisteams per speeldag
+- Maximum aantal banen
 
-### Narrowcasting
+**Branding**
+- Primaire, secundaire en accentkleur instellen
+- Lettertype kiezen
+- Club-logo uploaden
 
-Wil je het rooster tonen op een scherm bij de bar of ingang? Dan kun je de pagina openen in een browser en op volledig scherm zetten. Het scherm refresh automatisch zodat het rooster altijd up-to-date is.
+**Gebruikers beheren**
+- Overzicht van alle gebruikers binnen de club
+- Gebruiker uitnodigen per e-mail (met rol: admin of planner)
+- Uitnodigingen verlopen na 48 uur
+- Gebruiker bewerken of verwijderen
+
+**Banen beheren**
+- Baan toevoegen met naam, nummer, ondergrond, verlichtingstype en prioriteitsscore
+- Baan bewerken of verwijderen
+- Banen worden gebruikt bij de automatische baanindeling
+
+**Competities beheren**
+- Competitie aanmaken (naam, speeldag, start-/einddatum, competitietype, poulegrootte, speelvorm, leeftijdscategorie)
+- KNLTB-competitietemplates gebruiken als startpunt
+- Competitie bewerken, dupliceren of verwijderen
+- Feestdagen en inhaaldata per competitie instellen
+- Standaard starttijden per competitie configureren
+- Tijdslotconfiguratie per competitie instellen
+- Wedstrijdschema importeren via de KNLTB-importfunctie
+
+**Teams beheren**
+- Team aanmaken met naam, captain, e-mail en speelklasse
+- Team bewerken of verwijderen
+- Teams bulk-activeren voor een competitieseizoen
+- Teams importeren via CSV
+
+**Seizoensoverzicht**
+- Volledig overzicht van alle rondes en resultaten per competitie
+- Exporteren als PDF of CSV
+
+---
+
+### Planner
+
+De planner kan alles op het gebied van rondes plannen en publiceren.
+
+**Speelrondes beheren**
+- Overzicht van alle rondes per competitie met status (concept / gepubliceerd / afgelast)
+- Enkele ronde genereren (automatische baanindeling)
+- Meerdere rondes tegelijk genereren (bulk-generate)
+- Gepubliceerde ronde terugtrekken (depubliceren)
+- Meerdere rondes tegelijk publiceren (bulk-publish)
+- Ronde afgelasten (bijv. bij slecht weer)
+- Weersvoorspelling per speeldag inzien (neerslagkans, mm)
+
+**Baanindeling bewerken**
+- Handmatig baan en tijdstip per wedstrijd aanpassen via de rondedetailpagina
+- Baan-toewijzing per wedstrijd bewerken of verwijderen
+- Competitie-planning previewen voordat deze definitief wordt gemaakt
+- Planning definitief maken (apply)
+
+**Versiegeschiedenis (Snapshots)**
+- Elke gepubliceerde ronde legt automatisch een snapshot vast
+- Eerdere versie van een ronde terugzetten
+
+**Ronde Planner**
+- Visueel overzicht van alle wedstrijden per ronde over alle banen
+- Wedstrijden handmatig naar een baan slepen
+
+**Dagoverzicht**
+- Per datum inzien welke teams wanneer thuisspelen en hoeveel banen er nodig zijn
+- Conflicten en dubbele boekingen worden automatisch gesignaleerd
+
+**PDF-export**
+- Baanindeling van een ronde exporteren als PDF
+
+**Agenda-export**
+- Wedstrijdkalender exporteren als iCal-bestand (.ics) voor gebruik in agenda-apps
+
+**Wedstrijden beheren**
+- Individuele wedstrijden toevoegen, bewerken of verwijderen
+- Uitslagen invoeren per wedstrijd
+
+---
+
+## Publieke functies (geen inlog vereist)
+
+### Display (Narrowcasting)
+
+Beschikbaar op `[slug].competitie-planner.nl/display` of via een publieke token-link.
+
+- Toont de actuele baanindeling van de lopende of eerstvolgende ronde
+- Automatisch verversen (elke 60 seconden)
+- Volledige clubbranding (kleuren en logo)
+- Geschikt voor weergave op een scherm bij de ingang of bar
+- Volledigschermmodus mogelijk via de browser
+
+### Club Kalender
+
+Beschikbaar via de publieke kalenderlink van de club.
+
+- Overzicht van alle geplande speelrondes in het seizoen
+- Directe links naar de display-pagina per ronde
+
+### Captain Portaal
+
+Teamcaptains ontvangen een persoonlijke link (geen account nodig).
+
+- Beschikbaarheid opgeven voor een ronde (beschikbaar / niet beschikbaar, met optionele notitie)
+- Uitslagen invoeren na afloop van de wedstrijd (score thuisteam / uitteam)
+- Overzicht van geplande thuiswedstrijden
+
+---
+
+## Authenticatie & beveiliging
+
+- Inloggen via e-mail en wachtwoord
+- JWT-tokens: access token (60 min geldig), refresh token (30 dagen, HttpOnly cookie)
+- Bij verlopen token: automatische refresh zonder uitloggen
+- Wachtwoord vergeten: reset via e-mail (link geldig 1 uur)
+- Nieuwe gebruikers worden uitgenodigd via e-mail (invite geldig 48 uur)
 
 ---
 
 ## Veelgestelde vragen
 
-**Wie kan er allemaal inloggen?**  
-Dat hangt af van je vereniging. De verenigingsbeheerder bepaalt wie een account krijgt.
+**Wie kan er inloggen?**
+De verenigingsbeheerder bepaalt wie een account krijgt en welke rol iemand heeft.
 
-**Kan ik een oud rooster bekijken?**  
-Ja, alle gepubliceerde roosters worden bewaard. Je kunt ze raadplegen via het archief.
+**Kan ik een oud rooster bekijken?**
+Ja, via de historieweergave per competitie zijn alle eerdere rondes terug te vinden.
 
-**Wat moet ik doen als een team niet kan spelen?**  
-Je kunt de competitiegegevens aanpassen voordat je het rooster genereert. Geef aan welke teams niet kunnen spelen op bepaalde datums.
+**Wat als een team niet kan spelen?**
+Je kunt de competitieronde afgelasten of individuele wedstrijden aanpassen.
 
-**Kan ik het rooster exporteren?**  
-Je kunt het rooster bekijken op de website en eventueel printen of een screenshot maken.
+**Kan ik het rooster exporteren?**
+Ja, een ronde kan worden geëxporteerd als PDF. Het volledige seizoensoverzicht is beschikbaar als PDF of CSV. Wedstrijddata kunnen als iCal worden geëxporteerd.
 
-**Hoe zorg ik dat het rooster zichtbaar is voor iedereen?**  
-Na het publiceren krijg je een link die je kunt delen. Je kunt deze link ook gebruiken voor narrowcasting-schermen.
+**Hoe toon ik het rooster op een scherm in de club?**
+Gebruik de publieke display-link op een volledigschermsbrowser. Het scherm ververst automatisch elke minuut.
 
 ---
 
 ## Hulp nodig?
 
-Heb je vragen over het gebruik van Competitie-Planner? Neem dan contact op met je verenigingsbeheerder of stuur een e-mail naar support@competitie-planner.nl.
-Feedback, foutmeldingen of suggesties zijn altijd welkom! Gebruik het gitHub-issue systeem op de [GitHub-pagina van Competitie-Planner](https://github.com/rbnbrls/competitie-planner.nl/issues/new).
+Heb je vragen over het gebruik? Neem contact op met je verenigingsbeheerder of stuur een e-mail naar support@competitie-planner.nl.
+Feedback, foutmeldingen of suggesties zijn welkom via het [GitHub-issue systeem](https://github.com/rbnbrls/competitie-planner.nl/issues/new).
 
 ---
 
