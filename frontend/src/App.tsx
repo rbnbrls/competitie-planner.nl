@@ -105,12 +105,12 @@ function AdminWrapper() {
     return <LoadingFallback />;
   }
 
-  if (!user) {
-    return <LoginPage />;
+  if (adminExists === false) {
+    return <RegisterAdminPage onRegisterSuccess={() => window.location.reload()} />;
   }
 
-  if (!adminExists) {
-    return <RegisterAdminPage onRegisterSuccess={() => window.location.reload()} />;
+  if (!user) {
+    return <LoginPage />;
   }
 
   if (!user.is_superadmin) {

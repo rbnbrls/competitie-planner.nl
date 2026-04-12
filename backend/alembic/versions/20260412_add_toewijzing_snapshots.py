@@ -1,7 +1,7 @@
 """add toewijzing_snapshots table
 
-Revision ID: 20260412_add_toewijzing_snapshots
-Revises: 20260412_add_competitie_format_fields
+Revision ID: 20260412_toewijzing_snap
+Revises: 20260412_competitie_fmt
 Create Date: 2026-04-12 00:00:00.000000
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "20260412_add_toewijzing_snapshots"
-down_revision: str | Sequence[str] | None = "20260412_add_competitie_format_fields"
+revision: str = "20260412_toewijzing_snap"
+down_revision: str | Sequence[str] | None = "20260412_competitie_fmt"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

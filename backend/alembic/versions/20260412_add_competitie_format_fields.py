@@ -1,6 +1,6 @@
 """add format fields to competities
 
-Revision ID: 20260412_add_competitie_format_fields
+Revision ID: 20260412_competitie_fmt
 Revises: 20260409_add_sponsor_fields
 Create Date: 2026-04-12 00:00:00.000000
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "20260412_add_competitie_format_fields"
+revision: str = "20260412_competitie_fmt"
 down_revision: str | Sequence[str] | None = "20260409_add_sponsor_fields"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
