@@ -3,9 +3,11 @@ import uuid
 from collections.abc import AsyncGenerator
 
 # Force override settings for tests BEFORE importing anything from app
-os.environ["DATABASE_URL"] = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+asyncpg://cpuser:cpdevpass@localhost:5432/competitieplanner_test"
-)
+# Use TEST_DATABASE_URL when provided; otherwise keep existing DATABASE_URL.
+# This prevents hardcoded credentials from breaking local test runs.
+if os.environ.get("TEST_DATABASE_URL"):
+    os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-minimum-64-characters-long-value-here"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["SUPER_ADMIN_EMAIL"] = "test@test.nl"

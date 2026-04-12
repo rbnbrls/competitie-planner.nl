@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '../../contexts/AuthContext'
 import { server } from '../../test/msw/server'
@@ -18,25 +18,25 @@ const queryClient = new QueryClient({
   },
 })
 
-function renderWithProviders(ui: React.ReactElement) {
+function renderWithProviders(ui: React.ReactElement, initialEntries = ['/tenant/login?slug=testclub']) {
   return render(
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <AuthProvider>
           {ui}
         </AuthProvider>
-      </BrowserRouter>
+      </MemoryRouter>
     </QueryClientProvider>
   )
 }
 
 describe('Login Component', () => {
-  it('renders login form', () => {
+  it('renders login form', async () => {
     renderWithProviders(<Login />)
-    
+
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/wachtwoord/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /inloggen/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /inloggen/i })).toBeInTheDocument()
   })
 
   it('shows error message when login fails with invalid credentials', async () => {
@@ -45,7 +45,7 @@ describe('Login Component', () => {
     
     await user.type(screen.getByLabelText(/email/i), 'wrong@test.nl')
     await user.type(screen.getByLabelText(/wachtwoord/i), 'wrongpassword')
-    await user.click(screen.getByRole('button', { name: /inloggen/i }))
+    await user.click(await screen.findByRole('button', { name: /inloggen/i }))
     
     await waitFor(() => {
       expect(screen.getByText(/ongeldige inloggegevens/i)).toBeInTheDocument()
@@ -56,20 +56,20 @@ describe('Login Component', () => {
     const user = userEvent.setup()
     render(
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <MemoryRouter initialEntries={['/tenant/login?slug=testclub']}>
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<Login />} />
+              <Route path="/tenant/login" element={<Login />} />
               <Route path="/tenant/dashboard" element={<div data-testid="dashboard">Dashboard Page</div>} />
             </Routes>
           </AuthProvider>
-        </BrowserRouter>
+        </MemoryRouter>
       </QueryClientProvider>
     )
     
     await user.type(screen.getByLabelText(/email/i), 'admin@testclub.nl')
     await user.type(screen.getByLabelText(/wachtwoord/i), 'password123')
-    await user.click(screen.getByRole('button', { name: /inloggen/i }))
+    await user.click(await screen.findByRole('button', { name: /inloggen/i }))
     
     // Verify we have navigated to the dashboard page
     await waitFor(() => {

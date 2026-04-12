@@ -11,21 +11,25 @@ from app.db import get_db
 from app.models import Baan, Competitie, Speelronde, Team, Wedstrijd
 from app.schemas import WedstrijdCreate, WedstrijdUpdate
 from app.services.tenant_auth import get_current_tenant_user
-router = APIRouter(
-    prefix="/tenant/wedstrijden",
-    tags=["wedstrijden"]
-)
+
+router = APIRouter(prefix="/tenant/wedstrijden", tags=["wedstrijden"])
+
+
 class WedstrijdFilterParams(BaseModel):
     competitie_id: str | None = None
     ronde_id: str | None = None
     thuisteam_id: str | None = None
     uitteam_id: str | None = None
     status: str | None = None
+
+
 class ImportResult(BaseModel):
     succes: bool
     geimporteerd: int = 0
     overgeslagen: int = 0
     fouten: list[dict] = []
+
+
 class RondeAgendaItem(BaseModel):
     ronde_id: str
     ronde_datum: date
@@ -36,6 +40,8 @@ class RondeAgendaItem(BaseModel):
     baan_nummer: int | None = None
     speeltijd: str | None = None
     status: str
+
+
 @router.get("")
 async def list_wedstrijden(
     competitie_id: str | None = None,
@@ -143,6 +149,8 @@ async def list_wedstrijden(
             for w in wedstrijden
         ]
     }
+
+
 @router.get("/{wedstrijd_id}")
 async def get_wedstrijd(
     wedstrijd_id: str,
@@ -233,6 +241,8 @@ async def get_wedstrijd(
             else None
         ),
     }
+
+
 @router.post("")
 async def create_wedstrijd(
     data: WedstrijdCreate,
@@ -311,6 +321,8 @@ async def create_wedstrijd(
         "uitteam_id": str(wedstrijd.uitteam_id),
         "status": wedstrijd.status,
     }
+
+
 @router.patch("/{wedstrijd_id}")
 async def update_wedstrijd(
     wedstrijd_id: str,
@@ -410,6 +422,8 @@ async def update_wedstrijd(
         "uitteam_id": str(wedstrijd.uitteam_id),
         "status": wedstrijd.status,
     }
+
+
 @router.delete("/{wedstrijd_id}")
 async def delete_wedstrijd(
     wedstrijd_id: str,
@@ -441,6 +455,8 @@ async def delete_wedstrijd(
     await db.delete(wedstrijd)
     await db.commit()
     return {"message": "Wedstrijd deleted successfully"}
+
+
 @router.get("/competitie/{competitie_id}/thuis-per-ronde")
 async def get_thuis_wedstrijden_per_ronde(
     competitie_id: str,
@@ -507,6 +523,8 @@ async def get_thuis_wedstrijden_per_ronde(
     return {
         "rondes": list(grouped.values()),
     }
+
+
 @router.post("/competitie/{competitie_id}/import")
 async def import_wedstrijden(
     competitie_id: str,
@@ -693,6 +711,8 @@ async def import_wedstrijden(
         overgeslagen=skipped,
         fouten=errors,
     )
+
+
 @router.get("/competitie/{competitie_id}/agenda-export")
 async def export_agenda(
     competitie_id: str,
@@ -752,6 +772,8 @@ async def export_agenda(
         )
     ics_lines.append("END:VCALENDAR")
     return "\n".join(ics_lines)
+
+
 @router.post("/competitie/{competitie_id}/validatie")
 async def validate_wedstrijden(
     competitie_id: str,

@@ -19,10 +19,10 @@ from app.models import (
 )
 from app.services.tenant_auth import get_current_tenant_user
 from app.services.weather import get_weather_for_dates
-router = APIRouter(
-    prefix="/tenant/dashboard",
-    tags=["tenant-dashboard"]
-)
+
+router = APIRouter(prefix="/tenant/dashboard", tags=["tenant-dashboard"])
+
+
 class DashboardRonde(BaseModel):
     id: str
     competitie_id: str
@@ -33,6 +33,8 @@ class DashboardRonde(BaseModel):
     teams_zonder_baan: int
     totaal_teams: int
     week_nummer: int | None
+
+
 class DashboardActie(BaseModel):
     id: str
     type: str
@@ -42,6 +44,8 @@ class DashboardActie(BaseModel):
     ronde_id: str | None
     competitie_id: str | None
     url: str
+
+
 class DashboardCompetitieVoortgang(BaseModel):
     id: str
     naam: str
@@ -51,12 +55,16 @@ class DashboardCompetitieVoortgang(BaseModel):
     percentage: int
     start_datum: str
     eind_datum: str
+
+
 class DashboardWaarschuwing(BaseModel):
     type: str
     titel: str
     bericht: str
     prioriteit: str
     url: str | None
+
+
 class DashboardResponse(BaseModel):
     club: dict
     gebruiker: dict
@@ -65,6 +73,8 @@ class DashboardResponse(BaseModel):
     competities_voortgang: list[DashboardCompetitieVoortgang]
     waarschuwingen: list[DashboardWaarschuwing]
     statistieken: dict
+
+
 DUTCH_HOLIDAYS = {
     "2024-01-01": "Nieuwjaarsdag",
     "2024-02-14": "Valentijnsdag",
@@ -102,6 +112,8 @@ DUTCH_HOLIDAYS = {
     "2026-12-25": "Kerstmis",
     "2026-12-26": "Tweede Kerstdag",
 }
+
+
 def get_dutch_holidays_in_range(start: date, end: date) -> list[date]:
     holidays = []
     current = start
@@ -111,6 +123,8 @@ def get_dutch_holidays_in_range(start: date, end: date) -> list[date]:
             holidays.append(current)
         current += timedelta(days=1)
     return holidays
+
+
 @router.get("")
 async def get_dashboard(
     current: tuple[User, Club] = Depends(get_current_tenant_user),

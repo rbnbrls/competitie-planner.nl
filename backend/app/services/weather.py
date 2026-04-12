@@ -28,40 +28,84 @@ OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 # WMO codes that indicate rain / bad weather for outdoor tennis
 RAIN_CODES = {
-    51, 53, 55,       # Drizzle
-    56, 57,           # Freezing drizzle
-    61, 63, 65,       # Rain
-    66, 67,           # Freezing rain
-    80, 81, 82,       # Rain showers
-    95, 96, 99,       # Thunderstorm
+    51,
+    53,
+    55,  # Drizzle
+    56,
+    57,  # Freezing drizzle
+    61,
+    63,
+    65,  # Rain
+    66,
+    67,  # Freezing rain
+    80,
+    81,
+    82,  # Rain showers
+    95,
+    96,
+    99,  # Thunderstorm
 }
 
 ICON_MAP: dict[int, str] = {
     0: "☀️",
-    1: "🌤️", 2: "⛅", 3: "☁️",
-    45: "🌫️", 48: "🌫️",
-    51: "🌦️", 53: "🌦️", 55: "🌧️",
-    56: "🌧️", 57: "🌧️",
-    61: "🌧️", 63: "🌧️", 65: "🌧️",
-    66: "🌧️", 67: "🌧️",
-    71: "🌨️", 73: "🌨️", 75: "❄️", 77: "❄️",
-    80: "🌦️", 81: "🌧️", 82: "⛈️",
-    85: "🌨️", 86: "❄️",
-    95: "⛈️", 96: "⛈️", 99: "⛈️",
+    1: "🌤️",
+    2: "⛅",
+    3: "☁️",
+    45: "🌫️",
+    48: "🌫️",
+    51: "🌦️",
+    53: "🌦️",
+    55: "🌧️",
+    56: "🌧️",
+    57: "🌧️",
+    61: "🌧️",
+    63: "🌧️",
+    65: "🌧️",
+    66: "🌧️",
+    67: "🌧️",
+    71: "🌨️",
+    73: "🌨️",
+    75: "❄️",
+    77: "❄️",
+    80: "🌦️",
+    81: "🌧️",
+    82: "⛈️",
+    85: "🌨️",
+    86: "❄️",
+    95: "⛈️",
+    96: "⛈️",
+    99: "⛈️",
 }
 
 DESCRIPTION_MAP: dict[int, str] = {
     0: "Helder",
-    1: "Overwegend helder", 2: "Gedeeltelijk bewolkt", 3: "Bewolkt",
-    45: "Mist", 48: "Rijpzwam mist",
-    51: "Lichte motregen", 53: "Matige motregen", 55: "Dichte motregen",
-    56: "Lichte ijzelregen", 57: "Dichte ijzelregen",
-    61: "Lichte regen", 63: "Matige regen", 65: "Zware regen",
-    66: "Lichte ijsregen", 67: "Zware ijsregen",
-    71: "Lichte sneeuw", 73: "Matige sneeuw", 75: "Zware sneeuw", 77: "Ijskorrels",
-    80: "Lichte buien", 81: "Matige buien", 82: "Zware buien",
-    85: "Lichte sneeuwbuien", 86: "Zware sneeuwbuien",
-    95: "Onweer", 96: "Onweer met hagel", 99: "Onweer met zware hagel",
+    1: "Overwegend helder",
+    2: "Gedeeltelijk bewolkt",
+    3: "Bewolkt",
+    45: "Mist",
+    48: "Rijpzwam mist",
+    51: "Lichte motregen",
+    53: "Matige motregen",
+    55: "Dichte motregen",
+    56: "Lichte ijzelregen",
+    57: "Dichte ijzelregen",
+    61: "Lichte regen",
+    63: "Matige regen",
+    65: "Zware regen",
+    66: "Lichte ijsregen",
+    67: "Zware ijsregen",
+    71: "Lichte sneeuw",
+    73: "Matige sneeuw",
+    75: "Zware sneeuw",
+    77: "Ijskorrels",
+    80: "Lichte buien",
+    81: "Matige buien",
+    82: "Zware buien",
+    85: "Lichte sneeuwbuien",
+    86: "Zware sneeuwbuien",
+    95: "Onweer",
+    96: "Onweer met hagel",
+    99: "Onweer met zware hagel",
 }
 
 
@@ -134,8 +178,12 @@ async def get_weather_for_dates(
     for i, d_str in enumerate(date_list):
         wmo = int(wmo_codes[i]) if i < len(wmo_codes) and wmo_codes[i] is not None else 0
         prec = float(precip[i]) if i < len(precip) and precip[i] is not None else 0.0
-        tmax = round(float(temp_max[i]), 1) if i < len(temp_max) and temp_max[i] is not None else None
-        tmin = round(float(temp_min[i]), 1) if i < len(temp_min) and temp_min[i] is not None else None
+        tmax = (
+            round(float(temp_max[i]), 1) if i < len(temp_max) and temp_max[i] is not None else None
+        )
+        tmin = (
+            round(float(temp_min[i]), 1) if i < len(temp_min) and temp_min[i] is not None else None
+        )
         result[d_str] = {
             "wmo_code": wmo,
             "icon": get_weather_icon(wmo),

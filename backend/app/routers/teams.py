@@ -9,15 +9,17 @@ from app.db import get_db
 from app.models import Team
 from app.schemas import TeamCreate, TeamUpdate
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-router = APIRouter(
-    prefix="/tenant/teams",
-    tags=["teams"]
-)
+
+router = APIRouter(prefix="/tenant/teams", tags=["teams"])
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
+
+
 class BulkActivateRequest(BaseModel):
     team_ids: list[str]
     activate: bool
+
+
 @router.get("")
 async def list_teams(
     competitie_id: str | None = None,
@@ -28,6 +30,7 @@ async def list_teams(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     from sqlalchemy import or_
+
     user, club = current
     if page < 1:
         page = 1
@@ -77,6 +80,8 @@ async def list_teams(
         "size": size,
         "pages": pages,
     }
+
+
 @router.get("/{team_id}")
 async def get_team(
     team_id: str,
@@ -113,6 +118,8 @@ async def get_team(
         "knltb_team_id": team.knltb_team_id,
         "actief": team.actief,
     }
+
+
 @router.post("")
 async def create_team(
     data: TeamCreate,
@@ -140,6 +147,8 @@ async def create_team(
         "id": str(team.id),
         "naam": team.naam,
     }
+
+
 @router.patch("/{team_id}")
 async def update_team(
     team_id: str,
@@ -185,6 +194,8 @@ async def update_team(
         "id": str(team.id),
         "naam": team.naam,
     }
+
+
 @router.delete("/{team_id}")
 async def delete_team(
     team_id: str,
@@ -214,6 +225,8 @@ async def delete_team(
     team.actief = False
     await db.commit()
     return {"message": "Team deactivated successfully"}
+
+
 @router.post("/bulk-activate")
 async def bulk_activate_teams(
     data: BulkActivateRequest,
@@ -247,9 +260,13 @@ async def bulk_activate_teams(
         "errors": errors,
         "results": results,
     }
+
+
 class CSVImportRequest(BaseModel):
     competitie_id: str
     column_mapping: dict[str, str]
+
+
 @router.post("/import/csv")
 async def import_teams_csv(
     competitie_id: str,
@@ -267,6 +284,7 @@ async def import_teams_csv(
             detail="Invalid competitie ID",
         )
     import json
+
     mapping = json.loads(column_mapping)
     csv_naam = mapping.get("naam", "Teamnaam")
     csv_captain = mapping.get("captain_naam", "Capitano")
@@ -312,6 +330,8 @@ async def import_teams_csv(
         "new_teams": len([p for p in preview if p["status"] == "new"]),
         "existing_teams": existing_count,
     }
+
+
 @router.post("/import/csv/confirm")
 async def confirm_import_teams_csv(
     competitie_id: str,
@@ -330,6 +350,7 @@ async def confirm_import_teams_csv(
             detail="Invalid competitie ID",
         )
     import json
+
     mapping = json.loads(column_mapping)
     csv_naam = mapping.get("naam", "Teamnaam")
     csv_captain = mapping.get("captain_naam", "Capitano")

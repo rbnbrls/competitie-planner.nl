@@ -2,7 +2,6 @@ import uuid
 from datetime import date, time
 from typing import Protocol
 
-import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -655,9 +654,7 @@ async def save_snapshot(
     Gooit oudste weg als er al MAX_SNAPSHOTS_PER_RONDE zijn.
     Returnt None als er geen toewijzingen zijn om op te slaan.
     """
-    result = await db.execute(
-        select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_id)
-    )
+    result = await db.execute(select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_id))
     toewijzingen = list(result.scalars().all())
 
     if not toewijzingen:
@@ -725,16 +722,20 @@ async def herstel_snapshot(
     if not snapshot:
         raise ValueError(f"Snapshot {snapshot_id} niet gevonden voor ronde {ronde_id}")
 
-    await db.execute(
-        BaanToewijzing.__table__.delete().where(BaanToewijzing.ronde_id == ronde_id)
-    )
+    await db.execute(BaanToewijzing.__table__.delete().where(BaanToewijzing.ronde_id == ronde_id))
 
     from datetime import time as dt_time
 
     new_toewijzingen = []
     for entry in snapshot.snapshot_data:
-        t_start = dt_time.fromisoformat(entry["tijdslot_start"]) if entry.get("tijdslot_start") else dt_time(19, 0)
-        t_eind = dt_time.fromisoformat(entry["tijdslot_eind"]) if entry.get("tijdslot_eind") else None
+        t_start = (
+            dt_time.fromisoformat(entry["tijdslot_start"])
+            if entry.get("tijdslot_start")
+            else dt_time(19, 0)
+        )
+        t_eind = (
+            dt_time.fromisoformat(entry["tijdslot_eind"]) if entry.get("tijdslot_eind") else None
+        )
         toewijzing = BaanToewijzing(
             ronde_id=ronde_id,
             team_id=uuid.UUID(entry["team_id"]),

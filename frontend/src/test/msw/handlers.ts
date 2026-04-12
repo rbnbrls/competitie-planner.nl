@@ -36,6 +36,14 @@ export const handlers = [
   }),
 
   // Tenant handlers
+  http.get(`${API_BASE}/display/:slug/actueel`, async () => {
+    await delay(50)
+    return HttpResponse.json({
+      club_naam: 'Test Club',
+      actief: true,
+    })
+  }),
+
   http.post(`${API_BASE}/tenant/login`, async ({ request }) => {
     await delay(100)
     

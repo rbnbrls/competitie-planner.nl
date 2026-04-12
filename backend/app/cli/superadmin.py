@@ -42,9 +42,7 @@ async def update_password(email: str, password: str, database_url: str) -> None:
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(User).where(User.email == email, User.is_superadmin == True)
-        )
+        result = await session.execute(select(User).where(User.email == email, User.is_superadmin))
         superadmin = result.scalar_one_or_none()
 
         if not superadmin:

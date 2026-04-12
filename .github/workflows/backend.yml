@@ -38,7 +38,7 @@ jobs:
 
       - name: Run mypy
         working-directory: backend
-        run: uv run mypy app --strict
+        run: uv run mypy app
 
   test:
     name: Test

@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 from uuid import UUID
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -194,9 +193,8 @@ class EmailService:
 
         # Get all home team captains via wedstrijden
         from app.models import Wedstrijd
-        result = await self.db.execute(
-            select(Wedstrijd).where(Wedstrijd.ronde_id == ronde_id)
-        )
+
+        result = await self.db.execute(select(Wedstrijd).where(Wedstrijd.ronde_id == ronde_id))
         wedstrijden = list(result.scalars().all())
 
         recipient_emails: set[str] = set()

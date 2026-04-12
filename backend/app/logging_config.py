@@ -1,9 +1,7 @@
 import logging
-import sys
-from typing import Any
 
 import structlog
-from structlog.types import EventDict, Processor
+from structlog.types import EventDict
 
 from app.config import settings
 

@@ -1,7 +1,6 @@
 import logging
 import os
 import psutil
-import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
@@ -41,8 +40,6 @@ from app.routers import (
     wedstrijden,
 )
 
-
-from app.logging_config import get_logger, setup_logging
 
 setup_logging()
 logger = get_logger()
@@ -276,7 +273,8 @@ async def add_security_headers(request: Request, call_next):
 
     # Public display endpoints must be embeddable in iframes on external websites.
     if request.url.path.startswith("/api/v1/display/"):
-        response.headers.pop("X-Frame-Options", None)
+        if "X-Frame-Options" in response.headers:
+            del response.headers["X-Frame-Options"]
         response.headers["Content-Security-Policy"] = "frame-ancestors *"
     # Do not send the full URL as referrer across origins
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"

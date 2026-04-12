@@ -21,12 +21,12 @@ from app.schemas import (
 )
 from app.services import planning as planning_service
 from app.services.tenant_auth import get_current_tenant_admin, get_current_tenant_user
-router = APIRouter(
-    prefix="/tenant/competities",
-    tags=["competities"]
-)
+
+router = APIRouter(prefix="/tenant/competities", tags=["competities"])
 CURRENT_TENANT_DEP = Depends(get_current_tenant_user)
 CURRENT_ADMIN_DEP = Depends(get_current_tenant_admin)
+
+
 @router.post(
     "",
     responses={
@@ -69,11 +69,16 @@ async def create_competitie(
     await db.refresh(competitie)
 
     # Auto-generate Speelronde records for each occurrence of speeldag
-    _SPEELDAG_TO_WEEKDAY = {
-        "maandag": 0, "dinsdag": 1, "woensdag": 2, "donderdag": 3,
-        "vrijdag": 4, "zaterdag": 5, "zondag": 6,
+    speeldag_to_weekday = {
+        "maandag": 0,
+        "dinsdag": 1,
+        "woensdag": 2,
+        "donderdag": 3,
+        "vrijdag": 4,
+        "zaterdag": 5,
+        "zondag": 6,
     }
-    weekday_target = _SPEELDAG_TO_WEEKDAY.get(data.speeldag.lower())
+    weekday_target = speeldag_to_weekday.get(data.speeldag.lower())
     if weekday_target is not None:
         if data.eerste_datum:
             first_date = data.eerste_datum
@@ -85,14 +90,16 @@ async def create_competitie(
         week_nummer = 1
         while current_date <= data.eind_datum:
             if current_date not in feestdagen_set:
-                db.add(Speelronde(
-                    competitie_id=competitie.id,
-                    club_id=club.id,
-                    datum=current_date,
-                    week_nummer=week_nummer,
-                    is_inhaalronde=False,
-                    status="concept",
-                ))
+                db.add(
+                    Speelronde(
+                        competitie_id=competitie.id,
+                        club_id=club.id,
+                        datum=current_date,
+                        week_nummer=week_nummer,
+                        is_inhaalronde=False,
+                        status="concept",
+                    )
+                )
                 week_nummer += 1
             current_date += timedelta(weeks=1)
         await db.commit()
@@ -101,6 +108,8 @@ async def create_competitie(
         "id": str(competitie.id),
         "naam": competitie.naam,
     }
+
+
 @router.get(
     "",
     summary="List competitions",
@@ -162,6 +171,8 @@ async def list_competities(
         "size": size,
         "pages": pages,
     }
+
+
 @router.get("/templates", summary="List KNLTB competition format templates")
 async def list_competitie_templates(
     current: tuple = CURRENT_TENANT_DEP,
@@ -205,6 +216,8 @@ async def list_competitie_templates(
         },
     ]
     return {"templates": templates}
+
+
 @router.get(
     "/{competitie_id}",
     summary="Get competition details",
@@ -253,6 +266,8 @@ async def get_competitie(
         "speelvorm": competitie.speelvorm,
         "leeftijdscategorie": competitie.leeftijdscategorie,
     }
+
+
 @router.get(
     "/{competitie_id}/rondes",
     summary="List competition rounds",
@@ -277,6 +292,7 @@ async def list_rondes(
     )
     if lazy:
         from datetime import date as date_lib
+
         today = date_lib.today()
         # Toon alleen rondes van vandaag en later
         query = query.where(Speelronde.datum >= today)
@@ -297,6 +313,8 @@ async def list_rondes(
             for r in rondes
         ]
     }
+
+
 @router.get("/{competitie_id}/teams")
 async def list_competitie_teams(
     competitie_id: str,
@@ -327,6 +345,8 @@ async def list_competitie_teams(
             for t in teams
         ]
     }
+
+
 @router.post("/{competitie_id}/teams")
 async def create_competitie_team(
     competitie_id: str,
@@ -360,6 +380,8 @@ async def create_competitie_team(
         "id": str(team.id),
         "naam": team.naam,
     }
+
+
 @router.get("/{competitie_id}/seizoensoverzicht", response_model=SeizoensoverzichtResponse)
 async def get_seizoensoverzicht(
     competitie_id: str,
@@ -438,6 +460,8 @@ async def get_seizoensoverzicht(
     return SeizoensoverzichtResponse(
         rondes=[SpeelrondeNestedResponse.model_validate(r) for r in rondes], rows=rows
     )
+
+
 @router.get("/{competitie_id}/seizoensoverzicht/pdf")
 async def export_seizoensoverzicht_pdf(
     competitie_id: str,
@@ -450,6 +474,7 @@ async def export_seizoensoverzicht_pdf(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid competition ID")
     from app.services.pdf import PDFService
+
     pdf_service = PDFService(db)
     try:
         pdf_content = await pdf_service.generate_seizoensoverzicht_pdf(competitie_uuid)
@@ -462,6 +487,8 @@ async def export_seizoensoverzicht_pdf(
             "Content-Disposition": f"attachment; filename=seizoensoverzicht_{competitie_id}.pdf"
         },
     )
+
+
 @router.get("/{competitie_id}/seizoensoverzicht/csv")
 async def export_seizoensoverzicht_csv(
     competitie_id: str,
@@ -477,6 +504,7 @@ async def export_seizoensoverzicht_csv(
     data = await get_seizoensoverzicht(competitie_id, current, db)
     import csv
     import io
+
     output = io.StringIO()
     writer = csv.writer(output)
     # Header
@@ -492,8 +520,12 @@ async def export_seizoensoverzicht_csv(
             "Content-Disposition": f"attachment; filename=seizoensoverzicht_{competitie_id}.csv"
         },
     )
+
+
 class CompetitieSettingsUpdate(BaseModel):
     email_notifications_enabled: bool | None = None
+
+
 @router.patch("/{competitie_id}")
 async def update_competitie(
     competitie_id: str,
@@ -522,6 +554,7 @@ async def update_competitie(
             detail="Competitie not found",
         )
     from app.services.mollie import MollieService
+
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
     if not is_paid:
@@ -544,7 +577,11 @@ async def update_competitie(
     if data.actief is not None:
         competitie.actief = data.actief
     new_poule = data.poule_grootte if data.poule_grootte is not None else competitie.poule_grootte
-    new_speeldagen = data.aantal_speeldagen if data.aantal_speeldagen is not None else competitie.aantal_speeldagen
+    new_speeldagen = (
+        data.aantal_speeldagen
+        if data.aantal_speeldagen is not None
+        else competitie.aantal_speeldagen
+    )
     if new_speeldagen > new_poule - 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -567,6 +604,8 @@ async def update_competitie(
         "naam": competitie.naam,
         "email_notifications_enabled": competitie.email_notifications_enabled,
     }
+
+
 @router.patch("/{competitie_id}/settings")
 async def update_competitie_settings(
     competitie_id: str,
@@ -595,6 +634,7 @@ async def update_competitie_settings(
             detail="Competitie not found",
         )
     from app.services.mollie import MollieService
+
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
     if not is_paid:
@@ -610,6 +650,8 @@ async def update_competitie_settings(
         "id": str(competitie.id),
         "email_notifications_enabled": competitie.email_notifications_enabled,
     }
+
+
 @router.delete("/{competitie_id}")
 async def delete_competitie(
     competitie_id: str,
@@ -637,6 +679,7 @@ async def delete_competitie(
             detail="Competitie not found",
         )
     from app.services.mollie import MollieService
+
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
     if not is_paid:
@@ -647,11 +690,15 @@ async def delete_competitie(
     competitie.actief = False
     await db.commit()
     return {"message": "Competitie deactivated successfully"}
+
+
 class TijdslotConfig(BaseModel):
     standaard_starttijden: list[str] | None = None
     eerste_datum: str | None = None
     hergebruik_configuratie: bool | None = None
     reminder_days_before: int | None = None
+
+
 @router.get("/{competitie_id}/tijdslot-config")
 async def get_tijdslot_config(
     competitie_id: str,
@@ -679,6 +726,8 @@ async def get_tijdslot_config(
             detail="Competitie not found",
         )
     return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)
+
+
 @router.put("/{competitie_id}/tijdslot-config")
 async def update_tijdslot_config(
     competitie_id: str,
@@ -715,6 +764,7 @@ async def update_tijdslot_config(
         competitie.standaard_starttijden = parsed_times
     if data.eerste_datum is not None:
         from datetime import date as date_lib
+
         parts = data.eerste_datum.split("-")
         if len(parts) == 3:
             competitie.eerste_datum = date_lib(int(parts[0]), int(parts[1]), int(parts[2]))
@@ -725,11 +775,15 @@ async def update_tijdslot_config(
     await db.commit()
     await db.refresh(competitie)
     return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)
+
+
 class DuplicateCompetitieRequest(BaseModel):
     new_naam: str
     nieuwe_start_datum: str
     nieuwe_eind_datum: str
     copy_teams: bool = True
+
+
 @router.post("/{competitie_id}/duplicate")
 async def duplicate_competitie(
     competitie_id: str,
