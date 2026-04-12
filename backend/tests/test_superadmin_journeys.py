@@ -4,6 +4,9 @@ Test complete flows for superadmin operations and payment setup
 """
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Club
 
 
 class TestSuperadminJourney:
@@ -234,6 +237,49 @@ class TestTenantSettingsJourney:
         )
         assert get_response.status_code == 200
         assert get_response.json()["primary_color"] == "#FF5733"
+
+    async def test_club_admin_role_can_update_branding(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        club: Club,
+    ):
+        """Journey: User with club_admin role can update branding."""
+        from app.models import User
+        from app.services.auth import get_password_hash
+
+        club_admin_user = User(
+            club_id=club.id,
+            email="clubadmin@testclub.nl",
+            password_hash=get_password_hash("password123"),
+            full_name="Club Admin",
+            role="club_admin",
+            is_active=True,
+        )
+        db_session.add(club_admin_user)
+        await db_session.commit()
+
+        login_response = await client.post(
+            "/api/v1/tenant/login",
+            data={"username": "clubadmin@testclub.nl", "password": "password123"},
+            params={"slug": club.slug},
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        branding_response = await client.patch(
+            "/api/v1/tenant/branding",
+            json={
+                "primary_color": "#123456",
+                "secondary_color": "#FFFFFF",
+                "accent_color": "#ABCDEF",
+                "font_choice": "roboto",
+            },
+            headers=headers,
+        )
+        assert branding_response.status_code == 200
+        assert branding_response.json()["primary_color"] == "#123456"
 
     async def test_update_settings(self, client: AsyncClient, admin_auth_headers: dict):
         """Journey: Admin updates club settings."""

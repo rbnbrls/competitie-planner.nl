@@ -266,6 +266,7 @@ class TestDagoverzicht:
         assert result["club_id"] == str(club.id)
         assert result["beschikbare_banen"] == 4
         assert result["max_thuisteams_per_dag"] == 3
+        assert result["beschikbaarheid"] == {}
 
     async def test_bereken_banenvereisten_with_ronde(
         self,

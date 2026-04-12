@@ -14,6 +14,7 @@ from app.models import (
     Competitie,
     PlanningHistorie,
     Speelronde,
+    ToewijzingSnapshot,
     Wedstrijd,
 )
 from app.logging_config import get_logger
@@ -548,6 +549,7 @@ async def bereken_banenvereisten(datum: date, club_id: uuid.UUID, db: AsyncSessi
         "competities": competities_overzicht,
         "totaal_banen_nodig": total_banen_nodig,
         "conflict_warning": total_banen_nodig > count_banen,
+        "beschikbaarheid": {},
     }
 
 
@@ -636,6 +638,116 @@ async def plan_banen(dagoverzicht: dict, db: AsyncSession) -> dict:
         "toewijzingen": toewijzingen,
         "unassigned": [c for c in toewijzingen if c["status"] == "conflict"],
     }
+
+
+MAX_SNAPSHOTS_PER_RONDE = 5
+
+
+async def save_snapshot(
+    ronde_id: uuid.UUID,
+    club_id: uuid.UUID,
+    aanleiding: str,
+    db: AsyncSession,
+    user_id: uuid.UUID | None = None,
+) -> ToewijzingSnapshot | None:
+    """
+    Slaat een snapshot op van de huidige toewijzingen voor een ronde.
+    Gooit oudste weg als er al MAX_SNAPSHOTS_PER_RONDE zijn.
+    Returnt None als er geen toewijzingen zijn om op te slaan.
+    """
+    result = await db.execute(
+        select(BaanToewijzing).where(BaanToewijzing.ronde_id == ronde_id)
+    )
+    toewijzingen = list(result.scalars().all())
+
+    if not toewijzingen:
+        return None
+
+    snapshot_data = [
+        {
+            "team_id": str(t.team_id),
+            "baan_id": str(t.baan_id),
+            "tijdslot_start": t.tijdslot_start.isoformat() if t.tijdslot_start else None,
+            "tijdslot_eind": t.tijdslot_eind.isoformat() if t.tijdslot_eind else None,
+            "notitie": t.notitie,
+        }
+        for t in toewijzingen
+    ]
+
+    # Prune oldest if at limit
+    existing = await db.execute(
+        select(ToewijzingSnapshot)
+        .where(ToewijzingSnapshot.ronde_id == ronde_id)
+        .order_by(ToewijzingSnapshot.created_at.asc())
+    )
+    existing_snapshots = list(existing.scalars().all())
+    while len(existing_snapshots) >= MAX_SNAPSHOTS_PER_RONDE:
+        await db.delete(existing_snapshots.pop(0))
+
+    snapshot = ToewijzingSnapshot(
+        ronde_id=ronde_id,
+        club_id=club_id,
+        aangemaakt_door=user_id,
+        aanleiding=aanleiding,
+        snapshot_data=snapshot_data,
+    )
+    db.add(snapshot)
+    await db.flush()
+    return snapshot
+
+
+async def get_snapshots(ronde_id: uuid.UUID, db: AsyncSession) -> list[ToewijzingSnapshot]:
+    """Haalt alle snapshots voor een ronde op, nieuwste eerst."""
+    result = await db.execute(
+        select(ToewijzingSnapshot)
+        .where(ToewijzingSnapshot.ronde_id == ronde_id)
+        .order_by(ToewijzingSnapshot.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def herstel_snapshot(
+    snapshot_id: uuid.UUID,
+    ronde_id: uuid.UUID,
+    db: AsyncSession,
+) -> list[BaanToewijzing]:
+    """
+    Herstelt de toewijzingen voor een ronde vanuit een snapshot.
+    Verwijdert eerst alle huidige toewijzingen en maakt nieuwe aan.
+    """
+    result = await db.execute(
+        select(ToewijzingSnapshot).where(
+            ToewijzingSnapshot.id == snapshot_id,
+            ToewijzingSnapshot.ronde_id == ronde_id,
+        )
+    )
+    snapshot = result.scalar_one_or_none()
+    if not snapshot:
+        raise ValueError(f"Snapshot {snapshot_id} niet gevonden voor ronde {ronde_id}")
+
+    await db.execute(
+        BaanToewijzing.__table__.delete().where(BaanToewijzing.ronde_id == ronde_id)
+    )
+
+    from datetime import time as dt_time
+
+    new_toewijzingen = []
+    for entry in snapshot.snapshot_data:
+        t_start = dt_time.fromisoformat(entry["tijdslot_start"]) if entry.get("tijdslot_start") else dt_time(19, 0)
+        t_eind = dt_time.fromisoformat(entry["tijdslot_eind"]) if entry.get("tijdslot_eind") else None
+        toewijzing = BaanToewijzing(
+            ronde_id=ronde_id,
+            team_id=uuid.UUID(entry["team_id"]),
+            baan_id=uuid.UUID(entry["baan_id"]),
+            tijdslot_start=t_start,
+            tijdslot_eind=t_eind,
+            notitie=entry.get("notitie"),
+        )
+        db.add(toewijzing)
+        new_toewijzingen.append(toewijzing)
+
+    await db.commit()
+    return new_toewijzingen
 
 
 async def validate_club_max_thuisteams(club_id: uuid.UUID, datum: date, db: AsyncSession) -> bool:

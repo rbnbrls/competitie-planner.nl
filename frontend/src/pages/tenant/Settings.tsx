@@ -45,6 +45,9 @@ export default function SettingsPage() {
     max_banen: 8,
   });
 
+  const displayUrl = `${window.location.origin}/display`;
+  const narrowcastingUrl = `${window.location.origin}/narrowcasting`;
+
   useEffect(() => {
     tenantApi.getSettings().then((res) => {
       setSettings(res.data);
@@ -142,6 +145,39 @@ export default function SettingsPage() {
                     <span className="truncate">{settings?.slug}.competitie-planner.nl</span>
                   </div>
                   <p className="text-[10px] text-gray-400 font-medium italic pl-1">Deze URL is uniek voor jouw club en kan niet worden gewijzigd.</p>
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                  <div>
+                    <p className="text-xs font-black text-blue-700 uppercase tracking-widest">Publieke display links</p>
+                    <p className="text-xs text-blue-600 mt-1">Gebruik deze links op TV-schermen en narrowcasting. Ze zijn direct klikbaar.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">Display (actuele ronde)</label>
+                    <a
+                      href={displayUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-mono text-blue-700 hover:bg-blue-50"
+                    >
+                      <Globe size={14} className="shrink-0" />
+                      <span className="truncate">{displayUrl}</span>
+                    </a>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">Narrowcasting (alias)</label>
+                    <a
+                      href={narrowcastingUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-mono text-blue-700 hover:bg-blue-50"
+                    >
+                      <Globe size={14} className="shrink-0" />
+                      <span className="truncate">{narrowcastingUrl}</span>
+                    </a>
+                  </div>
                 </div>
               </CardContent>
             </Card>

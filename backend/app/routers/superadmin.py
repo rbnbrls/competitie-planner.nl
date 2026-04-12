@@ -37,7 +37,7 @@ async def get_dashboard(
     active_clubs = sum(1 for c in clubs if c.status == "active")
     trial_clubs = sum(1 for c in clubs if c.status == "trial")
     suspended_clubs = sum(1 for c in clubs if c.status == "suspended")
-    users_result = await db.execute(select(User).where(~User.is_superadmin))
+    users_result = await db.execute(select(User).where(User.is_superadmin.is_not(True)))
     users = users_result.scalars().all()
     total_users = len(users)
     week_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7)
@@ -222,7 +222,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superadmin),
 ) -> list[User]:
-    query = select(User).where(~User.is_superadmin)
+    query = select(User).where(User.is_superadmin.is_not(True))
     if club_id:
         query = query.where(User.club_id == club_id)
     if role:

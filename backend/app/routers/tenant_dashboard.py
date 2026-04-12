@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -17,6 +18,7 @@ from app.models import (
     Wedstrijd,
 )
 from app.services.tenant_auth import get_current_tenant_user
+from app.services.weather import get_weather_for_dates
 router = APIRouter(
     prefix="/tenant/dashboard",
     tags=["tenant-dashboard"]
@@ -337,3 +339,36 @@ async def get_dashboard(
         waarschuwingen=waarschuwingen,
         statistieken=statistieken,
     )
+
+
+@router.get("/weather")
+async def get_weather(
+    current: tuple[User, Club] = Depends(get_current_tenant_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Fetch weather forecasts for all upcoming speelrondes in the next 16 days.
+    Only available when the club has heeft_buitenbanen=True and lat/lon configured.
+    """
+    user, club = current
+
+    if not club.heeft_buitenbanen:
+        return {"enabled": False, "weather": {}}
+
+    if club.latitude is None or club.longitude is None:
+        return {"enabled": True, "weather": {}, "error": "Geen coördinaten ingesteld"}
+
+    vandaag = date.today()
+    komende = vandaag + timedelta(days=16)
+
+    result = await db.execute(
+        select(Speelronde.datum).where(
+            Speelronde.club_id == club.id,
+            Speelronde.datum >= vandaag,
+            Speelronde.datum <= komende,
+        )
+    )
+    datums = [row[0] for row in result.all()]
+
+    weather = await get_weather_for_dates(club.latitude, club.longitude, datums)
+    return {"enabled": True, "weather": weather}

@@ -39,6 +39,11 @@ async def create_competitie(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    if data.aantal_speeldagen > data.poule_grootte - 1:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"aantal_speeldagen ({data.aantal_speeldagen}) mag niet groter zijn dan poule_grootte - 1 ({data.poule_grootte - 1}).",
+        )
     competitie = Competitie(
         club_id=club.id,
         naam=data.naam,
@@ -53,6 +58,11 @@ async def create_competitie(
         eerste_datum=data.eerste_datum,
         hergebruik_configuratie=data.hergebruik_configuratie,
         reminder_days_before=data.reminder_days_before,
+        competitie_type=data.competitie_type,
+        poule_grootte=data.poule_grootte,
+        aantal_speeldagen=data.aantal_speeldagen,
+        speelvorm=data.speelvorm,
+        leeftijdscategorie=data.leeftijdscategorie,
     )
     db.add(competitie)
     await db.commit()
@@ -139,6 +149,11 @@ async def list_competities(
                 "standaard_starttijden": [t.isoformat() for t in (c.standaard_starttijden or [])],
                 "eerste_datum": c.eerste_datum.isoformat() if c.eerste_datum else None,
                 "hergebruik_configuratie": c.hergebruik_configuratie,
+                "competitie_type": c.competitie_type,
+                "poule_grootte": c.poule_grootte,
+                "aantal_speeldagen": c.aantal_speeldagen,
+                "speelvorm": c.speelvorm,
+                "leeftijdscategorie": c.leeftijdscategorie,
             }
             for c in competities
         ],
@@ -147,6 +162,49 @@ async def list_competities(
         "size": size,
         "pages": pages,
     }
+@router.get("/templates", summary="List KNLTB competition format templates")
+async def list_competitie_templates(
+    current: tuple = CURRENT_TENANT_DEP,
+) -> dict:
+    templates = [
+        {
+            "id": "knltb_voorjaar",
+            "naam": "KNLTB Voorjaar",
+            "competitie_type": "voorjaar",
+            "poule_grootte": 8,
+            "aantal_speeldagen": 7,
+            "speelvorm": "dubbel",
+            "leeftijdscategorie": "open",
+        },
+        {
+            "id": "knltb_najaar",
+            "naam": "KNLTB Najaar",
+            "competitie_type": "najaar",
+            "poule_grootte": 6,
+            "aantal_speeldagen": 5,
+            "speelvorm": "dubbel",
+            "leeftijdscategorie": "open",
+        },
+        {
+            "id": "knltb_vrijdagavond",
+            "naam": "KNLTB Vrijdagavond",
+            "competitie_type": "voorjaar",
+            "poule_grootte": 8,
+            "aantal_speeldagen": 7,
+            "speelvorm": "dubbel",
+            "leeftijdscategorie": "open",
+        },
+        {
+            "id": "intern",
+            "naam": "Intern toernooi",
+            "competitie_type": "intern",
+            "poule_grootte": 8,
+            "aantal_speeldagen": 7,
+            "speelvorm": "enkel",
+            "leeftijdscategorie": "open",
+        },
+    ]
+    return {"templates": templates}
 @router.get(
     "/{competitie_id}",
     summary="Get competition details",
@@ -189,6 +247,11 @@ async def get_competitie(
         "standaard_starttijden": [t.isoformat() for t in (competitie.standaard_starttijden or [])],
         "eerste_datum": competitie.eerste_datum.isoformat() if competitie.eerste_datum else None,
         "hergebruik_configuratie": competitie.hergebruik_configuratie,
+        "competitie_type": competitie.competitie_type,
+        "poule_grootte": competitie.poule_grootte,
+        "aantal_speeldagen": competitie.aantal_speeldagen,
+        "speelvorm": competitie.speelvorm,
+        "leeftijdscategorie": competitie.leeftijdscategorie,
     }
 @router.get(
     "/{competitie_id}/rondes",
@@ -480,6 +543,23 @@ async def update_competitie(
         competitie.inhaal_datums = data.inhaal_datums
     if data.actief is not None:
         competitie.actief = data.actief
+    new_poule = data.poule_grootte if data.poule_grootte is not None else competitie.poule_grootte
+    new_speeldagen = data.aantal_speeldagen if data.aantal_speeldagen is not None else competitie.aantal_speeldagen
+    if new_speeldagen > new_poule - 1:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"aantal_speeldagen ({new_speeldagen}) mag niet groter zijn dan poule_grootte - 1 ({new_poule - 1}).",
+        )
+    if data.competitie_type is not None:
+        competitie.competitie_type = data.competitie_type
+    if data.poule_grootte is not None:
+        competitie.poule_grootte = data.poule_grootte
+    if data.aantal_speeldagen is not None:
+        competitie.aantal_speeldagen = data.aantal_speeldagen
+    if data.speelvorm is not None:
+        competitie.speelvorm = data.speelvorm
+    if data.leeftijdscategorie is not None:
+        competitie.leeftijdscategorie = data.leeftijdscategorie
     await db.commit()
     await db.refresh(competitie)
     return {
@@ -696,6 +776,11 @@ async def duplicate_competitie(
         inhaal_datums=original.inhaal_datums,
         standaard_starttijden=original.standaard_starttijden,
         hergebruik_configuratie=original.hergebruik_configuratie,
+        competitie_type=original.competitie_type,
+        poule_grootte=original.poule_grootte,
+        aantal_speeldagen=original.aantal_speeldagen,
+        speelvorm=original.speelvorm,
+        leeftijdscategorie=original.leeftijdscategorie,
     )
     db.add(new_competitie)
     await db.commit()

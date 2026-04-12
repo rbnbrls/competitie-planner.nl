@@ -147,6 +147,11 @@ export const tenantApi = {
     speeldag: string;
     start_datum: string;
     eind_datum: string;
+    competitie_type?: string;
+    poule_grootte?: number;
+    aantal_speeldagen?: number;
+    speelvorm?: string;
+    leeftijdscategorie?: string;
   }) => api.post("/tenant/competities", data),
   updateCompetition: (id: string, data: {
     naam?: string;
@@ -209,6 +214,9 @@ export const tenantApi = {
   }) => api.patch(`/tenant/toewijzingen/${toewijzingId}`, data),
   publishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/publish`),
   depublishRonde: (rondeId: string) => api.post(`/tenant/rondes/${rondeId}/depublish`),
+  getSnapshots: (rondeId: string) => api.get(`/tenant/rondes/${rondeId}/snapshots`),
+  herstellSnapshot: (rondeId: string, snapshotId: string) =>
+    api.post(`/tenant/rondes/${rondeId}/snapshots/${snapshotId}/herstel`),
   getCompetitieHistorie: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/historie`),
   getWedstrijden: (rondeId: string) => api.get(`/tenant/wedstrijden/${rondeId}`),
   getWedstrijdenByCompetitie: (competitieId: string, params?: { status_filter?: string }) => 
@@ -253,6 +261,7 @@ export const tenantApi = {
   getDagoverzichtConflicten: (datum: string) => api.get("/dagoverzicht/conflicten", { params: { datum } }),
   planDagoverzichtBanen: (datum: string) => api.post("/dagoverzicht/plan", null, { params: { datum } }),
   validateMaxThuisteams: (datum: string) => api.get("/dagoverzicht/validate/max-thuisteams", { params: { datum } }),
+  getCompetitieTemplates: () => api.get("/tenant/competities/templates"),
   getTijdslotConfig: (competitieId: string) => api.get(`/tenant/competities/${competitieId}/tijdslot-config`),
   updateTijdslotConfig: (competitieId: string, data: {
     standaard_starttijden?: string[];
@@ -266,6 +275,9 @@ export const tenantApi = {
     api.post(`/tenant/rondes/bulk-publish`, { ronde_ids: rondeIds }, { params: { competitie_id: competitieId } }),
   bulkActivateTeams: (teamIds: string[], activate: boolean) =>
     api.post("/tenant/teams/bulk-activate", { team_ids: teamIds, activate }),
+  getWeather: () => api.get("/tenant/dashboard/weather"),
+  markAfgelast: (rondeId: string, stuurEmails = true) =>
+    api.post(`/tenant/rondes/${rondeId}/afgelast`, { stuur_emails: stuurEmails }),
   duplicateCompetitie: (competitieId: string, data: {
     new_naam: string;
     nieuwe_start_datum: string;

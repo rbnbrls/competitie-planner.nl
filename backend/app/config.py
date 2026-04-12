@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     AUDIT_LOG_RETENTION_DAYS: int = 90
     REDIS_URL: str = "redis://localhost:6379/0"
     CACHE_TTL_SECONDS: int = 300
+    SENTRY_DSN: str = ""
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

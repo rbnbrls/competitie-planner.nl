@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { tenantApi, onboardingApi } from "../../lib/api";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  Settings, 
-  CheckCircle2, 
-  AlertTriangle, 
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  Settings,
+  CheckCircle2,
+  AlertTriangle,
   ArrowRight,
   TrendingUp,
   Activity,
   Trophy,
-  ClipboardList
+  ClipboardList,
+  CloudRain
 } from "lucide-react";
 import { 
   Button, 
@@ -73,6 +74,16 @@ interface DashboardWaarschuwing {
   url: string | null;
 }
 
+interface WeatherDay {
+  wmo_code: number;
+  icon: string;
+  description: string;
+  precipitation_mm: number;
+  temp_max: number | null;
+  temp_min: number | null;
+  regen_verwacht: boolean;
+}
+
 interface DashboardData {
   club: {
     id: string;
@@ -110,16 +121,21 @@ export default function TenantDashboard() {
     step3_completed: boolean;
     step4_completed: boolean;
   } | null>(null);
+  const [weather, setWeather] = useState<Record<string, WeatherDay>>({});
   const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([
       tenantApi.getDashboard(),
-      onboardingApi.getStatus()
+      onboardingApi.getStatus(),
+      tenantApi.getWeather().catch(() => null),
     ])
-      .then(([dashboardRes, statusRes]) => {
+      .then(([dashboardRes, statusRes, weatherRes]) => {
         setData(dashboardRes.data);
         setOnboardingStatus(statusRes.data);
+        if (weatherRes?.data?.enabled && weatherRes.data.weather) {
+          setWeather(weatherRes.data.weather);
+        }
         setLoading(false);
       })
       .catch(() => {
@@ -253,53 +269,68 @@ export default function TenantDashboard() {
                     <TableHead>Competitie</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Teams zonder baan</TableHead>
+                    {Object.keys(weather).length > 0 && <TableHead>Weer</TableHead>}
                     <TableHead className="text-right">Actie</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.komende_rondes.map((ronde) => (
-                    <TableRow key={ronde.id} className="group">
-                      <TableCell>
-                        <div className="font-bold text-gray-900">
-                          {new Date(ronde.datum).toLocaleDateString("nl-NL", { day: 'numeric', month: 'short' })}
-                        </div>
-                        <div className="text-xs text-gray-400 font-medium uppercase">Week {ronde.week_nummer}</div>
-                      </TableCell>
-                      <TableCell className="font-medium text-gray-700">
-                        {ronde.competitie_naam}
-                        {ronde.is_inhaalronde && <Badge variant="warning" className="ml-2 scale-75 origin-left">Inhaal</Badge>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={ronde.status === "gepubliceerd" ? "success" : "default"}>
-                          {ronde.status === "gepubliceerd" ? "Live" : "Concept"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {ronde.teams_zonder_baan > 0 ? (
-                          <div className="flex items-center gap-1.5 text-amber-600 font-bold text-sm">
-                            <AlertTriangle size={14} />
-                            {ronde.teams_zonder_baan} over
+                  {data.komende_rondes.map((ronde) => {
+                    const w = weather[ronde.datum];
+                    return (
+                      <TableRow key={ronde.id} className="group">
+                        <TableCell>
+                          <div className="font-bold text-gray-900">
+                            {new Date(ronde.datum).toLocaleDateString("nl-NL", { day: 'numeric', month: 'short' })}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-green-600 font-bold text-sm">
-                            <CheckCircle2 size={14} />
-                            Compleet
-                          </div>
+                          <div className="text-xs text-gray-400 font-medium uppercase">Week {ronde.week_nummer}</div>
+                        </TableCell>
+                        <TableCell className="font-medium text-gray-700">
+                          {ronde.competitie_naam}
+                          {ronde.is_inhaalronde && <Badge variant="warning" className="ml-2 scale-75 origin-left">Inhaal</Badge>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={ronde.status === "gepubliceerd" ? "success" : "default"}>
+                            {ronde.status === "gepubliceerd" ? "Live" : "Concept"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {ronde.teams_zonder_baan > 0 ? (
+                            <div className="flex items-center gap-1.5 text-amber-600 font-bold text-sm">
+                              <AlertTriangle size={14} />
+                              {ronde.teams_zonder_baan} over
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-green-600 font-bold text-sm">
+                              <CheckCircle2 size={14} />
+                              Compleet
+                            </div>
+                          )}
+                        </TableCell>
+                        {Object.keys(weather).length > 0 && (
+                          <TableCell>
+                            {w ? (
+                              <div className={`flex items-center gap-1.5 text-sm font-medium ${w.regen_verwacht ? "text-blue-600" : "text-gray-600"}`} title={w.description}>
+                                {w.regen_verwacht && <CloudRain size={14} className="text-blue-500" />}
+                                <span className="text-base">{w.icon}</span>
+                                {w.temp_max != null && <span className="text-xs text-gray-500">{w.temp_max}°</span>}
+                              </div>
+                            ) : <span className="text-gray-300 text-xs">—</span>}
+                          </TableCell>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant={ronde.status === "concept" ? "primary" : "secondary"} 
-                          size="sm"
-                          onClick={() => navigate(ronde.status === "concept" 
-                            ? `/competities/${ronde.competitie_id}/planning/${ronde.id}` 
-                            : `/ronde/${ronde.id}/${ronde.competitie_id}`)}
-                        >
-                          {ronde.status === "concept" ? "Plannen" : "Bekijk"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell className="text-right">
+                          <Button
+                            variant={ronde.status === "concept" ? "primary" : "secondary"}
+                            size="sm"
+                            onClick={() => navigate(ronde.status === "concept"
+                              ? `/competities/${ronde.competitie_id}/planning/${ronde.id}`
+                              : `/ronde/${ronde.id}/${ronde.competitie_id}`)}
+                          >
+                            {ronde.status === "concept" ? "Plannen" : "Bekijk"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             ) : (
@@ -312,12 +343,41 @@ export default function TenantDashboard() {
 
         <div className="space-y-8">
           {/* Warnings / Notifications */}
-          {data.waarschuwingen.length > 0 && (
+          {(data.waarschuwingen.length > 0 || data.komende_rondes.some(r => weather[r.datum]?.regen_verwacht)) && (
             <section className="space-y-3">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <AlertTriangle className="text-amber-500" size={18} />
                 Meldingen
               </h3>
+              {data.komende_rondes.filter(r => weather[r.datum]?.regen_verwacht).map((ronde) => {
+                const w = weather[ronde.datum];
+                const datum = new Date(ronde.datum).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "long" });
+                return (
+                  <Card key={`weer-${ronde.id}`} className="border-blue-200 bg-blue-50/30">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 p-1 rounded-full bg-blue-500">
+                          <CloudRain size={12} className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-sm text-gray-900">Regen verwacht – {ronde.competitie_naam}</h4>
+                          <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+                            {datum}: {w.description}{w.precipitation_mm > 0 ? ` (${w.precipitation_mm} mm)` : ""}. Overweeg afgelasting bij buitenbanen.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-8 text-xs border-gray-200 bg-white"
+                        onClick={() => navigate(`/competities/${ronde.competitie_id}/rondes`)}
+                      >
+                        Bekijk speelrondes
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
               {data.waarschuwingen.map((w, idx) => (
                 <Card key={idx} className={w.prioriteit === "hoog" ? "border-red-200 bg-red-50/30" : "border-amber-200 bg-amber-50/30"}>
                   <CardContent className="p-4 space-y-3">

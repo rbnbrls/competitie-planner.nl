@@ -89,6 +89,9 @@ async def get_current_tenant_user(
     return user, club
 
 
+TENANT_ADMIN_ROLES = {"vereniging_admin", "club_admin", "admin"}
+
+
 async def get_current_tenant_admin(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
@@ -97,7 +100,7 @@ async def get_current_tenant_admin(
     user, club = await get_current_tenant_user(token, db, club_id)
     if user.is_superadmin:
         return user, club
-    if user.role != "vereniging_admin":
+    if user.role not in TENANT_ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",

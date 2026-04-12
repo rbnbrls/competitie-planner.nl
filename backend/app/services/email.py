@@ -178,6 +178,76 @@ class EmailService:
         </html>
         """
 
+    async def send_cancellation_notification(self, ronde_id: UUID) -> dict:
+        """Send cancellation (afgelast) emails to captains of home teams in the ronde."""
+        logger.info("sending_cancellation_notification", ronde_id=str(ronde_id))
+        result = await self.db.execute(select(Speelronde).where(Speelronde.id == ronde_id))
+        ronde = result.scalar_one_or_none()
+        if not ronde:
+            logger.warning("ronde_not_found_for_cancellation", ronde_id=str(ronde_id))
+            return {"sent": 0, "error": "Ronde not found"}
+
+        result = await self.db.execute(select(Club).where(Club.id == ronde.club_id))
+        club = result.scalar_one_or_none()
+        if not club:
+            return {"sent": 0, "error": "Club not found"}
+
+        # Get all home team captains via wedstrijden
+        from app.models import Wedstrijd
+        result = await self.db.execute(
+            select(Wedstrijd).where(Wedstrijd.ronde_id == ronde_id)
+        )
+        wedstrijden = list(result.scalars().all())
+
+        recipient_emails: set[str] = set()
+        for w in wedstrijden:
+            result = await self.db.execute(select(Team).where(Team.id == w.thuisteam_id))
+            team = result.scalar_one_or_none()
+            if team and team.captain_email:
+                recipient_emails.add(team.captain_email)
+
+        if not recipient_emails:
+            return {"sent": 0, "recipients": []}
+
+        datum_str = ronde.datum.strftime("%d-%m-%Y")
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }}
+                .header {{ background-color: {club.primary_color}; color: {club.secondary_color}; padding: 20px; }}
+                .content {{ padding: 20px; }}
+                .alert {{ background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin: 16px 0; }}
+                .footer {{ padding: 20px; font-size: 12px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1 style="margin: 0;">{club.naam}</h1>
+            </div>
+            <div class="content">
+                <div class="alert">
+                    <h2 style="margin-top:0;">⚠️ Speelronde afgelast</h2>
+                    <p>De speelronde van <strong>{datum_str}</strong> is afgelast wegens weersomstandigheden.</p>
+                </div>
+                <p>De thuisteam captains zijn op de hoogte gesteld. Verdere communicatie over een eventuele inhaalronde volgt.</p>
+            </div>
+            <div class="footer">
+                <p>Dit is een automatisch gegenereerde email van competitie-planner.nl</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        success = await self._send_email(
+            to=list(recipient_emails),
+            subject=f"Afgelast: {club.naam} speelronde {datum_str}",
+            html=html_body,
+        )
+        return {"sent": success, "recipients": list(recipient_emails)}
+
     async def send_reminder_emails(self, days_before: int = 3) -> dict:
         # Dit zou door een cronjob aangeroepen moeten worden
         # Vind rondes die over X dagen zijn

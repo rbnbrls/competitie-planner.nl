@@ -19,6 +19,7 @@
     "generate:api": "swagger-typescript-api generate -p http://localhost:8000/openapi.json -o ./src/types -n api.ts --axios"
   },
   "dependencies": {
+    "@sentry/react": "^9.0.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -71,6 +72,7 @@
     "typescript-eslint": "^8.15.0",
     "vite": "^6.0.1",
     "vite-plugin-compression": "^0.5.1",
+    "@sentry/vite-plugin": "^3.0.0",
     "vitest": "^3.0.0"
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { tenantApi } from "../../lib/api";
-import { CheckCircle, Share2, Wand2, Globe, Clock, Filter, AlertCircle } from "lucide-react";
+import { CheckCircle, Share2, Wand2, Globe, Clock, Filter, AlertCircle, CloudRain, XCircle } from "lucide-react";
 import { showToast } from "../../components/Toast";
 import { 
   Button, 
@@ -34,6 +34,14 @@ interface Competitie {
   inhaal_datums: string[];
 }
 
+interface WeatherDay {
+  icon: string;
+  description: string;
+  precipitation_mm: number;
+  temp_max: number | null;
+  regen_verwacht: boolean;
+}
+
 export default function SpeelrondesPage() {
   const { competitieId } = useParams<{ competitieId: string }>();
   const navigate = useNavigate();
@@ -43,6 +51,7 @@ export default function SpeelrondesPage() {
   const [filter, setFilter] = useState<string>("all");
   const [isBulkOperationProgress, setIsBulkOperationProgress] = useState<{inProgress: boolean, text: string}>({inProgress: false, text: ""});
   const [lazy, setLazy] = useState(false);
+  const [weather, setWeather] = useState<Record<string, WeatherDay>>({});
   
   const loadData = useCallback(() => {
     if (!competitieId) return;
@@ -51,9 +60,13 @@ export default function SpeelrondesPage() {
     Promise.all([
       tenantApi.getCompetition(competitieId),
       tenantApi.listSpeelrondes(competitieId, { lazy }),
-    ]).then(([compRes, rondesRes]) => {
+      tenantApi.getWeather().catch(() => null),
+    ]).then(([compRes, rondesRes, weatherRes]) => {
       setCompetitie(compRes.data);
       setRondes(rondesRes.data.rondes || []);
+      if (weatherRes?.data?.enabled && weatherRes.data.weather) {
+        setWeather(weatherRes.data.weather);
+      }
     }).catch(() => {
       showToast.error("Fout bij laden van speelrondes");
     }).finally(() => setIsLoading(false));
@@ -145,6 +158,18 @@ export default function SpeelrondesPage() {
     }
   };
 
+  const handleAfgelast = async (e: React.MouseEvent, ronde: Speelronde) => {
+    e.stopPropagation();
+    if (!confirm(`Ronde van ${new Date(ronde.datum).toLocaleDateString("nl-NL")} afgelasten? Captains van thuisteams ontvangen een email.`)) return;
+    try {
+      await tenantApi.markAfgelast(ronde.id, true);
+      showToast.success("Ronde afgelast en captains gemaild");
+      loadData();
+    } catch {
+      showToast.error("Fout bij afgelasten");
+    }
+  };
+
   const filteredRondes = () => {
     if (filter === "all") return rondes;
     return rondes.filter((r) => r.status === filter);
@@ -221,6 +246,15 @@ export default function SpeelrondesPage() {
           >
             Gepubliceerd ({rondes.filter((r) => r.status === "gepubliceerd").length})
           </Button>
+          {rondes.some(r => r.status === "afgelast") && (
+            <Button
+              variant={filter === "afgelast" ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => setFilter("afgelast")}
+            >
+              Afgelast ({rondes.filter((r) => r.status === "afgelast").length})
+            </Button>
+          )}
         </div>
         
         <div className="flex items-center gap-3">
@@ -247,83 +281,109 @@ export default function SpeelrondesPage() {
             <TableHead>Datum</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
+            {Object.keys(weather).length > 0 && <TableHead>Weer</TableHead>}
             <TableHead>Publicatie</TableHead>
             <TableHead className="text-right">Acties</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredRondes().map((ronde) => (
-            <TableRow 
-              key={ronde.id} 
-              className={isFeestdag(ronde) ? "bg-red-50/30" : ""}
-              onClick={() => navigate(`/ronde/${ronde.id}/${competitieId}`)}
-            >
-              <TableCell className="font-bold text-gray-600">
-                W{ronde.week_nummer}
-              </TableCell>
-              <TableCell className="font-semibold">
-                {new Date(ronde.datum).toLocaleDateString("nl-NL", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric"
-                })}
-              </TableCell>
-              <TableCell>
-                {isInhaalronde(ronde) ? (
-                  <Badge variant="warning">Inhaalronde</Badge>
-                ) : isFeestdag(ronde) ? (
-                  <Badge variant="danger">Feestdag</Badge>
-                ) : (
-                  <span className="text-gray-400 text-xs uppercase font-bold tracking-tighter">Normaal</span>
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge variant={ronde.status === "gepubliceerd" ? "success" : "default"}>
-                  {ronde.status === "gepubliceerd" ? "Gepubliceerd" : "Concept"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-xs text-gray-500">
-                {ronde.gepubliceerd_op ? (
-                   <div className="flex items-center gap-1 text-green-600">
-                     <CheckCircle size={12} />
-                     {new Date(ronde.gepubliceerd_op).toLocaleDateString("nl-NL")}
-                   </div>
-                ) : "-"}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={isFeestdag(ronde) ? "text-blue-600" : "text-gray-500"}
-                    onClick={(e) => handleToggleFeestdag(e, ronde)}
-                  >
-                    {isFeestdag(ronde) ? "Regulier" : "Feestdag?"}
-                  </Button>
-                  {ronde.status === "concept" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => handlePublish(e, ronde.id)}
-                    >
-                      Publiceren
-                    </Button>
+          {filteredRondes().map((ronde) => {
+            const w = weather[ronde.datum];
+            return (
+              <TableRow
+                key={ronde.id}
+                className={ronde.status === "afgelast" ? "bg-gray-50 opacity-60" : isFeestdag(ronde) ? "bg-red-50/30" : w?.regen_verwacht ? "bg-blue-50/20" : ""}
+                onClick={() => navigate(`/ronde/${ronde.id}/${competitieId}`)}
+              >
+                <TableCell className="font-bold text-gray-600">
+                  W{ronde.week_nummer}
+                </TableCell>
+                <TableCell className="font-semibold">
+                  {new Date(ronde.datum).toLocaleDateString("nl-NL", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                  })}
+                </TableCell>
+                <TableCell>
+                  {isInhaalronde(ronde) ? (
+                    <Badge variant="warning">Inhaalronde</Badge>
+                  ) : isFeestdag(ronde) ? (
+                    <Badge variant="danger">Feestdag</Badge>
+                  ) : (
+                    <span className="text-gray-400 text-xs uppercase font-bold tracking-tighter">Normaal</span>
                   )}
-                  {ronde.public_token && (
+                </TableCell>
+                <TableCell>
+                  <Badge variant={ronde.status === "gepubliceerd" ? "success" : ronde.status === "afgelast" ? "danger" : "default"}>
+                    {ronde.status === "gepubliceerd" ? "Gepubliceerd" : ronde.status === "afgelast" ? "Afgelast" : "Concept"}
+                  </Badge>
+                </TableCell>
+                {Object.keys(weather).length > 0 && (
+                  <TableCell>
+                    {w ? (
+                      <div className={`flex items-center gap-1 text-sm ${w.regen_verwacht ? "text-blue-600 font-medium" : "text-gray-500"}`} title={`${w.description}${w.precipitation_mm > 0 ? ` · ${w.precipitation_mm}mm` : ""}`}>
+                        {w.regen_verwacht && <CloudRain size={13} />}
+                        <span>{w.icon}</span>
+                        {w.temp_max != null && <span className="text-xs text-gray-400">{w.temp_max}°</span>}
+                      </div>
+                    ) : <span className="text-gray-300 text-xs">—</span>}
+                  </TableCell>
+                )}
+                <TableCell className="text-xs text-gray-500">
+                  {ronde.gepubliceerd_op ? (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <CheckCircle size={12} />
+                      {new Date(ronde.gepubliceerd_op).toLocaleDateString("nl-NL")}
+                    </div>
+                  ) : "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
-                      size="icon"
-                      onClick={(e) => copyPublicUrl(e, ronde.public_token || "")}
-                      title="Kopieer publieke URL"
+                      size="sm"
+                      className={isFeestdag(ronde) ? "text-blue-600" : "text-gray-500"}
+                      onClick={(e) => handleToggleFeestdag(e, ronde)}
                     >
-                      <Share2 size={16} className="text-green-600" />
+                      {isFeestdag(ronde) ? "Regulier" : "Feestdag?"}
                     </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                    {ronde.status === "concept" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => handlePublish(e, ronde.id)}
+                      >
+                        Publiceren
+                      </Button>
+                    )}
+                    {ronde.status !== "afgelast" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => handleAfgelast(e, ronde)}
+                        title="Afgelasten wegens weer"
+                      >
+                        <XCircle size={15} />
+                      </Button>
+                    )}
+                    {ronde.public_token && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => copyPublicUrl(e, ronde.public_token || "")}
+                        title="Kopieer publieke URL"
+                      >
+                        <Share2 size={16} className="text-green-600" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
           {rondes.length === 0 && (
             <TableRow>
               <TableCell colSpan={6} className="h-40 text-center text-gray-500">

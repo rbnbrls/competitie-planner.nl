@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Numeric,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -49,6 +50,10 @@ class Club(Base):
     payment_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_sponsored: Mapped[bool] = mapped_column(Boolean, default=False)
     sponsored_since: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+
+    heeft_buitenbanen: Mapped[bool] = mapped_column(Boolean, default=False)
+    latitude: Mapped[float | None] = mapped_column(Float, default=None)
+    longitude: Mapped[float | None] = mapped_column(Float, default=None)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -163,6 +168,11 @@ class Competitie(Base):
     eerste_datum: Mapped[date | None] = mapped_column(Date, default=None)
     hergebruik_configuratie: Mapped[bool] = mapped_column(Boolean, default=True)
     reminder_days_before: Mapped[int] = mapped_column(SmallInteger, default=3)
+    competitie_type: Mapped[str | None] = mapped_column(String(20), default=None)
+    poule_grootte: Mapped[int] = mapped_column(SmallInteger, default=8)
+    aantal_speeldagen: Mapped[int] = mapped_column(SmallInteger, default=7)
+    speelvorm: Mapped[str | None] = mapped_column(String(20), default=None)
+    leeftijdscategorie: Mapped[str | None] = mapped_column(String(20), default=None)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -421,6 +431,32 @@ class PlanningHistorie(Base):
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="planninghistorie")
     team: Mapped["Team"] = relationship("Team")
     baan: Mapped["Baan"] = relationship("Baan")
+
+
+class ToewijzingSnapshot(Base):
+    __tablename__ = "toewijzing_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ronde_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("speelrondes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    club_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clubs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    aangemaakt_door: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), default=None
+    )
+    aanleiding: Mapped[str] = mapped_column(String(50), nullable=False)
+    snapshot_data: Mapped[list] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (Index("idx_snapshots_ronde", "ronde_id"),)
+
+    ronde: Mapped["Speelronde"] = relationship("Speelronde")
 
 
 class StatusChange(Base):

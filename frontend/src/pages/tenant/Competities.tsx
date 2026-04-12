@@ -33,6 +33,21 @@ interface Competitie {
   eerste_datum?: string;
   hergebruik_configuratie?: boolean;
   created_at: string;
+  competitie_type?: string | null;
+  poule_grootte?: number;
+  aantal_speeldagen?: number;
+  speelvorm?: string | null;
+  leeftijdscategorie?: string | null;
+}
+
+interface CompetitieTemplate {
+  id: string;
+  naam: string;
+  competitie_type: string;
+  poule_grootte: number;
+  aantal_speeldagen: number;
+  speelvorm: string;
+  leeftijdscategorie: string;
 }
 
 interface TijdslotConfig {
@@ -50,6 +65,28 @@ const DAGEN = [
   { value: "vrijdag", label: "Vrijdag" },
   { value: "zaterdag", label: "Zaterdag" },
   { value: "zondag", label: "Zondag" },
+];
+
+const COMPETITIE_TYPES = [
+  { value: "", label: "— Geen —" },
+  { value: "voorjaar", label: "Voorjaar" },
+  { value: "najaar", label: "Najaar" },
+  { value: "zomer", label: "Zomer" },
+  { value: "intern", label: "Intern" },
+];
+
+const SPEELVORMEN = [
+  { value: "", label: "— Geen —" },
+  { value: "dubbel", label: "Dubbel" },
+  { value: "enkel", label: "Enkel" },
+  { value: "gemengd", label: "Gemengd" },
+];
+
+const LEEFTIJDSCATEGORIEEN = [
+  { value: "", label: "— Geen —" },
+  { value: "open", label: "Open" },
+  { value: "35+", label: "35+" },
+  { value: "50+", label: "50+" },
 ];
 
 export default function CompetitiesPage() {
@@ -77,12 +114,40 @@ export default function CompetitiesPage() {
     hergebruik_configuratie: true,
     reminder_days_before: 3,
   });
+  const [templates, setTemplates] = useState<CompetitieTemplate[]>([]);
   const [formData, setFormData] = useState({
     naam: "",
     speeldag: "maandag",
     start_datum: "",
     eind_datum: "",
+    competitie_type: "",
+    poule_grootte: 8,
+    aantal_speeldagen: 7,
+    speelvorm: "",
+    leeftijdscategorie: "",
   });
+
+  const loadTemplates = async () => {
+    try {
+      const res = await tenantApi.getCompetitieTemplates();
+      setTemplates(res.data.templates);
+    } catch {
+      // templates are optional
+    }
+  };
+
+  const applyTemplate = (templateId: string) => {
+    const tpl = templates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setFormData((prev) => ({
+      ...prev,
+      competitie_type: tpl.competitie_type,
+      poule_grootte: tpl.poule_grootte,
+      aantal_speeldagen: tpl.aantal_speeldagen,
+      speelvorm: tpl.speelvorm,
+      leeftijdscategorie: tpl.leeftijdscategorie,
+    }));
+  };
 
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateData, setDuplicateData] = useState({
@@ -119,6 +184,11 @@ export default function CompetitiesPage() {
         speeldag: "maandag",
         start_datum: "",
         eind_datum: "",
+        competitie_type: "",
+        poule_grootte: 8,
+        aantal_speeldagen: 7,
+        speelvorm: "",
+        leeftijdscategorie: "",
       });
     } catch {
       // Error is handled in the hook's onError handler
@@ -229,7 +299,7 @@ export default function CompetitiesPage() {
           </Button>
           {!activeComp && (
             <Button
-              onClick={() => setShowModal(true)}
+              onClick={() => { setShowModal(true); loadTemplates(); }}
             >
               Competitie aanmaken
             </Button>
@@ -399,6 +469,21 @@ export default function CompetitiesPage() {
         }
       >
         <form id="create-competition-form" onSubmit={handleSubmit} className="space-y-4">
+          {templates.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Template (optioneel)</label>
+              <select
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                defaultValue=""
+                onChange={(e) => applyTemplate(e.target.value)}
+              >
+                <option value="">— Kies een KNLTB template —</option>
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>{tpl.naam}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Input
             label="Naam competitie"
             placeholder="Bijv. Zomercompetitie 2025"
@@ -426,6 +511,62 @@ export default function CompetitiesPage() {
               value={formData.eind_datum}
               onChange={(e) => setFormData(prev => ({ ...prev, eind_datum: e.target.value }))}
               required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Competitietype"
+              value={formData.competitie_type}
+              onChange={(e) => setFormData(prev => ({ ...prev, competitie_type: e.target.value }))}
+              options={COMPETITIE_TYPES}
+            />
+            <Select
+              label="Speelvorm"
+              value={formData.speelvorm}
+              onChange={(e) => setFormData(prev => ({ ...prev, speelvorm: e.target.value }))}
+              options={SPEELVORMEN}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Leeftijdscategorie"
+              value={formData.leeftijdscategorie}
+              onChange={(e) => setFormData(prev => ({ ...prev, leeftijdscategorie: e.target.value }))}
+              options={LEEFTIJDSCATEGORIEEN}
+            />
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Poulegrootte</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={2}
+                  max={16}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.poule_grootte}
+                  onChange={(e) => {
+                    const pg = parseInt(e.target.value) || 8;
+                    setFormData(prev => ({
+                      ...prev,
+                      poule_grootte: pg,
+                      aantal_speeldagen: Math.min(prev.aantal_speeldagen, pg - 1),
+                    }));
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">
+              Aantal speeldagen
+              <span className="ml-1 text-xs font-normal text-gray-500">(max {formData.poule_grootte - 1})</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={formData.poule_grootte - 1}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.aantal_speeldagen}
+              onChange={(e) => setFormData(prev => ({ ...prev, aantal_speeldagen: parseInt(e.target.value) || 1 }))}
             />
           </div>
           <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded border">

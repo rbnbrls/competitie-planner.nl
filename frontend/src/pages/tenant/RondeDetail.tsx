@@ -32,15 +32,15 @@ import {
   TableCell,
   LoadingSkeleton
 } from "../../components";
-import { 
-  ArrowLeft, 
-  Globe, 
-  Wand2, 
-  Copy, 
-  ExternalLink, 
-  ShieldAlert, 
-  Lock, 
-  Unlock, 
+import {
+  ArrowLeft,
+  Globe,
+  Wand2,
+  Copy,
+  ExternalLink,
+  ShieldAlert,
+  Lock,
+  Unlock,
   GripVertical,
   Umbrella,
   Sun,
@@ -50,7 +50,9 @@ import {
   Layout,
   Activity,
   Trophy,
-  Printer
+  Printer,
+  History,
+  RotateCcw
 } from "lucide-react";
 
 interface Team {
@@ -256,12 +258,14 @@ export default function RondeDetailPage() {
     teams,
     banen,
     wedstrijden,
+    snapshots,
     isLoading,
     updateToewijzing,
     swapToewijzingen,
     generateIndeling,
     publishRonde,
     depublishRonde,
+    herstellSnapshot,
   } = useRondeDetail(rondeId, competitieId);
 
   const sensors = useSensors(
@@ -705,6 +709,54 @@ export default function RondeDetailPage() {
                  </Button>
                </div>
              </section>
+          )}
+
+          {/* Version History */}
+          {!isReadOnly && snapshots.length > 0 && (
+            <section className="space-y-4">
+              <h3 className="text-lg font-black text-gray-700 flex items-center gap-2">
+                <History size={18} className="text-gray-400" />
+                Versiegeschiedenis
+              </h3>
+              <div className="space-y-2">
+                {snapshots.map((s, idx) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-blue-100 transition-colors"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                        {idx === 0 ? "Meest recent" : `Versie ${snapshots.length - idx}`}
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        {new Date(s.created_at).toLocaleString("nl-NL", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {" · "}
+                        <span className="text-gray-500 font-semibold">{s.count} toewijzingen</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700"
+                      isLoading={herstellSnapshot.isPending}
+                      onClick={() => {
+                        if (window.confirm("Huidige indeling wordt vervangen door deze versie. Doorgaan?")) {
+                          herstellSnapshot.mutateAsync(s.id);
+                        }
+                      }}
+                    >
+                      <RotateCcw size={12} />
+                      Herstel
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </div>

@@ -6,6 +6,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -42,6 +46,19 @@ from app.logging_config import get_logger, setup_logging
 
 setup_logging()
 logger = get_logger()
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        release=settings.VERSION,
+        integrations=[
+            StarletteIntegration(transaction_style="url"),
+            FastApiIntegration(transaction_style="url"),
+        ],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
 
 
 @asynccontextmanager
@@ -201,6 +218,7 @@ async def unexpected_exception_handler(request: Request, exc: Exception):
 
     # Get user_id if available
     user_id = get_user_id_from_request(request)
+    club_id = getattr(request.state, "club_id", None)
 
     # Log as CRITICAL with full stack trace
     logger.critical(
@@ -211,6 +229,16 @@ async def unexpected_exception_handler(request: Request, exc: Exception):
         method=request.method,
         exc_info=True,
     )
+
+    # Capture in Sentry with user/tenant context
+    if settings.SENTRY_DSN:
+        with sentry_sdk.new_scope() as scope:
+            if user_id:
+                scope.set_user({"id": str(user_id)})
+            if club_id:
+                scope.set_tag("club_id", str(club_id))
+            scope.set_tag("path", request.url.path)
+            sentry_sdk.capture_exception(exc)
 
     # Safe generic error response
     response_content = {

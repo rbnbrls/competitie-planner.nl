@@ -38,7 +38,8 @@ interface DisplayResponse {
 }
 
 export default function DisplayPage() {
-  const { slug, token } = useParams<{ slug: string; token?: string }>();
+  const { slug: slugFromParams, token } = useParams<{ slug?: string; token?: string }>();
+  const slug = slugFromParams || window.location.hostname.split(".")[0];
   const [data, setData] = useState<DisplayResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

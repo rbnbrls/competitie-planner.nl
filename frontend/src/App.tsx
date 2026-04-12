@@ -230,8 +230,14 @@ function AppRoutes() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/captain/:token" element={<CaptainPortaalPage />} />
+          <Route path="/display" element={<DisplayPage />} />
+          <Route path="/display/:token" element={<DisplayPage />} />
           <Route path="/display/:slug" element={<DisplayPage />} />
           <Route path="/display/:slug/:token" element={<DisplayPage />} />
+          <Route path="/narrowcasting" element={<DisplayPage />} />
+          <Route path="/narrowcasting/:token" element={<DisplayPage />} />
+          <Route path="/display/:slug/kalender" element={<ClubCalendarPage />} />
+          <Route path="/narrowcasting/:slug/kalender" element={<ClubCalendarPage />} />
           <Route element={<TenantLayout />}>
             <Route element={<TenantRoutes />}>
               <Route path="/onboarding" element={<OnboardingPage />} />

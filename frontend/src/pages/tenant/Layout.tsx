@@ -60,9 +60,9 @@ export default function TenantLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row pb-16 md:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row pb-16 lg:pb-0 overflow-x-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 sticky top-0 h-screen z-40 shrink-0">
+      <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 sticky top-0 h-screen z-40 shrink-0">
         <div className="p-6 flex items-center gap-3 border-b border-gray-50">
            <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center p-2 shadow-lg shadow-blue-100">
              {club?.logo_url ? (
@@ -127,10 +127,10 @@ export default function TenantLayout() {
       {sidebarOpen && (
         <>
           <div 
-            className="fixed inset-0 bg-black/50 z-50 md:hidden"
+            className="fixed inset-0 bg-black/50 z-50 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 w-64 bg-white z-50 md:hidden transform transition-transform duration-300 ease-in-out shadow-xl">
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white z-50 lg:hidden transform transition-transform duration-300 ease-in-out shadow-xl">
             <div className="p-4 flex items-center justify-between border-b border-gray-100">
               <h2 className="text-sm font-black text-gray-900">Menu</h2>
               <button 
@@ -180,7 +180,7 @@ export default function TenantLayout() {
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col">
           {/* Mobile/Tablet Header */}
-          <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-white/80">
+          <header className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-white/80">
              <div className="flex items-center gap-3">
                <button 
                  onClick={() => setSidebarOpen(true)}
@@ -198,13 +198,13 @@ export default function TenantLayout() {
              </button>
           </header>
 
-          <main className="flex-1 w-full p-4 md:p-8 lg:p-12 overflow-y-auto">
+          <main className="flex-1 w-full p-4 md:p-8 xl:p-12 overflow-y-auto">
             <Outlet />
           </main>
       </div>
 
       {/* Mobile Bottom Navigation - More premium feel */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex overflow-x-auto z-50 p-2 gap-1 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex overflow-x-auto z-50 p-2 gap-1 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         {navItems.slice(0, 5).map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname.startsWith(item.path.split('/').slice(0, 2).join('/'));

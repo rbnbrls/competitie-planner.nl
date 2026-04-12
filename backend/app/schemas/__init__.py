@@ -273,6 +273,11 @@ class CompetitieBase(BaseModel):
     eerste_datum: date | None = None
     hergebruik_configuratie: bool = True
     reminder_days_before: int = 3
+    competitie_type: str | None = None
+    poule_grootte: int = 8
+    aantal_speeldagen: int = 7
+    speelvorm: str | None = None
+    leeftijdscategorie: str | None = None
 
 
 class CompetitieCreate(CompetitieBase):
@@ -292,6 +297,11 @@ class CompetitieUpdate(BaseModel):
     eerste_datum: date | None = None
     hergebruik_configuratie: bool | None = None
     reminder_days_before: int | None = None
+    competitie_type: str | None = None
+    poule_grootte: int | None = None
+    aantal_speeldagen: int | None = None
+    speelvorm: str | None = None
+    leeftijdscategorie: str | None = None
 
 
 class CompetitieResponse(CompetitieBase):

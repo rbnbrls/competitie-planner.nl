@@ -28,6 +28,12 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
     enabled: !!rondeId,
   });
 
+  const { data: snapshotsData, refetch: refetchSnapshots } = useQuery({
+    queryKey: ["snapshots", rondeId],
+    queryFn: () => tenantApi.getSnapshots(rondeId!),
+    enabled: !!rondeId,
+  });
+
   const updateToewijzingMutation = useMutation({
     mutationFn: (variables: { id: string; data: any }) => 
       tenantApi.updateToewijzing(variables.id, variables.data),
@@ -142,16 +148,33 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
     }
   });
 
+  const herstellSnapshotMutation = useMutation({
+    mutationFn: (snapshotId: string) => tenantApi.herstellSnapshot(rondeId!, snapshotId),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["ronde", rondeId], (old: any) => {
+        if (!old || !old.data) return { data: res.data };
+        return { ...old, data: res.data };
+      });
+      refetchSnapshots();
+      showToast.success("Vorige versie hersteld");
+    },
+    onError: () => {
+      showToast.error("Fout bij herstellen versie");
+    },
+  });
+
   return {
     ronde: rondeData?.data,
     teams: teamsData?.data || [],
     banen: banenData?.data || [],
     wedstrijden: wedstrijdenData?.data?.wedstrijden || [],
+    snapshots: (snapshotsData?.data || []) as Array<{ id: string; aanleiding: string; created_at: string; count: number }>,
     isLoading: isLoadingRonde || isLoadingTeams || isLoadingBanen || isLoadingWedstrijden,
     updateToewijzing: updateToewijzingMutation.mutateAsync,
     swapToewijzingen: swapToewijzingenMutation.mutateAsync,
     generateIndeling: generateIndelingMutation,
     publishRonde: publishMutation,
     depublishRonde: depublishMutation,
+    herstellSnapshot: herstellSnapshotMutation,
   };
 }

@@ -29,6 +29,9 @@ class ClubSettingsUpdate(BaseModel):
     website: str | None = None
     max_thuisteams_per_dag: int | None = None
     max_banen: int | None = None
+    heeft_buitenbanen: bool | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 @router.get("/settings")
@@ -54,6 +57,9 @@ async def get_settings(
         "status": club.status,
         "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
         "max_banen": club.max_banen,
+        "heeft_buitenbanen": club.heeft_buitenbanen,
+        "latitude": club.latitude,
+        "longitude": club.longitude,
     }
 
 
@@ -80,6 +86,12 @@ async def update_settings(
         club.max_thuisteams_per_dag = data.max_thuisteams_per_dag
     if data.max_banen is not None:
         club.max_banen = data.max_banen
+    if data.heeft_buitenbanen is not None:
+        club.heeft_buitenbanen = data.heeft_buitenbanen
+    if data.latitude is not None:
+        club.latitude = data.latitude
+    if data.longitude is not None:
+        club.longitude = data.longitude
     await db.commit()
     await db.refresh(club)
     changed = [k for k, v in data.model_dump(exclude_unset=True).items() if v is not None]
@@ -103,6 +115,9 @@ async def update_settings(
         "status": club.status,
         "max_thuisteams_per_dag": club.max_thuisteams_per_dag,
         "max_banen": club.max_banen,
+        "heeft_buitenbanen": club.heeft_buitenbanen,
+        "latitude": club.latitude,
+        "longitude": club.longitude,
     }
 
 

@@ -115,7 +115,7 @@ async def get_current_tenant_admin(
     user, club = await get_current_tenant_user(token, db, club_id)
     if user.is_superadmin:
         return user, club
-    if user.role != "vereniging_admin":
+    if user.role not in {"vereniging_admin", "admin"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
