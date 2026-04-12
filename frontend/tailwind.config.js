@@ -36,11 +36,22 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        court: {
+          green: "var(--theme-primary)",
+          optic: "var(--theme-accent)",
+          navy: "var(--theme-nav-bg)",
+          gravel: "var(--theme-court-gravel)",
+          grass: "var(--theme-court-grass)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+        heading: ["Montserrat", "sans-serif"],
       },
     },
   },

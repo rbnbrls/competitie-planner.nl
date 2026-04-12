@@ -14,7 +14,7 @@ Rate limiting is implemented using SlowAPI to protect the API from abuse and ens
 | Auth Register | `/api/auth/register` | 3/hour |
 | Password Reset | `/api/auth/password/*` | 10/hour |
 | Search | `/*/search` | 20/minute |
-| Data Read | GET on `/api/competities`, `/api/wedstrijden`, `/api/teams` | 100/minute |
+| Data Read | GET on `/api/v1/tenant/competities`, `/api/v1/tenant/wedstrijden`, `/api/v1/tenant/teams` | 100/minute |
 | Data Write | POST/PUT/DELETE/PATCH on data endpoints | 30/minute |
 | Bulk Operations | Bulk endpoints | 10/hour |
 | Default | All other endpoints | 60/minute |

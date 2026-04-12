@@ -194,8 +194,8 @@ function AppRoutes() {
     return <LoadingFallback />;
   }
 
-  const isAdminPanel = hostname === "admin.competitie-planner.nl" || hostname === "localhost" || hostname === "127.0.0.1";
-  const isDisplayPanel = hostname === "display.competitie-planner.nl";
+  const isAdminPanel = hostname === "admin.competitie-planner.nl" || hostname === "admin.localhost" || hostname === "localhost" || hostname === "127.0.0.1";
+  const isDisplayPanel = hostname === "display.competitie-planner.nl" || hostname === "display.localhost";
   const isTenant = !isAdminPanel && !isDisplayPanel;
 
   if (isAdminPanel) {

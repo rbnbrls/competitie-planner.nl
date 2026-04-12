@@ -206,6 +206,8 @@ class TestDisplayJourney:
         response = await client.get(f"/api/v1/display/{club.slug}/actueel")
 
         assert response.status_code == 200
+        assert "x-frame-options" not in response.headers
+        assert "frame-ancestors *" in response.headers["content-security-policy"]
         data = response.json()
         assert data["club"]["slug"] == club.slug
         assert data["ronde"] is None

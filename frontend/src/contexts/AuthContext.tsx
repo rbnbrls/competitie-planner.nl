@@ -13,6 +13,8 @@ interface Club {
   logo_url: string | null;
 }
 
+type ThemePreset = "base" | "precision-court";
+
 interface User {
   id: string;
   email: string;
@@ -60,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperadmin = user?.is_superadmin === true;
 
   useEffect(() => {
+    const savedTheme = (localStorage.getItem("theme_preset") as ThemePreset | null) ?? "base";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
     if (sessionRestoreAttemptedRef.current) {
       return;
     }
@@ -159,6 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.removeProperty("--color-primary");
     document.documentElement.style.removeProperty("--color-secondary");
     document.documentElement.style.removeProperty("--color-accent");
+    document.documentElement.setAttribute("data-theme", "base");
+    localStorage.removeItem("theme_preset");
   };
 
   return (
@@ -178,6 +185,9 @@ function applyClubTheme(club: Club) {
   if (club.accent_color) {
     document.documentElement.style.setProperty("--color-accent", club.accent_color);
   }
+
+  const savedTheme = (localStorage.getItem("theme_preset") as ThemePreset | null) ?? "base";
+  document.documentElement.setAttribute("data-theme", savedTheme);
 }
 
 export function useAuth() {

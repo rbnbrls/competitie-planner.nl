@@ -271,8 +271,13 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     # Strict-Transport-Security (HSTS) - 1 year in seconds
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # Restrict resource loading for API responses; frame-ancestors replaces X-Frame-Options
+    # Restrict resource loading for API responses by default
     response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+
+    # Public display endpoints must be embeddable in iframes on external websites.
+    if request.url.path.startswith("/api/v1/display/"):
+        response.headers.pop("X-Frame-Options", None)
+        response.headers["Content-Security-Policy"] = "frame-ancestors *"
     # Do not send the full URL as referrer across origins
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # Disable browser features not needed by this API

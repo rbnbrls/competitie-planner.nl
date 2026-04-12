@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -21,6 +23,33 @@
   --input: 214.3 31.8% 91.4%;
   --ring: 221.2 83.2% 53.3%;
   --radius: 0.75rem;
+  --theme-primary: #1d4ed8;
+  --theme-accent: #3b82f6;
+  --theme-accent-foreground: #ffffff;
+  --theme-nav-bg: #ffffff;
+  --theme-nav-foreground: #111827;
+  --theme-font-body: "Inter", sans-serif;
+  --theme-font-heading: "Montserrat", sans-serif;
+  --theme-card-bg: #ffffff;
+  --theme-card-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --theme-card-border-gravel: transparent;
+  --theme-card-border-grass: transparent;
+  --theme-button-radius: 0.75rem;
+}
+
+:root[data-theme="precision-court"] {
+  --theme-primary: #2d5a27;
+  --theme-accent: #ccff00;
+  --theme-accent-foreground: #000000;
+  --theme-nav-bg: #101a2b;
+  --theme-nav-foreground: #f8fafc;
+  --theme-font-body: "Inter", sans-serif;
+  --theme-font-heading: "Montserrat", sans-serif;
+  --theme-card-bg: #ffffff;
+  --theme-card-shadow: 0 12px 28px rgba(16, 26, 43, 0.14);
+  --theme-card-border-gravel: #b24a2d;
+  --theme-card-border-grass: #2d5a27;
+  --theme-button-radius: 9999px;
 }
 
 @layer base {
@@ -32,7 +61,17 @@
   
   body {
     @apply bg-gray-50 text-foreground;
+    font-family: var(--theme-font-body);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--theme-font-heading);
   }
 
   /* Custom Scrollbar for a premium look */

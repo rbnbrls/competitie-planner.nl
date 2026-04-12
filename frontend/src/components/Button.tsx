@@ -4,16 +4,16 @@ import { cn } from "../lib/utils";
 import { Loader2 } from "lucide-react";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-[var(--theme-button-radius)] text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95",
   {
     variants: {
       variant: {
-        primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
+        primary: "bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:brightness-95 shadow-sm",
         secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm",
-        outline: "border border-blue-600 text-blue-600 bg-transparent hover:bg-blue-50",
+        outline: "border border-[var(--theme-primary)] text-[var(--theme-primary)] bg-transparent hover:bg-[color-mix(in_srgb,var(--theme-primary)_10%,white)]",
         ghost: "hover:bg-gray-100 text-gray-700",
         danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
-        link: "text-blue-600 underline-offset-4 hover:underline",
+        link: "text-[var(--theme-primary)] underline-offset-4 hover:underline",
       },
       size: {
         sm: "h-8 px-3 text-xs",

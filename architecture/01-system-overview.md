@@ -77,13 +77,13 @@ if (hostname === 'admin.competitie-planner.nl') {
   POST /users
 
 /api/v1                          ← Tenant-scoped (JWT + tenant context)
-  /clubs
-  /banen
-  /competities
-  /teams
-  /rondes
-  /toewijzingen
-  /planning/generate
+  /tenant/club
+  /tenant/banen
+  /tenant/competities
+  /tenant/teams
+  /tenant/rondes
+  /tenant/toewijzingen
+  /tenant/planning/generate
 
 /display                         ← Public, no auth
   GET /[slug]/actueel
