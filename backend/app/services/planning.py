@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.logging_config import get_logger
 from app.models import (
     Baan,
     BaanToewijzing,
@@ -16,7 +17,6 @@ from app.models import (
     ToewijzingSnapshot,
     Wedstrijd,
 )
-from app.logging_config import get_logger
 
 logger = get_logger("planning")
 

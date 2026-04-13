@@ -1,9 +1,11 @@
 from uuid import UUID
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db import get_db
 from app.models import Club, Payment, SepaMandate
 from app.routers.auth import get_current_superadmin
@@ -321,6 +323,7 @@ async def get_payment_status(
 ) -> list[dict]:
     user, club = current
     from sqlalchemy import select
+
     from app.models import Competitie
 
     result = await db.execute(

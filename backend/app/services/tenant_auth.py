@@ -1,5 +1,6 @@
-import structlog
 from uuid import UUID
+
+import structlog
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select

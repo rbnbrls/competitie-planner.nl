@@ -2,8 +2,8 @@ from .baan import Baan
 from .baan_toewijzing import BaanToewijzing
 from .beschikbaarheid import Beschikbaarheid
 from .club import Club
-from .competition_price import CompetitionPrice
 from .competitie import Competitie
+from .competition_price import CompetitionPrice
 from .invite_token import InviteToken
 from .mollie_config import MollieConfig
 from .password_reset_token import PasswordResetToken

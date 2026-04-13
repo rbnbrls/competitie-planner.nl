@@ -1,5 +1,4 @@
 from datetime import date, time, timedelta
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status

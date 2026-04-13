@@ -5,8 +5,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Baan, BaanToewijzing, Club, Speelronde, Team, User
 from app.logging_config import get_logger
+from app.models import Baan, BaanToewijzing, Club, Speelronde, Team, User
 
 logger = get_logger("email")
 

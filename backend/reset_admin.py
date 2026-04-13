@@ -1,8 +1,11 @@
 import asyncio
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from app.models import User
 from app.services.auth import get_password_hash
+
 
 async def update_superadmin_password(email: str, password: str, database_url: str):
     engine = create_async_engine(database_url, echo=False)

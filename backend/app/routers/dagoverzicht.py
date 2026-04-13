@@ -3,14 +3,15 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db import get_db
-from app.services.tenant_auth import get_current_tenant_user
 from app.services.planning import (
     bereken_banenvereisten,
     detecteer_conflicten,
     plan_banen,
     validate_club_max_thuisteams,
 )
+from app.services.tenant_auth import get_current_tenant_user
 
 router = APIRouter(prefix="/api/v1/dagoverzicht", tags=["dagoverzicht"])
 

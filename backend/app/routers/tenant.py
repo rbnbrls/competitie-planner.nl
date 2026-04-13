@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 from uuid import UUID
-import structlog
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
 from app.db import get_db
 from app.limiter import limiter
 from app.models import Club, InviteToken, PasswordResetToken, User

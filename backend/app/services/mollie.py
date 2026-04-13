@@ -5,8 +5,8 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CompetitionPrice, MollieConfig, Payment, SepaMandate
 from app.logging_config import get_logger
+from app.models import CompetitionPrice, MollieConfig, Payment, SepaMandate
 from app.services.encryption import get_encryption_service
 
 logger = get_logger("mollie")

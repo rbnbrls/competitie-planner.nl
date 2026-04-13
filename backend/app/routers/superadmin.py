@@ -1,12 +1,14 @@
+import os
 import secrets
 from datetime import UTC, datetime, timedelta
-import os
 from typing import Any
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db import get_db
 from app.exceptions import ResourceNotFoundError
 from app.models import Club, CompetitionPrice, InviteToken, MollieConfig, Payment, SepaMandate, User
@@ -121,7 +123,6 @@ async def create_club(
 ) -> Club:
     # Extract admin info if provided
     admin_email = club_data.admin_email
-    admin_full_name = club_data.admin_full_name
 
     # Create club without extra fields
     club_dict = club_data.model_dump(exclude={"admin_email", "admin_full_name"})

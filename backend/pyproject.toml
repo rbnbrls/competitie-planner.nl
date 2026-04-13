@@ -51,6 +51,9 @@ target-version = "py312"
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = ["E501", "UP045"]
 
+[tool.ruff.lint.per-file-ignores]
+"app/models/*.py" = ["F821"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

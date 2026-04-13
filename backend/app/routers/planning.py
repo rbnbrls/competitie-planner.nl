@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
-
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -10,7 +10,6 @@ from sqlalchemy.orm import selectinload
 
 from app.db import get_db
 from app.models import Baan, BaanToewijzing, Competitie, Speelronde, Team
-from app.services.tenant_auth import get_current_tenant_user
 from app.services.audit import log_audit
 from app.services.email import EmailService
 from app.services.mollie import MollieService
@@ -24,6 +23,7 @@ from app.services.planning import (
     save_snapshot,
     update_planning_historie,
 )
+from app.services.tenant_auth import get_current_tenant_user
 
 router = APIRouter(prefix="/tenant", tags=["planning"])
 
@@ -566,7 +566,6 @@ async def download_ronde_pdf(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only published roundes can be exported to PDF",
         )
-    competitie = ronde.competitie
     pdf_service = PDFService(db)
     pdf_content = await pdf_service.generate_banenindeling_pdf(ronde_uuid)
     filename = f"banenindeling-{club.slug}-{ronde.datum.strftime('%Y-%m-%d')}.pdf"

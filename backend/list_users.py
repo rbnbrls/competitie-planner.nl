@@ -1,7 +1,10 @@
 import asyncio
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from app.models import User
+
 
 async def list_users(database_url: str):
     engine = create_async_engine(database_url, echo=False)
