@@ -59,6 +59,47 @@ npm run generate:api
 
 Dit genereert types in `frontend/src/types/api.ts`. Herhaal na elke API-wijziging.
 
+### Pre-commit quality hooks
+
+CQ-003 introduces local pre-commit hooks that orchestrate existing quality checks (Ruff, Mypy, ESLint, TypeScript) before commit without replacing project tooling.
+
+```bash
+# One-time install
+uv tool install pre-commit
+pre-commit install
+
+# Run all hooks manually
+pre-commit run --all-files
+```
+
+Hook configuration is defined in `.pre-commit-config.yaml` and runs:
+
+- Backend: `uv run ruff check app tests`, `uv run mypy app`
+- Frontend: staged-file ESLint (`npm run lint -- <files>`), full typecheck (`npm run typecheck`)
+
+### CI/CD Workflows
+
+GitHub Actions workflows staan in `.github/workflows/` en volgen deze indeling:
+
+- `ci.yml`: hoofdworkflow met pad-detectie, frontend/backend quality gates en Docker build-validatie.
+- `security.yml`: dependency- en container-scans (warn-only of enforced via `SECURITY_ENFORCE` repository variable).
+- `deploy-staging.yml`: automatische staging deploy via Coolify webhook na succesvolle `main` CI-run.
+- `deploy-production.yml`: handmatige production deploy met verplichte GitHub environment approval.
+- `rollback.yml`: handmatige rollback naar een eerder bekende SHA/tag via Coolify.
+- `performance.yml`: niet-blokkerende performance signalen (frontend bundlegrootte en backend smoke latency).
+
+Belangrijkste CI-commando's:
+
+- Frontend (`frontend`): `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run build`
+- Backend (`backend`): `uv sync --dev`, `uv run ruff check .`, `uv run mypy .`, `uv run pytest`
+
+Vereiste GitHub secrets/environments:
+
+- Environments: `staging`, `production`
+- Secrets: `COOLIFY_STAGING_WEBHOOK_URL`, `COOLIFY_PRODUCTION_WEBHOOK_URL`
+- Optioneel: `COOLIFY_API_TOKEN`, `COOLIFY_APP_ID_STAGING`, `COOLIFY_APP_ID_PRODUCTION`
+- Variabelen (optioneel voor staging smoke checks): `STAGING_API_HEALTH_URL`, `STAGING_FRONTEND_SMOKE_URL`
+
 ---
 
 ## Wat is Competitie-Planner?

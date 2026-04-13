@@ -159,6 +159,11 @@ class TestGetMe:
         data = response.json()
         assert data["email"] == "superadmin@test.nl"
 
+    async def test_get_me_requires_auth(self, client: AsyncClient):
+        """Test /me without token returns unauthorized."""
+        response = await client.get("/api/v1/auth/me")
+        assert response.status_code == 401
+
 
 class TestLogout:
     """Tests for the logout endpoint."""

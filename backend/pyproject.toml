@@ -49,7 +49,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501", "I001", "F841", "UP045"]
+ignore = ["E501", "UP045"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -60,15 +60,13 @@ pythonpath = ["."]
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
-no_untyped_defs = false
+no_untyped_defs = true
 disallow_any_generics = false
 check_untyped_defs = true
-disallow_subclassing_any = false
-warn_return_any = false
-strict_optional = false
+disallow_subclassing_any = true
+warn_return_any = true
+strict_optional = true
 disable_error_code = [
-    "no-untyped-def",
-    "no-any-return",
     "no-untyped-call",
     "type-arg",
     "misc",

@@ -480,3 +480,14 @@ class TestBatchPlanning:
 
         warnings = [log for log in result["logs"] if log["severity"] == "warning"]
         assert any("Maximum aantal thuisteams" in w["message"] for w in warnings)
+
+    async def test_plan_competitie_invalid_competitie_returns_error(
+        self,
+        db_session: AsyncSession,
+    ):
+        """Test planning invalid competitie id returns failure payload."""
+        result = await plan_competitie(uuid.uuid4(), db_session, apply=False)
+
+        assert result["success"] is False
+        assert result["counts"]["rondes"] == 0
+        assert any("Competitie not found" in log["message"] for log in result["logs"])

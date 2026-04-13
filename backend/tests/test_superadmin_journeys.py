@@ -3,10 +3,12 @@ Customer Journey: Superadmin and Payments
 Test complete flows for superadmin operations and payment setup
 """
 
+from datetime import date
+
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Club
+from app.models import Club, Competitie
 
 
 class TestSuperadminJourney:
@@ -150,13 +152,96 @@ class TestPaymentSetupJourney:
         assert any(p["competitie_naam"] == "Wintercompetitie" for p in prices)
 
 
+class TestPaymentFailurePaths:
+    """Negative-path tests for payment endpoints."""
+
+    async def test_rejects_invalid_mollie_api_key_format(
+        self, client: AsyncClient, superadmin_auth_headers: dict
+    ):
+        """Saving a Mollie key with an invalid prefix should fail."""
+        response = await client.post(
+            "/api/v1/payments/config",
+            json={"api_key": "invalid_key"},
+            headers=superadmin_auth_headers,
+        )
+
+        assert response.status_code == 400
+        assert "Invalid API key format" in response.json()["detail"]
+
+    async def test_create_payment_requires_active_mandate(
+        self,
+        client: AsyncClient,
+        admin_auth_headers: dict,
+        db_session: AsyncSession,
+        club: Club,
+    ):
+        """Creating a payment should fail when no active mandate exists."""
+        competitie = Competitie(
+            club_id=club.id,
+            naam="Lentecompetitie",
+            speeldag="vrijdag",
+            start_datum=date(2024, 1, 1),
+            eind_datum=date(2024, 12, 31),
+        )
+        db_session.add(competitie)
+        await db_session.commit()
+
+        response = await client.post(
+            "/api/v1/payments/payments",
+            json={"competitie_naam": competitie.naam},
+            params={"webhook_url": "https://example.com/webhook"},
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Active mandate required"
+
+    async def test_get_club_mandate_for_other_club_forbidden(
+        self,
+        client: AsyncClient,
+        admin_auth_headers: dict,
+        db_session: AsyncSession,
+    ):
+        """Tenant users cannot request another club's mandate."""
+        other_club = Club(
+            naam="Andere Club",
+            slug="andereclub",
+            status="trial",
+        )
+        db_session.add(other_club)
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/v1/payments/mandates/{other_club.id}",
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Access denied"
+
+    async def test_checkout_status_without_mandate_returns_empty_payment_state(
+        self,
+        client: AsyncClient,
+        admin_auth_headers: dict,
+    ):
+        """Checkout status reports no active mandate when none exists."""
+        response = await client.get(
+            "/api/v1/payments/checkout-status",
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["has_active_mandate"] is False
+        assert payload["mandate_status"] is None
+        assert payload["paid_competitions"] == []
+
+
 class TestDisplayJourney:
     """Tests for public display functionality."""
 
     async def test_view_published_ronde_without_auth(self, client: AsyncClient, db_session):
         """Journey: Anyone with public token can view a published round."""
-        from datetime import date
-
         from app.models import Club, Competitie, Speelronde
 
         club = Club(naam="Test Club", slug="testdisplay", status="trial")
