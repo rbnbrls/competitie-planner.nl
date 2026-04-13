@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import { superadminApi } from "../../lib/api";
 
 interface User {
@@ -16,6 +17,7 @@ interface User {
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const clubFilter = "";
@@ -23,6 +25,7 @@ export default function UsersPage() {
 
   const fetchUsers = useCallback(() => {
     setIsLoading(true);
+    setLoadError(null);
     superadminApi
       .listUsers({
         search: search || undefined,
@@ -30,7 +33,14 @@ export default function UsersPage() {
         club_id: clubFilter || undefined,
       })
       .then((res) => setUsers(res.data))
-      .catch(console.error)
+      .catch((err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          setLoadError("Je sessie is verlopen. Log opnieuw in om gebruikers te laden.");
+          return;
+        }
+        setLoadError("Gebruikers konden niet worden geladen.");
+        console.error(err);
+      })
       .finally(() => setIsLoading(false));
   }, [search, roleFilter, clubFilter]);
 
@@ -77,6 +87,12 @@ export default function UsersPage() {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Gebruikers</h2>
+
+      {loadError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {loadError}
+        </div>
+      )}
 
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -171,6 +187,13 @@ export default function UsersPage() {
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
+                    Geen gebruikers gevonden.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

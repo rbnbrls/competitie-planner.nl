@@ -85,24 +85,24 @@ export default function TenantLayout() {
                   {club?.naam || "Vereniging"}
                </h2>
                <div className="flex items-center gap-1.5 mt-0.5">
-                   {hasAccess ? (
-                     <>
-                       <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                       <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Systeem Actief</span>
-                     </>
-                   ) : (
-                     <>
-                       <div className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse"></div>
-                       <span className="text-[10px] font-bold text-orange-300 uppercase tracking-widest">Betaling Required</span>
-                     </>
-                   )}
+                    {hasAccess ? (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-[var(--theme-nav-foreground)] opacity-70 uppercase tracking-widest">Systeem Actief</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-[var(--theme-nav-foreground)] opacity-70 uppercase tracking-widest">Betaling Required</span>
+                      </>
+                    )}
                </div>
             </div>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           <div className="mb-4 rounded-xl border border-white/15 bg-white/5 p-2">
-            <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-widest text-white/70">Thema</p>
+            <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-widest text-[var(--theme-nav-foreground)] opacity-70">Thema</p>
             <div className="grid grid-cols-2 gap-1">
               <button
                 type="button"
@@ -110,7 +110,7 @@ export default function TenantLayout() {
                 className={`rounded-lg px-2 py-2 text-[11px] font-bold transition ${
                   themePreset === "base"
                     ? "bg-white text-gray-900"
-                    : "text-white/80 hover:bg-white/10"
+                    : "text-[var(--theme-nav-foreground)] opacity-80 hover:bg-white/10"
                 }`}
               >
                 Basis
@@ -121,7 +121,7 @@ export default function TenantLayout() {
                 className={`rounded-lg px-2 py-2 text-[11px] font-bold transition ${
                   themePreset === "precision-court"
                     ? "bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)]"
-                    : "text-white/80 hover:bg-white/10"
+                    : "text-[var(--theme-nav-foreground)] opacity-80 hover:bg-white/10"
                 }`}
               >
                 The Precision Court
@@ -138,7 +138,7 @@ export default function TenantLayout() {
                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
                   isActive
                     ? "bg-[var(--theme-primary)] text-white shadow-xl ring-2 ring-white/20"
-                    : "text-white/70 hover:text-white hover:bg-white/10"
+                    : "text-[var(--theme-nav-foreground)] opacity-70 hover:opacity-100 hover:bg-white/10"
                 }`}
               >
                 <Icon size={18} className={isActive ? "text-white" : "text-white/60 group-hover:text-white transition-colors"} />
@@ -188,7 +188,7 @@ export default function TenantLayout() {
                     className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
                       isActive
                         ? "bg-[var(--theme-primary)] text-white shadow-lg"
-                        : "text-white/70 hover:text-white hover:bg-white/10"
+                        : "text-[var(--theme-nav-foreground)] opacity-70 hover:opacity-100 hover:bg-white/10"
                     }`}
                   >
                     <Icon size={18} className={isActive ? "text-white" : "text-white/60 group-hover:text-white"} />

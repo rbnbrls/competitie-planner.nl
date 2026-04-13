@@ -28,6 +28,8 @@ const CompetitiesPage = lazy(() => import("./pages/tenant/Competities"));
 const TeamsPage = lazy(() => import("./pages/tenant/Teams"));
 const SpeelrondesPage = lazy(() => import("./pages/tenant/Speelrondes"));
 const RondeDetailPage = lazy(() => import("./pages/tenant/RondeDetail"));
+const RondePlannerPage = lazy(() => import("./pages/tenant/RondePlanner"));
+const WedstrijdenPage = lazy(() => import("./pages/tenant/Wedstrijden"));
 const PrintView = lazy(() => import("./pages/tenant/PrintView"));
 const HistoriePage = lazy(() => import("./pages/tenant/Historie"));
 const CheckoutPage = lazy(() => import("./pages/tenant/Checkout"));
@@ -135,6 +137,7 @@ function AdminRoutesInner() {
                 <a href="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
                 <a href="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
                 <a href="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</a>
+                <a href="/payments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Betalingen</a>
               </div>
             </div>
             <div className="hidden lg:flex items-center">
@@ -163,6 +166,7 @@ function AdminRoutesInner() {
               <a href="/dashboard" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
               <a href="/clubs" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
               <a href="/users" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</a>
+              <a href="/payments" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Betalingen</a>
             </div>
             <div className="pt-4 pb-4 border-t px-4">
               <span className="text-sm text-gray-600 block">{auth.user?.email}</span>
@@ -173,13 +177,15 @@ function AdminRoutesInner() {
       </nav>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/clubs/new" element={<NewClubPage />} />
           <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
     </>
@@ -250,6 +256,8 @@ function AppRoutes() {
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/teams/:competitieId" element={<TeamsPage />} />
               <Route path="/rondes/:competitieId" element={<SpeelrondesPage />} />
+              <Route path="/wedstrijden/:competitieId" element={<WedstrijdenPage />} />
+              <Route path="/rondeplanner/:competitieId" element={<RondePlannerPage />} />
               <Route path="/ronde/:rondeId/:competitieId" element={<RondeDetailPage />} />
               <Route path="/ronde/:rondeId/:competitieId/print" element={<PrintView />} />
               <Route path="/historie/:competitieId" element={<HistoriePage />} />
