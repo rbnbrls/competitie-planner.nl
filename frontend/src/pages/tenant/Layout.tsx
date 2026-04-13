@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export default function TenantLayout() {
-  const { club, logout } = useAuth();
+  const { user, club, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [themePreset, setThemePreset] = useState<"base" | "precision-court">(
@@ -67,6 +67,10 @@ export default function TenantLayout() {
     { path: "/gebruikers", label: "Gebruikers", icon: Users },
     { path: "/checkout", label: "Betalingen", icon: CreditCard },
   ];
+
+  if (!user) {
+    return <Outlet />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row pb-16 lg:pb-0 overflow-x-hidden">

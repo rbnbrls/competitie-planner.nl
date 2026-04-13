@@ -131,7 +131,22 @@ async def plan_competitie(
     competitie = result.scalar_one_or_none()
     if not competitie:
         logger.error("competitie_not_found_for_planning", competitie_id=str(competitie_id))
-        raise ValueError("Competitie not found")
+        return {
+            "success": False,
+            "toewijzingen": [],
+            "logs": [
+                {
+                    "severity": "error",
+                    "message": "Competitie not found",
+                }
+            ],
+            "counts": {
+                "rondes": 0,
+                "toewijzingen": 0,
+                "errors": 1,
+                "warnings": 0,
+            },
+        }
 
     club = competitie.club
     logger.debug("found_club_for_planning", club_id=str(club.id), club_name=club.naam)

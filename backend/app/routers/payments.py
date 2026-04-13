@@ -298,7 +298,7 @@ async def get_checkout_status(
     service = MollieService(db)
     mandate = await service.get_club_mandate(club.id)
     payments = await service.get_club_payments(club.id)
-    has_active_mandate = mandate and mandate.status == "active"
+    has_active_mandate = bool(mandate and mandate.status == "active")
     paid_competitions = {p.competitie_naam for p in payments if p.status == "paid"}
     return {
         "has_active_mandate": has_active_mandate,
