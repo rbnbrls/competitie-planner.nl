@@ -1,4 +1,13 @@
 """
+File: backend/tests/test_competities.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
+"""
 Tests for competities and teams CRUD endpoints
 """
 
@@ -79,6 +88,26 @@ class TestCompetitiesCreate:
         data = response.json()
         assert data["naam"] == "Winter Competition 2024"
 
+    async def test_create_competitie_invalid_date_range(
+        self,
+        client: AsyncClient,
+        admin_auth_headers,
+    ):
+        """Test creating a competition with end date before start date returns 422."""
+        response = await client.post(
+            "/api/v1/tenant/competities",
+            json={
+                "naam": "Invalid Competition",
+                "speeldag": "maandag",
+                "start_datum": "2025-12-01",
+                "eind_datum": "2025-09-01",
+            },
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "eind_datum must be after start_datum" in detail
+
 
 class TestCompetitiesGet:
     """Tests for getting a single competition."""
@@ -122,6 +151,92 @@ class TestCompetitiesGet:
             headers=admin_auth_headers,
         )
         assert response.status_code == 404
+
+
+class TestCompetitiesUpdate:
+    """Tests for updating competities (PATCH)."""
+
+    async def test_update_competitie_invalid_date_range_start_after_end(
+        self,
+        client: AsyncClient,
+        admin_auth_headers,
+        db_session: AsyncSession,
+        club,
+    ):
+        """Test updating start_datum to after eind_datum returns 422."""
+        competitie = Competitie(
+            club_id=club.id,
+            naam="Test Comp",
+            speeldag="maandag",
+            start_datum=date(2024, 1, 1),
+            eind_datum=date(2024, 12, 31),
+        )
+        db_session.add(competitie)
+        await db_session.commit()
+        await db_session.refresh(competitie)
+
+        response = await client.patch(
+            f"/api/v1/tenant/competities/{competitie.id}",
+            json={"start_datum": "2025-06-01"},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "eind_datum must be after start_datum" in detail
+
+    async def test_update_competitie_invalid_date_range_end_before_start(
+        self,
+        client: AsyncClient,
+        admin_auth_headers,
+        db_session: AsyncSession,
+        club,
+    ):
+        """Test updating eind_datum to before start_datum returns 422."""
+        competitie = Competitie(
+            club_id=club.id,
+            naam="Test Comp",
+            speeldag="maandag",
+            start_datum=date(2024, 1, 1),
+            eind_datum=date(2024, 12, 31),
+        )
+        db_session.add(competitie)
+        await db_session.commit()
+        await db_session.refresh(competitie)
+
+        response = await client.patch(
+            f"/api/v1/tenant/competities/{competitie.id}",
+            json={"eind_datum": "2023-06-01"},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "eind_datum must be after start_datum" in detail
+
+    async def test_update_competitie_valid_date_range(
+        self,
+        client: AsyncClient,
+        admin_auth_headers,
+        db_session: AsyncSession,
+        club,
+    ):
+        """Test updating dates with valid range succeeds."""
+        competitie = Competitie(
+            club_id=club.id,
+            naam="Test Comp",
+            speeldag="maandag",
+            start_datum=date(2024, 1, 1),
+            eind_datum=date(2024, 12, 31),
+        )
+        db_session.add(competitie)
+        await db_session.commit()
+        await db_session.refresh(competitie)
+
+        response = await client.patch(
+            f"/api/v1/tenant/competities/{competitie.id}",
+            json={"start_datum": "2024-03-01", "eind_datum": "2025-03-01"},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200
 
 
 class TestTeamsCRUD:

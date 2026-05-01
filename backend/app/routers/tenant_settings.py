@@ -1,3 +1,12 @@
+"""
+File: backend/app/routers/tenant_settings.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 import logging
 import os
 import shutil
@@ -217,11 +226,23 @@ async def upload_logo(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    if file.size and file.size > 2 * 1024 * 1024:
+    max_size = 2 * 1024 * 1024  # 2MB
+    if file.size is not None and file.size > max_size:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File too large. Max 2MB.",
         )
+    # If file.size is None (no Content-Length), read and check manually
+    if file.size is None:
+        content = await file.read()
+        if len(content) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File too large. Max 2MB.",
+            )
+        # Reset file pointer for later reading
+        import io
+        file.file = io.BytesIO(content)
     allowed_extensions = {".png", ".svg"}
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed_extensions:

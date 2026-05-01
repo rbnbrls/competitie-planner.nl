@@ -1,3 +1,12 @@
+/*
+ * File: frontend/src/hooks/useRondeDetail.ts
+ * Last updated: 2026-05-01
+ * API version: 0.1.0
+ * Author: Ruben Barels <ruben@rabar.nl>
+ * Changelog:
+ *   - 2026-05-01: Initial metadata header added
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tenantApi } from "../lib/api";
 import { showToast } from "../components/Toast";

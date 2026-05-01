@@ -1,3 +1,12 @@
+"""
+File: backend/app/db.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

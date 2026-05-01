@@ -1,3 +1,12 @@
+/*
+ * File: frontend/src/lib/api.ts
+ * Last updated: 2026-05-01
+ * API version: 0.1.0
+ * Author: Ruben Barels <ruben@rabar.nl>
+ * Changelog:
+ *   - 2026-05-01: Initial metadata header added
+ */
+
 import axios from "axios";
 
 const getApiBaseUrl = () => {
@@ -19,6 +28,7 @@ export const api = axios.create({
     "Content-Type": "application/json",
     "Cache-Control": "no-cache",
   },
+  timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {
@@ -29,12 +39,44 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Helper: get user-friendly message for server errors
+const getServerErrorMessage = (status: number): string => {
+  const messages: Record<number, string> = {
+    500: 'Er is een interne serverfout opgetreden. Probeer het later opnieuw.',
+    502: 'De server is tijdelijk niet bereikbaar. Probeer het over een moment opnieuw.',
+    503: 'De dienst is tijdelijk niet beschikbaar door onderhoud. Probeer het later opnieuw.',
+    504: 'De server reageert niet op tijd. Controleer uw verbinding en probeer opnieuw.',
+  };
+  return messages[status] || 'Er is een serverfout opgetreden. Probeer het later opnieuw.';
+};
+
+// Helper: check if error is retryable (transient server errors)
+const isRetryableError = (status?: number): boolean => {
+  return status === 502 || status === 503 || status === 504;
+};
+
+// Helper: create a user-friendly error object
+const createUserError = (
+  status: number | undefined,
+  message: string,
+  isNetworkError = false
+): Error & { status?: number; isNetworkError?: boolean; isRetryable?: boolean } => {
+  const error = new Error(message);
+  (error as any).status = status;
+  (error as any).isNetworkError = isNetworkError;
+  (error as any).isRetryable = isRetryableError(status);
+  return error as any;
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
     // Don't intercept 401s on the login endpoints themselves
     const isLoginEndpoint = originalRequest?.url?.includes('/login');
+
+    // Handle 401 Unauthorized - attempt token refresh
     if (error.response?.status === 401 && !originalRequest._retry && !isLoginEndpoint) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem("refresh_token");
@@ -53,7 +95,60 @@ api.interceptors.response.use(
           window.location.href = "/login";
         }
       }
+      return Promise.reject(createUserError(401, 'Uw sessie is verlopen. Log opnieuw in.'));
     }
+
+    // Handle 5xx Server Errors
+    if (error.response?.status >= 500 && error.response?.status < 600) {
+      const status = error.response.status;
+      const friendlyMessage = getServerErrorMessage(status);
+
+      // Retry transient errors (502, 503, 504) once
+      if (isRetryableError(status) && !originalRequest._retryCount) {
+        originalRequest._retryCount = 1;
+        const retryDelay = status === 503 ? 2000 : 1000; // Longer delay for 503 (maintenance)
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        try {
+          return await api(originalRequest);
+        } catch (retryError) {
+          // If retry fails, fall through to reject with user-friendly message
+        }
+      }
+
+      return Promise.reject(createUserError(status, friendlyMessage));
+    }
+
+    // Handle network errors (no response from server)
+    if (!error.response && error.code !== 'ECONNABORTED') {
+      return Promise.reject(
+        createUserError(undefined, 'Geen verbinding met de server. Controleer uw internetverbinding.', true)
+      );
+    }
+
+    // Handle timeout errors
+    if (error.code === 'ECONNABORTED') {
+      return Promise.reject(
+        createUserError(undefined, 'De aanvraag duurde te lang. Probeer het opnieuw.')
+      );
+    }
+
+    // Handle 4xx client errors with user-friendly messages (except 401 which is handled above)
+    if (error.response?.status >= 400 && error.response?.status < 500 && error.response?.status !== 401) {
+      const status = error.response.status;
+      const clientMessages: Record<number, string> = {
+        400: 'Ongeldige aanvraag. Controleer uw invoer en probeer opnieuw.',
+        403: 'U heeft geen toestemming voor deze actie.',
+        404: 'De opgevraagde resource is niet gevonden.',
+        409: 'Er is een conflict met de huidige status van de resource.',
+        422: 'Ongeldige gegevens. Controleer uw invoer.',
+        429: 'Te veel aanvragen. Wacht even en probeer opnieuw.',
+      };
+      return Promise.reject(
+        createUserError(status, clientMessages[status] || 'Er is een fout opgetreden. Probeer het opnieuw.')
+      );
+    }
+
+    // For all other errors, pass through with minimal transformation
     return Promise.reject(error);
   }
 );

@@ -1,6 +1,16 @@
+/*
+ * File: frontend/src/hooks/useCompetities.ts
+ * Last updated: 2026-05-01
+ * API version: 0.1.0
+ * Author: Ruben Barels <ruben@rabar.nl>
+ * Changelog:
+ *   - 2026-05-01: Initial metadata header added
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tenantApi } from "../lib/api";
 import { showToast } from "../components/Toast";
+import { getErrorMessage } from "../lib/utils";
 
 export function useCompetities(params: { 
   page?: number; 
@@ -10,7 +20,7 @@ export function useCompetities(params: {
   const queryClient = useQueryClient();
 
   // Queries
-  const { data: competitiesData, isLoading } = useQuery({
+  const { data: competitiesData, isLoading, isError } = useQuery({
     queryKey: ["competities", params],
     queryFn: () => tenantApi.listCompetities({
       page: params.page,
@@ -27,8 +37,8 @@ export function useCompetities(params: {
       showToast.success("Competitie aangemaakt");
       queryClient.invalidateQueries({ queryKey: ["competities"] });
     },
-    onError: (err: any) => {
-      showToast.error(err.response?.data?.detail || "Fout bij aanmaken");
+    onError: (err: unknown) => {
+      showToast.error(getErrorMessage(err, "Fout bij aanmaken"));
     },
   });
 
@@ -39,8 +49,8 @@ export function useCompetities(params: {
       showToast.success("Competitie is met succes gekopieerd.");
       queryClient.invalidateQueries({ queryKey: ["competities"] });
     },
-    onError: () => {
-      showToast.error("Fout bij kopiëren van competitie.");
+    onError: (err: unknown) => {
+      showToast.error(getErrorMessage(err, "Fout bij kopiëren van competitie."));
     },
   });
 
@@ -51,8 +61,8 @@ export function useCompetities(params: {
       showToast.success("Tijdslotconfiguratie opgeslagen");
       queryClient.invalidateQueries({ queryKey: ["competities"] });
     },
-    onError: (err: any) => {
-      showToast.error(err.response?.data?.detail || "Fout bij opslaan");
+    onError: (err: unknown) => {
+      showToast.error(getErrorMessage(err, "Fout bij opslaan"));
     },
   });
 
@@ -61,6 +71,7 @@ export function useCompetities(params: {
     total: competitiesData?.data?.total || 0,
     totalPages: competitiesData?.data?.pages || 1,
     isLoading,
+    isError,
     createCompetitie: createMutation.mutateAsync,
     duplicateCompetitie: duplicateMutation.mutateAsync,
     updateTijdslotConfig: updateTijdslotConfigMutation.mutateAsync,

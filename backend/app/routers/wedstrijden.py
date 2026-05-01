@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db import get_db
 from app.models import Baan, Competitie, Speelronde, Team, Wedstrijd
@@ -68,10 +69,10 @@ async def list_wedstrijden(
                 detail="Access denied",
             )
     query = select(Wedstrijd).options(
-        Wedstrijd.thuisteam,
-        Wedstrijd.uitteam,
-        Wedstrijd.baan,
-        Wedstrijd.ronde,
+        selectinload(Wedstrijd.thuisteam),
+        selectinload(Wedstrijd.uitteam),
+        selectinload(Wedstrijd.baan),
+        selectinload(Wedstrijd.ronde),
     )
     conditions = []
     if competitie_id:

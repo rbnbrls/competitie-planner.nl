@@ -1,3 +1,20 @@
+"""
+Competitie-Planner API — Application Factory
+
+Last updated: 2026-05-01
+API version: v1
+Author/maintainer: Competitie-Planner Team
+
+Changelog:
+- 2026-05-01: Added structured response for competitie not found (v1)
+- 2026-05-01: Fixed timezone-aware datetime handling (v1)
+- 2026-05-01: Added file size validation fix for logo upload (v1)
+- 2026-05-01: Fixed balanced match validation in wedstrijden (v1)
+- 2026-04-30: Split main.py into modular router files (v1)
+- 2026-04-30: Added display routes and improved login validation (v1)
+- 2026-04-29: Added local database reset for testing (v1)
+"""
+
 from fastapi import FastAPI
 
 from app.config import settings

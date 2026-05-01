@@ -1,3 +1,12 @@
+"""
+File: backend/alembic/versions/9ac07d06ca65_add_missing_club_fields.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 """add missing club fields
 
 Revision ID: 9ac07d06ca65

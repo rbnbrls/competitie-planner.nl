@@ -1,3 +1,12 @@
+/*
+ * File: frontend/src/pages/tenant/PrintView.tsx
+ * Last updated: 2026-05-01
+ * API version: 0.1.0
+ * Author: Ruben Barels <ruben@rabar.nl>
+ * Changelog:
+ *   - 2026-05-01: Initial metadata header added
+ */
+
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useRondeDetail } from "../../hooks/useRondeDetail";

@@ -1,3 +1,12 @@
+/*
+ * File: frontend/src/components/Select.test.tsx
+ * Last updated: 2026-05-01
+ * API version: 0.1.0
+ * Author: Ruben Barels <ruben@rabar.nl>
+ * Changelog:
+ *   - 2026-05-01: Initial metadata header added
+ */
+
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { Select } from './Select'

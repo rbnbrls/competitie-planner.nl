@@ -1,4 +1,13 @@
-from datetime import datetime, timedelta
+"""
+File: backend/app/routers/tenant.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import structlog
@@ -166,8 +175,8 @@ async def login(
     )
     user = result.scalar_one_or_none()
     if user:
-        if user.locked_until and user.locked_until > datetime.now():
-            retry_after = int((user.locked_until - datetime.now()).total_seconds())
+        if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
+            retry_after = int((user.locked_until - datetime.now(UTC).replace(tzinfo=None)).total_seconds())
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Account is tijdelijk geblokkeerd wegens te veel mislukte pogingen. Probeer het over {retry_after // 60 + 1} minuten opnieuw.",
@@ -185,7 +194,7 @@ async def login(
                     attempts=user.failed_login_attempts,
                 )
             if user.failed_login_attempts >= 10:
-                user.locked_until = datetime.now() + timedelta(minutes=15)
+                user.locked_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=15)
                 log_audit(
                     "auth.account_locked",
                     actor_id=str(user.id),
@@ -219,7 +228,7 @@ async def login(
     # Reset failed attempts on success
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now()
+    user.last_login = datetime.now(UTC).replace(tzinfo=None)
     log_audit(
         "auth.login_success",
         actor_id=str(user.id),
@@ -326,7 +335,7 @@ async def create_invite(
     import secrets
 
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now() + timedelta(hours=48)
+    expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=48)
     invite = InviteToken(
         club_id=club.id,
         email=invite_data.email,
@@ -365,7 +374,7 @@ async def accept_invite(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired invite token",
         )
-    if invite.expires_at < datetime.now():
+    if invite.expires_at < datetime.now(UTC).replace(tzinfo=None):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite token has expired",
@@ -460,7 +469,7 @@ async def forgot_password(
         result = await db.execute(
             select(func.count(PasswordResetToken.id)).where(
                 PasswordResetToken.user_id == user.id,
-                PasswordResetToken.created_at > datetime.now() - timedelta(hours=1),
+                PasswordResetToken.created_at > datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1),
             )
         )
         reset_count = result.scalar()
@@ -472,7 +481,7 @@ async def forgot_password(
         import secrets
 
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now() + timedelta(hours=1)
+        expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1)
         reset_token = PasswordResetToken(
             club_id=club.id,
             user_id=user.id,
@@ -510,7 +519,7 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token",
         )
-    if reset_token.expires_at < datetime.now():
+    if reset_token.expires_at < datetime.now(UTC).replace(tzinfo=None):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",

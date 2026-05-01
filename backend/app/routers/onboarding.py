@@ -1,3 +1,12 @@
+"""
+File: backend/app/routers/onboarding.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 from datetime import date
 from uuid import UUID
 
@@ -9,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db import get_db
 from app.models import Baan, Club, Competitie, Team
+from app.schemas import Speeldag
 from app.services.tenant_auth import get_current_tenant_user
 
 router = APIRouter(prefix="/tenant/onboarding", tags=["onboarding"])
@@ -175,11 +185,10 @@ async def save_competition(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="De competitie moet minimaal 4 weken duren.",
         )
-    valid_days = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
-    if data.speeldag.lower() not in valid_days:
+    if data.speeldag.lower() not in [d.value for d in Speeldag]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ongeldige speeldag. Kies: maandag, dinsdag, woensdag, donderdag, vrijdag, zaterdag of zondag.",
+            detail=f"Ongeldige speeldag. Kies: {', '.join(d.value for d in Speeldag)}.",
         )
     competitie = Competitie(
         club_id=club.id,

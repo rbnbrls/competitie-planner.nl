@@ -1,3 +1,12 @@
+"""
+File: backend/app/routers/teams.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 import csv
 import io
 from uuid import UUID
@@ -133,6 +142,18 @@ async def create_team(
         data.club_id = club.id
     except Exception:
         pass
+    existing = await db.execute(
+        select(Team).where(
+            Team.club_id == club.id,
+            Team.competitie_id == data.competitie_id,
+            Team.naam == data.naam,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Team name already exists within this competitie",
+        )
     team = Team(
         club_id=club.id,
         competitie_id=data.competitie_id,
@@ -179,6 +200,20 @@ async def update_team(
             detail="Team not found",
         )
     if data.naam is not None:
+        if data.naam != team.naam:
+            existing = await db.execute(
+                select(Team).where(
+                    Team.club_id == club.id,
+                    Team.competitie_id == team.competitie_id,
+                    Team.naam == data.naam,
+                    Team.id != team.id,
+                )
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Team name already exists within this competitie",
+                )
         team.naam = data.naam
     if data.captain_naam is not None:
         team.captain_naam = data.captain_naam

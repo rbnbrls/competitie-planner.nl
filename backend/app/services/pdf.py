@@ -1,3 +1,12 @@
+"""
+File: backend/app/services/pdf.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 import io
 from datetime import datetime
 from uuid import UUID
@@ -38,7 +47,7 @@ class PDFService:
                 joinedload(Speelronde.baantoewijzingen).joinedload(BaanToewijzing.team),
             )
         )
-        ronde = result.scalar_one_or_none()
+        ronde = result.unique().scalar_one_or_none()
         if not ronde:
             raise ValueError("Ronde not found")
 

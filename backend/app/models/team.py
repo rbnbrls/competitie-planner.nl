@@ -1,7 +1,16 @@
+"""
+File: backend/app/models/team.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,6 +52,7 @@ class Team(Base):
         Index("idx_teams_club", "club_id"),
         Index("idx_teams_club_actief", "club_id", "actief"),
         Index("idx_teams_club_competitie", "club_id", "competitie_id"),
+        UniqueConstraint("club_id", "competitie_id", "naam", name="uq_teams_club_competitie_naam"),
     )
 
     competitie: Mapped["Competitie"] = relationship("Competitie", back_populates="teams")

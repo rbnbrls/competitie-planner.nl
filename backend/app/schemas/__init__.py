@@ -1,9 +1,21 @@
+"""
+File: backend/app/schemas/__init__.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 from datetime import date, datetime, time
 from enum import StrEnum
 from typing import TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
+from typing import Annotated
+
+NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 
 T = TypeVar("T")
 
@@ -14,6 +26,22 @@ class PaginatedResponse[T](BaseModel):
     page: int
     size: int
     pages: int
+
+
+class Speeldag(StrEnum):
+    MAANDAG = "maandag"
+    DINSDAG = "dinsdag"
+    WOENSDAG = "woensdag"
+    DONDERDAG = "donderdag"
+    VRIJDAG = "vrijdag"
+    ZATERDAG = "zaterdag"
+    ZONDAG = "zondag"
+
+
+class CompetitieType(StrEnum):
+    VOORJAAR = "voorjaar"
+    NAJAAR = "najaar"
+    INTERN = "intern"
 
 
 class WedstrijdStatus(StrEnum):
@@ -139,7 +167,7 @@ class UserUpdate(BaseModel):
 
 
 class ClubBase(BaseModel):
-    naam: str
+    naam: NonEmptyString
     slug: str
     adres: str | None = None
     postcode: str | None = None
@@ -155,7 +183,7 @@ class ClubCreate(ClubBase):
 
 
 class ClubUpdate(BaseModel):
-    naam: str | None = None
+    naam: NonEmptyString | None = None
     slug: str | None = None
     adres: str | None = None
     postcode: str | None = None
@@ -196,7 +224,7 @@ class ClubResponse(ClubBase):
 
 
 class TeamBase(BaseModel):
-    naam: str
+    naam: NonEmptyString
     captain_naam: str | None = None
     captain_email: EmailStr | None = None
     speelklasse: str | None = None
@@ -261,8 +289,8 @@ class BaanResponse(BaanBase):
 
 
 class CompetitieBase(BaseModel):
-    naam: str
-    speeldag: str
+    naam: NonEmptyString
+    speeldag: Speeldag
     start_datum: date
     eind_datum: date
     feestdagen: list[date] = []
@@ -273,7 +301,7 @@ class CompetitieBase(BaseModel):
     eerste_datum: date | None = None
     hergebruik_configuratie: bool = True
     reminder_days_before: int = 3
-    competitie_type: str | None = None
+    competitie_type: CompetitieType | None = None
     poule_grootte: int = 8
     aantal_speeldagen: int = 7
     speelvorm: str | None = None
@@ -285,8 +313,8 @@ class CompetitieCreate(CompetitieBase):
 
 
 class CompetitieUpdate(BaseModel):
-    naam: str | None = None
-    speeldag: str | None = None
+    naam: NonEmptyString | None = None
+    speeldag: Speeldag | None = None
     start_datum: date | None = None
     eind_datum: date | None = None
     feestdagen: list[date] | None = None
@@ -297,7 +325,7 @@ class CompetitieUpdate(BaseModel):
     eerste_datum: date | None = None
     hergebruik_configuratie: bool | None = None
     reminder_days_before: int | None = None
-    competitie_type: str | None = None
+    competitie_type: CompetitieType | None = None
     poule_grootte: int | None = None
     aantal_speeldagen: int | None = None
     speelvorm: str | None = None

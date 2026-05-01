@@ -1,3 +1,12 @@
+/*
+ * File: frontend/src/test/msw/handlers.ts
+ * Last updated: 2026-05-01
+ * API version: 0.1.0
+ * Author: Ruben Barels <ruben@rabar.nl>
+ * Changelog:
+ *   - 2026-05-01: Initial metadata header added
+ */
+
 import { http, HttpResponse, delay } from 'msw'
 
 // Axios uses http://localhost:8000/api/v1 as base URL in tests

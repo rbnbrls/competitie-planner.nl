@@ -1,3 +1,12 @@
+"""
+File: backend/app/routers/competities.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 from datetime import date, time, timedelta
 from uuid import UUID
 
@@ -38,6 +47,11 @@ async def create_competitie(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
+    if data.eind_datum <= data.start_datum:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="eind_datum must be after start_datum",
+        )
     if data.aantal_speeldagen > data.poule_grootte - 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -77,7 +91,7 @@ async def create_competitie(
         "zaterdag": 5,
         "zondag": 6,
     }
-    weekday_target = speeldag_to_weekday.get(data.speeldag.lower())
+    weekday_target = speeldag_to_weekday.get(str(data.speeldag))
     if weekday_target is not None:
         if data.eerste_datum:
             first_date = data.eerste_datum
@@ -222,21 +236,14 @@ async def list_competitie_templates(
     summary="Get competition details",
 )
 async def get_competitie(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -272,21 +279,14 @@ async def get_competitie(
     summary="List competition rounds",
 )
 async def list_rondes(
-    competitie_id: str,
+    competitie_id: UUID,
     lazy: bool = False,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     query = select(Speelronde).where(
-        Speelronde.competitie_id == competitie_uuid,
+        Speelronde.competitie_id == competitie_id,
         Speelronde.club_id == club.id,
     )
     if lazy:
@@ -316,18 +316,14 @@ async def list_rondes(
 
 @router.get("/{competitie_id}/teams")
 async def list_competitie_teams(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid competition ID")
     result = await db.execute(
         select(Team)
-        .where(Team.competitie_id == competitie_uuid, Team.club_id == club.id)
+        .where(Team.competitie_id == competitie_id, Team.club_id == club.id)
         .order_by(Team.naam)
     )
     teams = result.scalars().all()
@@ -348,25 +344,21 @@ async def list_competitie_teams(
 
 @router.post("/{competitie_id}/teams")
 async def create_competitie_team(
-    competitie_id: str,
+    competitie_id: UUID,
     data: TeamBase,
     current: tuple = CURRENT_ADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid competition ID")
     # Check if competitie exists and belongs to club
     result = await db.execute(
-        select(Competitie).where(Competitie.id == competitie_uuid, Competitie.club_id == club.id)
+        select(Competitie).where(Competitie.id == competitie_id, Competitie.club_id == club.id)
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Competitie not found")
     team = Team(
         club_id=club.id,
-        competitie_id=competitie_uuid,
+        competitie_id=competitie_id,
         naam=data.naam,
         captain_naam=data.captain_naam,
         captain_email=data.captain_email,
@@ -383,29 +375,22 @@ async def create_competitie_team(
 
 @router.get("/{competitie_id}/seizoensoverzicht", response_model=SeizoensoverzichtResponse)
 async def get_seizoensoverzicht(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ):
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     # Fetch rounds
     rondes_result = await db.execute(
         select(Speelronde)
-        .where(Speelronde.competitie_id == competitie_uuid, Speelronde.club_id == club.id)
+        .where(Speelronde.competitie_id == competitie_id, Speelronde.club_id == club.id)
         .order_by(Speelronde.datum)
     )
     rondes = rondes_result.scalars().all()
     # Fetch teams
     teams_result = await db.execute(
         select(Team)
-        .where(Team.competitie_id == competitie_uuid, Team.club_id == club.id)
+        .where(Team.competitie_id == competitie_id, Team.club_id == club.id)
         .order_by(Team.naam)
     )
     teams = teams_result.scalars().all()
@@ -413,12 +398,12 @@ async def get_seizoensoverzicht(
     toewijzingen_result = await db.execute(
         select(BaanToewijzing)
         .join(Speelronde)
-        .where(Speelronde.competitie_id == competitie_uuid)
+        .where(Speelronde.competitie_id == competitie_id)
         .options(joinedload(BaanToewijzing.baan))
     )
     toewijzingen = toewijzingen_result.scalars().all()
     wedstrijden_result = await db.execute(
-        select(Wedstrijd).where(Wedstrijd.competitie_id == competitie_uuid)
+        select(Wedstrijd).where(Wedstrijd.competitie_id == competitie_id)
     )
     wedstrijden = wedstrijden_result.scalars().all()
     # Lookups
@@ -463,20 +448,16 @@ async def get_seizoensoverzicht(
 
 @router.get("/{competitie_id}/seizoensoverzicht/pdf")
 async def export_seizoensoverzicht_pdf(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ):
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid competition ID")
     from app.services.pdf import PDFService
 
     pdf_service = PDFService(db)
     try:
-        pdf_content = await pdf_service.generate_seizoensoverzicht_pdf(competitie_uuid)
+        pdf_content = await pdf_service.generate_seizoensoverzicht_pdf(competitie_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return Response(
@@ -490,15 +471,11 @@ async def export_seizoensoverzicht_pdf(
 
 @router.get("/{competitie_id}/seizoensoverzicht/csv")
 async def export_seizoensoverzicht_csv(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ):
     user, club = current
-    try:
-        UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid competition ID")
     # Re-use the logic from get_seizoensoverzicht but format as CSV
     data = await get_seizoensoverzicht(competitie_id, current, db)
     import csv
@@ -527,22 +504,15 @@ class CompetitieSettingsUpdate(BaseModel):
 
 @router.patch("/{competitie_id}")
 async def update_competitie(
-    competitie_id: str,
+    competitie_id: UUID,
     data: CompetitieUpdate,
     current: tuple = CURRENT_ADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -560,6 +530,14 @@ async def update_competitie(
         competitie.start_datum = data.start_datum
     if data.eind_datum is not None:
         competitie.eind_datum = data.eind_datum
+    # Validate date range if both dates are set (either updated or already present)
+    effective_start = data.start_datum if data.start_datum is not None else competitie.start_datum
+    effective_end = data.eind_datum if data.eind_datum is not None else competitie.eind_datum
+    if effective_end <= effective_start:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="eind_datum must be after start_datum",
+        )
     if data.feestdagen is not None:
         competitie.feestdagen = data.feestdagen
     if data.inhaal_datums is not None:
@@ -598,22 +576,15 @@ async def update_competitie(
 
 @router.patch("/{competitie_id}/settings")
 async def update_competitie_settings(
-    competitie_id: str,
+    competitie_id: UUID,
     data: CompetitieSettingsUpdate,
     current: tuple = CURRENT_ADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -644,21 +615,14 @@ async def update_competitie_settings(
 
 @router.delete("/{competitie_id}")
 async def delete_competitie(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_ADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -683,21 +647,14 @@ class TijdslotConfig(BaseModel):
 
 @router.get("/{competitie_id}/tijdslot-config")
 async def get_tijdslot_config(
-    competitie_id: str,
+    competitie_id: UUID,
     current: tuple = CURRENT_TENANT_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -707,27 +664,20 @@ async def get_tijdslot_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Competitie not found",
         )
-    return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)
+    return await planning_service.get_standaard_tijdslot_config(competitie_id, db)
 
 
 @router.put("/{competitie_id}/tijdslot-config")
 async def update_tijdslot_config(
-    competitie_id: str,
+    competitie_id: UUID,
     data: TijdslotConfig,
     current: tuple = CURRENT_ADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -756,7 +706,7 @@ async def update_tijdslot_config(
         competitie.reminder_days_before = data.reminder_days_before
     await db.commit()
     await db.refresh(competitie)
-    return await planning_service.get_standaard_tijdslot_config(competitie_uuid, db)
+    return await planning_service.get_standaard_tijdslot_config(competitie_id, db)
 
 
 class DuplicateCompetitieRequest(BaseModel):
@@ -768,22 +718,15 @@ class DuplicateCompetitieRequest(BaseModel):
 
 @router.post("/{competitie_id}/duplicate")
 async def duplicate_competitie(
-    competitie_id: str,
+    competitie_id: UUID,
     data: DuplicateCompetitieRequest,
     current: tuple = CURRENT_ADMIN_DEP,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, club = current
-    try:
-        competitie_uuid = UUID(competitie_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid competitie ID",
-        )
     result = await db.execute(
         select(Competitie).where(
-            Competitie.id == competitie_uuid,
+            Competitie.id == competitie_id,
             Competitie.club_id == club.id,
         )
     )
@@ -802,6 +745,11 @@ async def duplicate_competitie(
         )
     new_start = date(int(parts_start[0]), int(parts_start[1]), int(parts_start[2]))
     new_end = date(int(parts_end[0]), int(parts_end[1]), int(parts_end[2]))
+    if new_end <= new_start:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="eind_datum must be after start_datum",
+        )
     new_competitie = Competitie(
         club_id=club.id,
         naam=data.new_naam,
@@ -825,7 +773,7 @@ async def duplicate_competitie(
     if data.copy_teams:
         result = await db.execute(
             select(Team).where(
-                Team.competitie_id == competitie_uuid,
+                Team.competitie_id == competitie_id,
             )
         )
         original_teams = list(result.scalars().all())

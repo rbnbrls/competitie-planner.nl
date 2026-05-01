@@ -1,3 +1,12 @@
+"""
+File: backend/app/routers/superadmin.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 import os
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -7,10 +16,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.exceptions import ResourceNotFoundError
+from app.exceptions import ConflictError, ResourceNotFoundError
 from app.models import Club, CompetitionPrice, InviteToken, MollieConfig, Payment, SepaMandate, User
 from app.routers.auth import get_current_superadmin
 from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, UserUpdate
@@ -124,6 +134,11 @@ async def create_club(
     # Extract admin info if provided
     admin_email = club_data.admin_email
 
+    # Check for duplicate slug before insert
+    existing_slug = await db.execute(select(Club).where(Club.slug == club_data.slug))
+    if existing_slug.scalar_one_or_none():
+        raise ConflictError("Slug already exists")
+
     # Create club without extra fields
     club_dict = club_data.model_dump(exclude={"admin_email", "admin_full_name"})
     club = Club(**club_dict)
@@ -168,10 +183,19 @@ async def update_club(
     if not club:
         raise ResourceNotFoundError("Club niet gevonden")
     update_data = club_data.model_dump(exclude_unset=True)
+
+    # Check for duplicate slug if slug is being updated
+    if "slug" in update_data and update_data["slug"] != club.slug:
+        existing_slug = await db.execute(select(Club).where(Club.slug == update_data["slug"]))
+        if existing_slug.scalar_one_or_none():
+            raise ConflictError("Slug already exists")
+
     for field, value in update_data.items():
         setattr(club, field, value)
+
     await db.commit()
     await db.refresh(club)
+
     log_audit(
         "club.update",
         actor_id=str(current_user.id),

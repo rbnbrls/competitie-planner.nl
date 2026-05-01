@@ -1,4 +1,13 @@
 """
+File: backend/tests/test_superadmin_journeys.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
+"""
 Customer Journey: Superadmin and Payments
 Test complete flows for superadmin operations and payment setup
 """
@@ -293,6 +302,7 @@ class TestDisplayJourney:
         assert response.status_code == 200
         assert "x-frame-options" not in response.headers
         assert "frame-ancestors *" in response.headers["content-security-policy"]
+        assert response.headers["cache-control"] == "no-cache"
         data = response.json()
         assert data["club"]["slug"] == club.slug
         assert data["ronde"] is None

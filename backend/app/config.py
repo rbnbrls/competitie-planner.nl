@@ -1,3 +1,12 @@
+"""
+File: backend/app/config.py
+Last updated: 2026-05-01
+API version: 0.1.0
+Author: Ruben Barels <ruben@rabar.nl>
+Changelog:
+  - 2026-05-01: Initial metadata header added
+"""
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,6 +28,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     CACHE_TTL_SECONDS: int = 300
     SENTRY_DSN: str = ""
+    # Maximum request body size in bytes (default: 1 MB)
+    MAX_REQUEST_SIZE: int = 1_048_576
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
