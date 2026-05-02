@@ -76,6 +76,9 @@ async def get_onboarding_status(
     )
     competities = result.scalars().all()
     has_teams = any(len(comp.teams) > 0 for comp in competities)
+    resume_competitie = next((comp for comp in competities if comp.teams), None)
+    if resume_competitie is None and competities:
+        resume_competitie = competities[0]
     return {
         "onboarding_completed": user.onboarding_completed,
         "step1_completed": club.naam is not None and len(club.naam) >= 2,
@@ -86,6 +89,7 @@ async def get_onboarding_status(
         "has_courts": len(club.banen) > 0 if club.banen else False,
         "has_competition": len(competities) > 0,
         "has_teams": has_teams,
+        "competitie_id": str(resume_competitie.id) if resume_competitie else None,
     }
 
 
