@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Annotated, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
+from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints, model_validator
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 
@@ -220,6 +220,11 @@ class ClubResponse(ClubBase):
     sponsored_since: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="after")
+    def derive_sponsored(self):
+        self.is_sponsored = self.status == "gesponsord"
+        return self
 
 
 class TeamBase(BaseModel):

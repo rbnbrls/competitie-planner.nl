@@ -27,6 +27,7 @@ import {
 import { 
   Button, 
   Card, 
+  CardContent,
   CardHeader, 
   CardTitle, 
   CardDescription, 

@@ -26,15 +26,11 @@ from app.schemas import ClubCreate, ClubResponse, ClubUpdate, UserResponse, User
 from app.services.audit import log_audit
 
 
-class SponsorUpdate(BaseModel):
-    is_sponsored: bool
+router = APIRouter(prefix="/superadmin", tags=["superadmin"])
 
 
 class ResetDatabaseRequest(BaseModel):
     confirm: bool = False
-
-
-router = APIRouter(prefix="/superadmin", tags=["superadmin"])
 
 
 @router.get("/dashboard")
@@ -47,6 +43,7 @@ async def get_dashboard(
     total_clubs = len(clubs)
     active_clubs = sum(1 for c in clubs if c.status == "active")
     trial_clubs = sum(1 for c in clubs if c.status == "trial")
+    gesponsord_clubs = sum(1 for c in clubs if c.status == "gesponsord")
     suspended_clubs = sum(1 for c in clubs if c.status == "suspended")
     users_result = await db.execute(select(User).where(User.is_superadmin.is_not(True)))
     users = users_result.scalars().all()
@@ -64,6 +61,7 @@ async def get_dashboard(
             "total_clubs": total_clubs,
             "active_clubs": active_clubs,
             "trial_clubs": trial_clubs,
+            "gesponsord_clubs": gesponsord_clubs,
             "suspended_clubs": suspended_clubs,
             "total_users": total_users,
             "active_users_last_7_days": active_users,
@@ -206,38 +204,6 @@ async def update_club(
     return club
 
 
-@router.patch("/clubs/{club_id}/sponsor", response_model=ClubResponse)
-async def update_sponsor_status(
-    club_id: UUID,
-    data: SponsorUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_superadmin),
-) -> Club:
-    result = await db.execute(select(Club).where(Club.id == club_id))
-    club = result.scalar_one_or_none()
-    if not club:
-        raise ResourceNotFoundError("Club niet gevonden")
-
-    if data.is_sponsored and not club.is_sponsored:
-        club.sponsored_since = datetime.utcnow()
-    elif not data.is_sponsored:
-        club.sponsored_since = None
-
-    club.is_sponsored = data.is_sponsored
-    await db.commit()
-    await db.refresh(club)
-
-    log_audit(
-        "club.sponsor.update",
-        actor_id=str(current_user.id),
-        actor_email=current_user.email,
-        target_type="club",
-        target_id=str(club_id),
-        changed_fields=["is_sponsored", "sponsored_since"],
-    )
-    return club
-
-
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     club_id: UUID | None = None,
@@ -324,6 +290,7 @@ async def get_billing_overview(
     clubs = result.scalars().all()
     trials = []
     actives = []
+    gesponsord = []
     suspended = []
     # now = datetime.now(UTC)  # reserved for future billing logic
     for c in clubs:
@@ -339,15 +306,19 @@ async def get_billing_overview(
             trials.append(entry)
         elif c.status == "active":
             actives.append(entry)
+        elif c.status == "gesponsord":
+            gesponsord.append(entry)
         elif c.status == "suspended":
             suspended.append(entry)
     return {
         "trials": trials,
         "actives": actives,
+        "gesponsord": gesponsord,
         "suspended": suspended,
         "summary": {
             "total_trials": len(trials),
             "total_actives": len(actives),
+            "total_gesponsord": len(gesponsord),
             "total_suspended": len(suspended),
         },
     }

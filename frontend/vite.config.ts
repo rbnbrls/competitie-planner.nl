@@ -56,10 +56,9 @@ export default defineConfig({
     port: 5173,
     // Allowed hosts for local development only.
     // - localhost/127.0.0.1: Standard dev server access
-    // - meppers.lvh.me: Specific subdomain used for local multi-tenant testing
-    // Wildcard patterns (e.g. ".lvh.me") are intentionally excluded to prevent DNS rebinding attacks.
-    // This setting only affects the dev server; production builds (vite build) are not impacted.
-    allowedHosts: ["meppers.lvh.me", "localhost", "127.0.0.1"],
+    // - lvh.me: Resolves to 127.0.0.1, used for local multi-tenant subdomain testing
+    // - *.lvh.me: Any subdomain of lvh.me (e.g., pvdv.lvh.me, testvereniging.lvh.me)
+    allowedHosts: true,
     proxy: {
       "/api": {
         target: "http://backend:8000",

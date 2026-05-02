@@ -180,7 +180,7 @@ async def update_toewijzing(
         )
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
+    if club.status not in ("trial", "gesponsord") and not is_paid:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
@@ -295,7 +295,7 @@ async def publish_ronde(
         )
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
+    if club.status not in ("trial", "gesponsord") and not is_paid:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
@@ -378,7 +378,7 @@ async def depublish_ronde(
         )
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
+    if club.status not in ("trial", "gesponsord") and not is_paid:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
@@ -617,7 +617,7 @@ async def bulk_generate_rondes(
         )
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
+    if club.status not in ("trial", "gesponsord") and not is_paid:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
@@ -682,7 +682,7 @@ async def bulk_publish_rondes(
         )
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
+    if club.status not in ("trial", "gesponsord") and not is_paid:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",
@@ -815,7 +815,7 @@ async def apply_planning(
         )
     mollie_service = MollieService(db)
     is_paid = await mollie_service.is_competitie_paid(club.id, competitie.naam)
-    if club.status != "trial" and not is_paid:
+    if club.status not in ("trial", "gesponsord") and not is_paid:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"Betaling nodig voor competitie '{competitie.naam}'. Ga naar het Payments tabblad om te betalen.",

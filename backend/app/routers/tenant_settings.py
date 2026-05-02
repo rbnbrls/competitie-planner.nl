@@ -629,5 +629,5 @@ async def get_club(
         "accent_color": club.accent_color,
         "logo_url": club.logo_url,
         "font_choice": club.font_choice,
-        "is_sponsored": club.is_sponsored,
+        "is_sponsored": club.status == "gesponsord",
     }

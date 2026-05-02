@@ -90,4 +90,4 @@ class TokenPayload:
 
 
 def has_full_access(club: Club) -> bool:
-    return club.payment_enabled or club.is_sponsored
+    return club.payment_enabled or club.status == "gesponsord"

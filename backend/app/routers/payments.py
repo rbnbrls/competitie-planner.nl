@@ -314,7 +314,7 @@ async def get_checkout_status(
         "paid_competitions": list(paid_competitions),
         "mandate_status": mandate.status if mandate else None,
         "iban": service.mask_iban(mandate.iban) if mandate else None,
-        "is_sponsored": club.is_sponsored,
+        "is_sponsored": club.status == "gesponsord",
     }
 
 

@@ -494,15 +494,6 @@ export const handlers = [
     })
   }),
 
-  http.patch(`${API_BASE}/superadmin/clubs/:id/sponsor`, async ({ request }) => {
-    await delay(100)
-    const body = await request.json() as Record<string, unknown>
-    return HttpResponse.json({
-      id: 'c1',
-      is_sponsored: body.is_sponsored,
-    })
-  }),
-
   http.post(`${API_BASE}/superadmin/clubs`, async ({ request }) => {
     await delay(100)
     const body = await request.json() as Record<string, unknown>

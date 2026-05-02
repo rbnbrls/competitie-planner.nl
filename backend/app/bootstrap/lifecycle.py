@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.bootstrap.auto_migrate import auto_migrate
 from app.cache import cache
 from app.config import settings
 from app.db import engine
@@ -60,6 +61,7 @@ def _validate_runtime_security() -> None:
 async def lifespan(_: FastAPI):
     if not _in_test_mode():
         _validate_runtime_security()
+        await auto_migrate()
 
     try:
         await cache.get_client()

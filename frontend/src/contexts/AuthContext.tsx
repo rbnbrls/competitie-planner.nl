@@ -95,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const response = await tenantApi.superadminLogin(storedClubSlug);
                 const { user: superadminUser, club: superadminClub } = response.data;
                 localStorage.setItem("club_slug", storedClubSlug);
+                if (superadminClub) {
+                  localStorage.setItem("club_id", superadminClub.id);
+                }
                 setUser({ ...superadminUser, club_slug: storedClubSlug });
                 setIsSuperadminSession(true);
                 if (superadminClub) {
@@ -157,9 +160,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { access_token, refresh_token } = response.data;
       localStorage.setItem("access_token", access_token);
       localStorage.setItem("refresh_token", refresh_token);
-      localStorage.removeItem("club_slug");
       const meResponse = await authApi.me();
-      setUser({ ...meResponse.data, is_superadmin: true });
+
+      const storedSlug = localStorage.getItem("club_slug");
+      if (storedSlug) {
+        try {
+          const clubResponse = await tenantApi.superadminLogin(storedSlug);
+          const { club: superadminClub } = clubResponse.data;
+          if (superadminClub) {
+            localStorage.setItem("club_id", superadminClub.id);
+          }
+        } catch {
+          // If superadmin-login fails, continue as regular superadmin session
+        }
+      } else {
+        localStorage.removeItem("club_id");
+      }
+
+      setUser({ ...meResponse.data, is_superadmin: true, club_slug: storedSlug || undefined });
     }
   };
 
@@ -168,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("club_slug");
+    localStorage.removeItem("club_id");
     setUser(null);
     document.documentElement.style.removeProperty("--color-primary");
     document.documentElement.style.removeProperty("--color-secondary");

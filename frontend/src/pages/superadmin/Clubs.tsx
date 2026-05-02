@@ -95,6 +95,7 @@ export default function ClubsPage() {
       trial: "bg-blue-100 text-blue-800",
       suspended: "bg-red-100 text-red-800",
       inactive: "bg-gray-100 text-gray-800",
+      gesponsord: "bg-yellow-100 text-yellow-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
@@ -139,6 +140,7 @@ export default function ClubsPage() {
             <option value="">Alle statussen</option>
             <option value="trial">Trial</option>
             <option value="active">Actief</option>
+            <option value="gesponsord">Gesponsord</option>
             <option value="suspended">Gesuspendeerd</option>
             <option value="inactive">Inactief</option>
           </select>
