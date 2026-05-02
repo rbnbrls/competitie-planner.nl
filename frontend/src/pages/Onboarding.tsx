@@ -27,6 +27,7 @@ interface OnboardingStatus {
   has_courts: boolean;
   has_competition: boolean;
   has_teams: boolean;
+  competitie_id?: string | null;
 }
 
 const STEP_LABELS = ["Club", "Banen", "Competitie", "Teams"];
@@ -39,7 +40,7 @@ export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(true);
   const [competitieId, setCompetitieId] = useState<string>("");
 
-  const completeOnboarding = async () => {
+  const completeOnboarding = useCallback(async () => {
     try {
       await onboardingApi.complete();
       navigate("/dashboard");
@@ -47,7 +48,7 @@ export default function Onboarding() {
       console.error("Failed to complete onboarding:", error);
       navigate("/dashboard");
     }
-  };
+  }, [navigate]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -61,7 +62,12 @@ export default function Onboarding() {
 
       if (response.data.step1_completed) setCurrentStep(2);
       if (response.data.step2_completed) setCurrentStep(3);
-      if (response.data.step3_completed) setCurrentStep(4);
+      if (response.data.step3_completed) {
+        if (response.data.competitie_id) {
+          setCompetitieId(response.data.competitie_id);
+        }
+        setCurrentStep(4);
+      }
       if (response.data.step4_completed) {
         completeOnboarding();
       }

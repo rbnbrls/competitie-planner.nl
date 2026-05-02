@@ -7,6 +7,13 @@ Changelog:
   - 2026-05-01: Initial metadata header added
 """
 
+from datetime import date, timedelta
+from typing import Any
+
+import httpx
+
+from app.logging_config import get_logger
+
 """
 Weather service using the free Open-Meteo API (no API key required).
 https://open-meteo.com/
@@ -23,13 +30,6 @@ WMO Weather interpretation codes (WW):
   95       Thunderstorm
   96,99    Thunderstorm with hail
 """
-
-from datetime import date, timedelta
-from typing import Any
-
-import httpx
-
-from app.logging_config import get_logger
 
 logger = get_logger("weather")
 

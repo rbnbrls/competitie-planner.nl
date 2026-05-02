@@ -7,6 +7,8 @@ Changelog:
   - 2026-05-01: Initial metadata header added
 """
 
+import structlog
+
 """
 Audit logging service.
 
@@ -17,8 +19,6 @@ to match your policy (see AUDIT_LOG_RETENTION_DAYS in config).
 All audit events carry audit=True so they can be filtered in any log
 aggregator (Loki, CloudWatch, Datadog, etc.).
 """
-
-import structlog
 
 _logger = structlog.get_logger()
 

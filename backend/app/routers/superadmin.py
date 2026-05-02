@@ -16,7 +16,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db

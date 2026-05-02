@@ -242,6 +242,7 @@ async def upload_logo(
             )
         # Reset file pointer for later reading
         import io
+
         file.file = io.BytesIO(content)
     allowed_extensions = {".png", ".svg"}
     ext = os.path.splitext(file.filename)[1].lower()

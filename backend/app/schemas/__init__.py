@@ -9,11 +9,10 @@ Changelog:
 
 from datetime import date, datetime, time
 from enum import StrEnum
-from typing import TypeVar
+from typing import Annotated, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
-from typing import Annotated
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 
