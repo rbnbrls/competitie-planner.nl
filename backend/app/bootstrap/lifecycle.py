@@ -38,9 +38,7 @@ def _validate_runtime_security() -> None:
                 "CORS_ORIGINS contains wildcard '*' in production. This is insecure. "
                 "Please restrict origins to specific domains."
             )
-        logger.warning(
-            "CORS_ORIGINS contains wildcard '*'. This allows requests from any origin."
-        )
+        logger.warning("CORS_ORIGINS contains wildcard '*'. This allows requests from any origin.")
 
     if is_production:
         for origin in settings.CORS_ORIGINS:
@@ -50,9 +48,7 @@ def _validate_runtime_security() -> None:
                     "Localhost origins should only be used in development."
                 )
 
-    logger.info(
-        "Security check: CSRF protection verified - tokens are stateless (OAuth2 Bearer)."
-    )
+    logger.info("Security check: CSRF protection verified - tokens are stateless (OAuth2 Bearer).")
     logger.info(
         "audit_log_retention_policy",
         retention_days=settings.AUDIT_LOG_RETENTION_DAYS,
