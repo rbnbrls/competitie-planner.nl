@@ -9,7 +9,7 @@
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { authApi, tenantApi } from "../lib/api";
+import { authApi, tenantApi, ApiError } from "../lib/api";
 
 interface Club {
   id: string;
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSuperadminSession, setIsSuperadminSession] = useState(false);
   const sessionRestoreAttemptedRef = useRef(false);
-  const storedClubSlug = localStorage.getItem("club_slug");
+  const [storedClubSlug] = useState(() => localStorage.getItem("club_slug"));
 
   const {
     data: club,
@@ -90,8 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser({ ...res.data, club_slug: storedClubSlug, is_superadmin: false });
           })
           .catch(async (err) => {
-            const axiosErr = err as { response?: { status?: number } };
-            if (axiosErr.response?.status === 401 || axiosErr.response?.status === 403) {
+            if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
               try {
                 const response = await tenantApi.superadminLogin(storedClubSlug);
                 const { user: superadminUser, club: superadminClub } = response.data;
@@ -147,8 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const clubData = club || (await tenantApi.getClub()).data;
         applyClubTheme(clubData as Club);
       } catch (err) {
-        const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
-        if (axiosErr.response?.status === 400 && axiosErr.response?.data?.detail?.includes("superadmin")) {
+        const apiErr = err instanceof ApiError ? err : null;
+        if (apiErr?.status === 400 && apiErr.data?.detail?.includes("superadmin")) {
           throw new Error("ongeldige inloggegevens");
         }
         throw err;

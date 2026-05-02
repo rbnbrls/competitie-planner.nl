@@ -24,7 +24,8 @@ import {
   TableCell, 
   Badge, 
   Card,
-  LoadingSkeleton 
+  LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface Baan {
@@ -222,9 +223,18 @@ export default function BanenPage() {
             ))}
             {banen.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-40 text-center text-gray-500 font-medium">
-                  Geen banen geconfigureerd.
-                </TableCell>
+                <EmptyState
+                  icon={Sun}
+                  title="Geen banen geconfigureerd"
+                  description="Voeg je eerste tennisbaan toe om banen te beheren."
+                  actionLabel="Baan toevoegen"
+                  variant="table"
+                  colSpan={7}
+                  onAction={() => {
+                    resetForm();
+                    setShowModal(true);
+                  }}
+                />
               </TableRow>
             )}
           </TableBody>

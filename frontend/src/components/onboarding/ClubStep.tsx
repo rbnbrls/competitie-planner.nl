@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { onboardingApi } from "../../lib/api";
+import { onboardingApi, ApiError } from "../../lib/api";
 import { clubSchema, zodErrors } from "../../lib/schemas";
 
 interface ClubStepProps {
@@ -23,7 +23,7 @@ interface ClubStepProps {
   };
 }
 
-export default function ClubStep({ onNext, initialData }: ClubStepProps) {
+export function ClubStep({ onNext, initialData }: ClubStepProps) {
   const [formData, setFormData] = useState({
     naam: initialData?.naam || "",
     adres: initialData?.adres || "",
@@ -41,14 +41,7 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
     setErrors((prev) => ({ ...prev, [field]: fieldError || "" }));
   };
 
-  const getFormValues = () => ({
-    naam: formData.naam || (document.getElementById("naam") as HTMLInputElement)?.value || "",
-    adres: formData.adres || (document.getElementById("adres") as HTMLInputElement)?.value || "",
-    postcode: formData.postcode || (document.getElementById("postcode") as HTMLInputElement)?.value || "",
-    stad: formData.stad || (document.getElementById("stad") as HTMLInputElement)?.value || "",
-    telefoon: formData.telefoon || (document.getElementById("telefoon") as HTMLInputElement)?.value || "",
-    email: formData.email || (document.getElementById("email") as HTMLInputElement)?.value || "",
-  });
+  const getFormValues = () => formData;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,9 +64,8 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
       });
       onNext();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      if (err.response?.data?.detail) {
-        setErrors({ algemeen: err.response.data.detail });
+      if (error instanceof ApiError && error.data?.detail) {
+        setErrors({ algemeen: error.data.detail as string });
       } else {
         setErrors({ algemeen: "Er is iets misgegaan. Probeer het opnieuw." });
       }
@@ -83,6 +75,30 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
   };
 
   const handleChange = (field: string, value: string) => {
+    if (field === "telefoon") {
+      const digits = value.replace(/[^\d+]/g, "");
+      if (digits.startsWith("+31") || digits.startsWith("0")) {
+        let formatted = digits;
+        if (digits.length > 3) {
+          if (digits.startsWith("+31")) {
+            if (digits[3] === "6" && digits.length > 4) {
+              formatted = `+31 6 ${digits.slice(4, 6)} ${digits.slice(6, 10)}`.trim();
+            } else if (digits[3] === "6") {
+              formatted = `+31 6 ${digits.slice(4)}`.trim();
+            } else {
+              formatted = `+31 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`.trim();
+            }
+          } else if (digits[1] === "6" && digits.length > 4) {
+            formatted = `06 ${digits.slice(2, 4)} ${digits.slice(4, 8)}`.trim();
+          } else {
+            formatted = `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`.trim();
+          }
+        }
+        setFormData(prev => ({ ...prev, [field]: formatted }));
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
+        return;
+      }
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
@@ -184,14 +200,25 @@ export default function ClubStep({ onNext, initialData }: ClubStepProps) {
             <label htmlFor="telefoon" className="block text-lg font-semibold text-gray-700 mb-2">
               Telefoonnummer
             </label>
-            <input
-              type="tel"
-              id="telefoon"
-              value={formData.telefoon}
-              onChange={(e) => handleChange("telefoon", e.target.value)}
-              className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-              placeholder="06-12345678"
-            />
+              <div>
+                <input
+                  type="tel"
+                  id="telefoon"
+                  value={formData.telefoon}
+                  onChange={(e) => handleChange("telefoon", e.target.value)}
+                  onBlur={(e) => validateField("telefoon", e.target.value)}
+                  className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+                    errors.telefoon
+                      ? "border-red-400 bg-red-50"
+                      : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  }`}
+                  placeholder="06-12345678 of +31 6 12345678"
+                />
+                {errors.telefoon && (
+                  <p className="mt-2 text-lg text-red-600 font-medium">{errors.telefoon}</p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">Formaat: 06-12345678 of +31 6 12345678</p>
+              </div>
           </div>
 
           <div>

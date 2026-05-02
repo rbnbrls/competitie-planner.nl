@@ -9,7 +9,7 @@
 
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../../lib/api";
+import { authApi, ApiError } from "../../lib/api";
 
 interface RegisterAdminProps {
   onRegisterSuccess: () => void;
@@ -60,9 +60,8 @@ export default function RegisterAdmin({ onRegisterSuccess }: RegisterAdminProps)
       onRegisterSuccess();
       navigate("/dashboard");
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Registratie mislukt");
+      if (err instanceof ApiError) {
+        setError(err.data?.detail || "Registratie mislukt");
       } else {
         setError("Er is iets fout gegaan");
       }

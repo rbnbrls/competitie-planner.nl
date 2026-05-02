@@ -17,3 +17,4 @@ export * from "./Badge";
 export * from "./LoadingSkeleton";
 export * from "./Pagination";
 export * from "./Toast";
+export * from "./EmptyState";

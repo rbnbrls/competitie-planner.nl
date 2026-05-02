@@ -30,15 +30,9 @@ import {
   CardHeader, 
   CardTitle, 
   CardDescription, 
-  CardContent, 
   Badge, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  LoadingSkeleton 
+  LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface DashboardRonde {
@@ -343,9 +337,12 @@ export default function TenantDashboard() {
                 </TableBody>
               </Table>
             ) : (
-              <Card className="border-dashed flex items-center justify-center py-12 bg-gray-50/30">
-                <p className="text-gray-400 font-medium">Geen speelrondes gepland.</p>
-              </Card>
+              <EmptyState
+                icon={Calendar}
+                title="Geen speelrondes gepland"
+                description="Er zijn nog geen speelrondes aangemaakt of geïmporteerd."
+                variant="card"
+              />
             )}
           </section>
         </div>

@@ -11,6 +11,8 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { superadminApi } from "../../lib/api";
+import { EmptyState } from "../../components";
+import { UserPlus } from "lucide-react";
 
 interface User {
   id: string;
@@ -151,59 +153,66 @@ export default function UsersPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acties</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-4 py-4 whitespace-nowrap">{user.full_name || "-"}</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded text-xs ${getRoleBadge(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-gray-500">
-                    {user.club_id ? (
-                      <Link to={`/clubs/${user.club_id}`} className="text-blue-600 hover:underline">
-                        Bekijk
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-gray-500">
-                    {user.last_login
-                      ? new Date(user.last_login).toLocaleDateString("nl-NL")
-                      : "Nooit"}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        user.is_active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {user.is_active ? "Actief" : "Inactief"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleToggleActive(user.id, user.is_active)}
-                      className="text-sm text-gray-600 hover:text-gray-800"
-                    >
-                      {user.is_active ? "Deactiveren" : "Activeren"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
-                    Geen gebruikers gevonden.
-                  </td>
-                </tr>
-              )}
-            </tbody>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {users.length === 0 ? (
+                    <tr>
+                      <EmptyState
+                        icon={UserPlus}
+                        title="Geen gebruikers gevonden"
+                        description="Er zijn nog geen gebruikers in het systeem."
+                        variant="table"
+                        colSpan={7}
+                      />
+                    </tr>
+                  ) : (
+                    <>
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td className="px-4 py-4 whitespace-nowrap">{user.full_name || "-"}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 rounded text-xs ${getRoleBadge(user.role)}`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-500">
+                            {user.club_id ? (
+                              <Link to={`/clubs/${user.club_id}`} className="text-blue-600 hover:underline">
+                                Bekijk
+                              </Link>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-500">
+                            {user.last_login
+                              ? new Date(user.last_login).toLocaleDateString("nl-NL")
+                              : "Nooit"}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                user.is_active
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {user.is_active ? "Actief" : "Inactief"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => handleToggleActive(user.id, user.is_active)}
+                              className="text-sm text-gray-600 hover:text-gray-800"
+                            >
+                              {user.is_active ? "Deactiveren" : "Activeren"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </tbody>
           </table>
         </div>
       )}

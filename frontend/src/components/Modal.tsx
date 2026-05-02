@@ -11,6 +11,8 @@ import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 
+let openModalCount = 0;
+
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -46,28 +48,95 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const modalRef = React.useRef<HTMLDivElement>(null);
   const previousActiveElement = React.useRef<HTMLElement | null>(null);
+  const onCloseRef = React.useRef(onClose);
+  const titleId = React.useId();
+  const descriptionId = React.useId();
 
   React.useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleEsc);
-      document.body.style.overflow = "hidden";
-      previousActiveElement.current = document.activeElement as HTMLElement;
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const getFocusableElements = React.useCallback((): HTMLElement[] => {
+    const container = modalRef.current;
+    if (!container) return [];
+    return Array.from(
+      container.querySelectorAll<HTMLElement>(
+        'a[href], button, input, textarea, select, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(el => {
+      const computedStyle = window.getComputedStyle(el);
+      const isVisible =
+        el.offsetWidth > 0 ||
+        el.offsetHeight > 0 ||
+        computedStyle.visibility !== 'hidden' &&
+        computedStyle.display !== 'none';
+      return isVisible || el === document.activeElement;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElement.current = document.activeElement as HTMLElement;
+    openModalCount++;
+    document.body.style.overflow = "hidden";
+
+    const focusableElements = getFocusableElements();
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+    } else {
       modalRef.current?.focus();
     }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+
+      const focusable = getFocusableElements();
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const isFocusOnModal = document.activeElement === modalRef.current;
+
+      if (isFocusOnModal) {
+        e.preventDefault();
+        if (!e.shiftKey) {
+          first.focus();
+        } else {
+          last.focus();
+        }
+        return;
+      }
+
+      if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleEsc);
-      document.body.style.overflow = "unset";
+      document.removeEventListener("keydown", handleKeyDown);
+      openModalCount--;
+      if (openModalCount === 0) {
+        document.body.style.overflow = "unset";
+      }
       previousActiveElement.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, getFocusableElements]);
 
   if (!isOpen) return null;
-
-  const titleId = title ? `modal-title-${Math.random().toString(36).substr(2, 9)}` : undefined;
-  const descriptionId = description ? `modal-description-${Math.random().toString(36).substr(2, 9)}` : undefined;
 
   return (
     <div 
@@ -81,14 +150,14 @@ const Modal: React.FC<ModalProps> = ({
         aria-hidden="true"
       />
       
-      {/* Content */}
-      <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className={cn(
+{/* Content */}
+       <div
+         ref={modalRef}
+         role="dialog"
+         aria-modal="true"
+         {...(title && { "aria-labelledby": titleId })}
+         {...(description && { "aria-describedby": descriptionId })}
+         className={cn(
           "relative bg-white rounded-xl shadow-2xl overflow-hidden transition-all transform animate-in zoom-in-95 slide-in-from-bottom-4 duration-200",
           maxWidthClasses[maxWidth],
           "w-full mx-auto"

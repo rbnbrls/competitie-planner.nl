@@ -8,7 +8,7 @@
  */
 
 import { render, screen, waitFor, act } from '@testing-library/react'
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '../test/msw/server'
 import { AuthProvider, useAuth } from './AuthContext'
@@ -217,5 +217,28 @@ describe('AuthContext', () => {
     expect(localStorage.getItem('access_token')).toBeNull()
     expect(localStorage.getItem('refresh_token')).toBeNull()
     expect(localStorage.getItem('club_slug')).toBeNull()
+  })
+
+  it('reads club_slug from localStorage only once per mount', async () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem')
+
+    localStorage.setItem('club_slug', 'testclub')
+
+    render(
+      <TestWrapper>
+        <TestComponent />
+      </TestWrapper>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user')).toHaveTextContent('geen gebruiker')
+    })
+
+    const clubSlugCalls = getItemSpy.mock.calls.filter(
+      (call) => call[0] === 'club_slug'
+    )
+    expect(clubSlugCalls.length).toBe(1)
+
+    getItemSpy.mockRestore()
   })
 })

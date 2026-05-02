@@ -10,6 +10,8 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { superadminApi } from "../../lib/api";
+import { EmptyState } from "../../components";
+import { Users } from "lucide-react";
 
 interface Club {
   id: string;
@@ -158,30 +160,46 @@ export default function ClubsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acties</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {clubs.map((club) => (
-                  <tr key={club.id}>
-                    <td className="px-4 py-4 whitespace-nowrap">{club.naam}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-500">{club.slug}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs ${getStatusBadge(club.status)}`}>
-                        {club.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-500">
-                      {new Date(club.created_at).toLocaleDateString("nl-NL")}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <Link
-                        to={`/clubs/${club.id}`}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Bekijken
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {clubs.length === 0 ? (
+                    <tr>
+                      <EmptyState
+                        icon={Users}
+                        title="Geen verenigingen gevonden"
+                        description="Voeg je eerste vereniging toe om te beginnen."
+                        actionLabel="Nieuwe Vereniging"
+                        variant="table"
+                        colSpan={5}
+                        onAction={() => window.location.href = "/clubs/new"}
+                      />
+                    </tr>
+                  ) : (
+                    <>
+                      {clubs.map((club) => (
+                        <tr key={club.id}>
+                          <td className="px-4 py-4 whitespace-nowrap">{club.naam}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-500">{club.slug}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 rounded text-xs ${getStatusBadge(club.status)}`}>
+                              {club.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-500">
+                            {new Date(club.created_at).toLocaleDateString("nl-NL")}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <Link
+                              to={`/clubs/${club.id}`}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              Bekijken
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </tbody>
             </table>
           </div>
 

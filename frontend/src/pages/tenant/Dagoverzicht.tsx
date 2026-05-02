@@ -35,7 +35,8 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  LoadingSkeleton
+  LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface Competitie {
@@ -162,7 +163,12 @@ export default function DagoverzichtPage() {
       </div>
 
       {!dagoverzicht ? (
-         <div className="py-20 text-center font-bold text-gray-400 border-2 border-dashed rounded-3xl">Geen gegevens voor deze datum.</div>
+          <EmptyState
+            icon={CalendarIcon}
+            title="Geen gegevens voor deze datum"
+            description="Selecteer een andere datum om het dagoverzicht te bekijken."
+            variant="card"
+          />
       ) : (
         <div className="space-y-8">
           {/* Status Banner */}

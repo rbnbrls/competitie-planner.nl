@@ -15,9 +15,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test'
-
-// Re-export helper functions if needed
-export { injectAxe, runAxeAudit, expectNoAccessibilityViolations } from './accessibility-helper'
+import { injectAxe, runAxeAudit, expectNoAccessibilityViolations } from './accessibility-helper'
 
 // ============================================================================
 // Screen Reader Compatibility Tests
@@ -152,14 +150,12 @@ test.describe('Color Contrast', () => {
     
     // Use Playwright's built-in accessibility snapshot and axe-core
     // We'll inject axe-core manually for detailed contrast checking
-    await page.addScriptTag({
-      url: 'https://cdn.jsdelivr.net/npm/axe-core@4.10.0/axe.min.js',
-    })
+    await injectAxe(page)
     
     const results = await page.evaluate(async () => {
       // @ts-expect-error
       return await window.axe.run({
-        runOnly: { id: 'color-contrast' }
+        runOnly: { type: 'rule', values: ['color-contrast'] }
       })
     })
     
@@ -173,13 +169,11 @@ test.describe('Color Contrast', () => {
   test.skip('dashboard page has adequate color contrast', async ({ page }) => {
     await page.goto('/dashboard')
     
-    await page.addScriptTag({
-      url: 'https://cdn.jsdelivr.net/npm/axe-core@4.10.0/axe.min.js',
-    })
+    await injectAxe(page)
     
     const results = await page.evaluate(async () => {
       // @ts-expect-error
-      return await window.axe.run({ runOnly: { id: 'color-contrast' } })
+      return await window.axe.run({ runOnly: { type: 'rule', values: ['color-contrast'] } })
     })
     
     expect(results.violations?.length).toBe(0)

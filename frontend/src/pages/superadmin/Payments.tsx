@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { superadminApi } from "../../lib/api";
+import { superadminApi, ApiError } from "../../lib/api";
 
 const COMPETITIONS = [
   "Voorjaarscompetitie",
@@ -88,8 +88,8 @@ export default function PaymentsPage() {
       setMessage({ type: "success", text: "Mollie configuratie opgeslagen" });
       loadData();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setMessage({ type: "error", text: error.response?.data?.detail || "Configuratie opslaan mislukt" });
+      const error = err instanceof ApiError ? err : null;
+      setMessage({ type: "error", text: error?.data?.detail || "Configuratie opslaan mislukt" });
     } finally {
       setIsSaving(false);
     }
@@ -108,8 +108,8 @@ export default function PaymentsPage() {
       setMessage({ type: "success", text: "Prijs opgeslagen" });
       loadData();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setMessage({ type: "error", text: error.response?.data?.detail || "Prijs opslaan mislukt" });
+      const error = err instanceof ApiError ? err : null;
+      setMessage({ type: "error", text: error?.data?.detail || "Prijs opslaan mislukt" });
     } finally {
       setIsSaving(false);
     }

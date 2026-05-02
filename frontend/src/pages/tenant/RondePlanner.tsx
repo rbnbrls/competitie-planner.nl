@@ -9,7 +9,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, ApiError } from "../../lib/api";
+import { EmptyState } from "../../components";
+import { Upload } from "lucide-react";
 
 interface Baan {
   id: string;
@@ -91,8 +93,8 @@ export default function RondePlannerPage() {
       link.remove();
       setMessage("Agenda geëxporteerd");
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setMessage(error.response?.data?.detail || "Fout bij exporteren");
+      const error = err instanceof ApiError ? err : null;
+      setMessage(error?.data?.detail || "Fout bij exporteren");
     }
   };
 
@@ -296,9 +298,13 @@ export default function RondePlannerPage() {
         ))}
 
         {filteredRondes.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-            Nog geen wedstrijden beschikbaar. Importeer eerst het speelschema.
-          </div>
+          <EmptyState
+            icon={Upload}
+            title="Nog geen wedstrijden beschikbaar"
+            description="Importeer eerst het speelschema om wedstrijden te kunnen plannen."
+            actionLabel="Speelschema importeren"
+            variant="card"
+          />
         )}
       </div>
     </div>

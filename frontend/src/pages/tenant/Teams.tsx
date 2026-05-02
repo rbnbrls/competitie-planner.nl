@@ -27,6 +27,7 @@ import {
   Badge,
   Pagination,
   LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface Team {
@@ -441,9 +442,18 @@ export default function TeamsPage() {
             ))}
             {teams.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="h-40 text-center text-gray-500">
-                  Nog geen teams toegevoegd.
-                </TableCell>
+                <EmptyState
+                  icon={User}
+                  title="Nog geen teams toegevoegd"
+                  description="Voeg je eerste team toe om teams te beheren."
+                  actionLabel="Team toevoegen"
+                  variant="table"
+                  colSpan={6}
+                  onAction={() => {
+                    resetForm();
+                    setShowModal(true);
+                  }}
+                />
               </TableRow>
             )}
           </TableBody>
@@ -609,7 +619,7 @@ export default function TeamsPage() {
               isLoading={isSaving}
               disabled={importPreview.length === 0}
             >
-              Importeren
+              {isSaving ? "Importeren..." : "Importeren"}
             </Button>
           </>
         }

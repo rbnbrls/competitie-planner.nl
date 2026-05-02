@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, ApiError } from "../../lib/api";
 import { 
   Trophy, 
   Calendar, 
@@ -34,7 +34,8 @@ import {
   Badge, 
   Card,
   CardContent,
-  LoadingSkeleton 
+  LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface Team {
@@ -80,7 +81,7 @@ interface Competitie {
   naam: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "primary" | "success" | "warning" | "danger" | "outline"; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "primary" | "success" | "warning" | "danger" | "outline"; icon: React.ElementType }> = {
   gepland: { label: "Gepland", variant: "default", icon: Calendar },
   bevestigd: { label: "Bevestigd", variant: "primary", icon: CheckCircle2 },
   gaande: { label: "Gaande", variant: "warning", icon: Clock },
@@ -151,8 +152,8 @@ export default function WedstrijdenPage() {
         loadData();
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij importeren");
+      const error = err instanceof ApiError ? err : null;
+      showToast.error(error?.data?.detail || "Fout bij importeren");
     } finally {
       setIsSaving(false);
     }
@@ -167,8 +168,8 @@ export default function WedstrijdenPage() {
         setShowDetail(prev => prev ? { ...prev, status: newStatus } : null);
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij bijwerken");
+      const error = err instanceof ApiError ? err : null;
+      showToast.error(error?.data?.detail || "Fout bij bijwerken");
     }
   };
 
@@ -330,17 +331,12 @@ export default function WedstrijdenPage() {
         })}
         
         {filteredWedstrijden.length === 0 && (
-          <Card className="py-20 text-center border-dashed flex flex-col items-center gap-4 bg-gray-50/30">
-            <div className="p-4 bg-white rounded-full shadow-sm border">
-               <FileSearch size={32} className="text-gray-300" />
-            </div>
-            <div className="space-y-1">
-               <h3 className="font-bold text-gray-900">Geen wedstrijden gevonden</h3>
-               <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                 Pas je filters aan of importeer een speelschema om resultaten te zien.
-               </p>
-            </div>
-          </Card>
+          <EmptyState
+            icon={FileSearch}
+            title="Geen wedstrijden gevonden"
+            description="Pas je filters aan of importeer een speelschema om resultaten te zien."
+            variant="card"
+          />
         )}
       </div>
 

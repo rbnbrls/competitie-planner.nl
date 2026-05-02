@@ -7,13 +7,14 @@
  *   - 2026-05-01: Initial metadata header added
  */
 
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, Link } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { authApi, paymentApi } from "./lib/api";
 import { ToastContainer } from "./components/Toast";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const LoginPage = lazy(() => import("./pages/Login"));
 const RegisterAdminPage = lazy(() => import("./pages/admin/RegisterAdmin"));
@@ -48,9 +49,47 @@ const DagoverzichtPage = lazy(() => import("./pages/tenant/Dagoverzicht"));
 const SeizoensoverzichtPage = lazy(() => import("./pages/tenant/Seizoensoverzicht"));
 const OnboardingPage = lazy(() => import("./pages/Onboarding"));
 const CaptainPortaalPage = lazy(() => import("./pages/CaptainPortaal"));
+const TestModalPage = lazy(() => import("./pages/TestModal"));
 
 function LoadingFallback() {
-  return <div className="min-h-screen flex items-center justify-center">Laden...</div>;
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="text-center">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-blue-900">Competitie Planner</h1>
+          <p className="text-gray-500 mt-2">Laden...</p>
+        </div>
+        <div className="inline-flex items-center justify-center">
+          <svg
+            className="animate-spin h-10 w-10 text-blue-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+        </div>
+      </div>
+      <span className="sr-only">Bezig met laden, een moment geduld</span>
+    </div>
+  );
 }
 
 function TenantRoutes() {
@@ -63,7 +102,7 @@ function TenantRoutes() {
     if (!user) {
       return;
     }
-    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding", "/display/"];
+    const publicPaths = ["/login", "/checkout", "/invite", "/forgot-password", "/reset-password", "/onboarding", "/display/", "/test-modal"];
     if (publicPaths.some(p => location.pathname.startsWith(p))) {
       setIsLoading(false);
       return;
@@ -143,10 +182,10 @@ function AdminRoutesInner() {
             <div className="flex items-center">
               <h1 className="text-xl font-bold text-gray-900">Superadmin Panel</h1>
               <div className="hidden lg:ml-8 lg:flex lg:space-x-4">
-                <a href="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                <a href="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
-                <a href="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</a>
-                <a href="/payments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Betalingen</a>
+                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</Link>
+                <Link to="/clubs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</Link>
+                <Link to="/users" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</Link>
+                <Link to="/payments" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Betalingen</Link>
               </div>
             </div>
             <div className="hidden lg:flex items-center">
@@ -156,7 +195,7 @@ function AdminRoutesInner() {
             <div className="flex items-center lg:hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-600 hover:text-gray-900 p-2"
+                className="text-gray-600 hover:text-gray-900 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {mobileMenuOpen ? (
@@ -172,10 +211,10 @@ function AdminRoutesInner() {
         {mobileMenuOpen && (
           <div className="lg:hidden border-t">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              <a href="/dashboard" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-              <a href="/clubs" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</a>
-              <a href="/users" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</a>
-              <a href="/payments" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Betalingen</a>
+              <Link to="/dashboard" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Dashboard</Link>
+              <Link to="/clubs" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Verenigingen</Link>
+              <Link to="/users" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Gebruikers</Link>
+              <Link to="/payments" className="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Betalingen</Link>
             </div>
             <div className="pt-4 pb-4 border-t px-4">
               <span className="text-sm text-gray-600 block">{auth.user?.email}</span>
@@ -241,6 +280,7 @@ function AppRoutes() {
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/login" element={<TenantLoginPage />} />
+          <Route path="/test-modal" element={<TestModalPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
@@ -286,10 +326,12 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-      <ToastContainer />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+        <ToastContainer />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -8,7 +8,73 @@
  */
 
 import { useState, useRef } from "react";
-import { onboardingApi } from "../../lib/api";
+import { onboardingApi, ApiError } from "../../lib/api";
+import { InfoIcon } from "../icons/InfoIcon";
+
+/**
+ * Parse a CSV string into an array of rows, each row is an array of fields.
+ * RFC 4180 compliant: handles quoted fields, escaped quotes, CRLF/LF.
+ */
+export function parseCSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        field += '"';
+        i += 2;
+      } else if (char === '"') {
+        inQuotes = false;
+        i++;
+      } else {
+        field += char;
+        i++;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+        i++;
+      } else if (char === ',') {
+        row.push(field);
+        field = "";
+        i++;
+      } else if (char === '\r' && nextChar === '\n') {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+        i += 2;
+      } else if (char === '\n' || char === '\r') {
+        row.push(field);
+        field = "";
+        rows.push(row);
+        row = [];
+        i++;
+      } else {
+        field += char;
+        i++;
+      }
+    }
+  }
+
+  if (field || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  if (inQuotes) {
+    throw new Error("Malformed CSV: unterminated quoted field");
+  }
+
+  return rows;
+}
 
 interface Team {
   naam: string;
@@ -17,13 +83,18 @@ interface Team {
   speelklasse?: string;
 }
 
+interface CSVRow {
+  team: Team;
+  errors: string[];
+}
+
 interface TeamsStepProps {
   competitieId: string;
   onNext: () => void;
   onBack: () => void;
 }
 
-export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepProps) {
+export function TeamsStep({ competitieId, onNext, onBack }: TeamsStepProps) {
   const [teams, setTeams] = useState<Team[]>([
     { naam: "", captain_naam: "", captain_email: "", speelklasse: "" }
   ]);
@@ -31,7 +102,66 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
   const [isLoading, setIsLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [importMode, setImportMode] = useState<"manual" | "csv">("manual");
+  const [csvPreview, setCsvPreview] = useState<CSVRow[]>([]);
+  const [isParsingFile, setIsParsingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const validateCSVRows = (rows: Team[]): CSVRow[] => {
+    const validated: CSVRow[] = [];
+    const namen = new Set<string>();
+    
+    rows.forEach((row) => {
+      const errors: string[] = [];
+      const trimmedNaam = row.naam.trim();
+      
+      if (!trimmedNaam) {
+        errors.push("Teamnaam is verplicht");
+      } else {
+        const lowerNaam = trimmedNaam.toLowerCase();
+        if (namen.has(lowerNaam)) {
+          errors.push("Teamnaam is dubbel");
+        } else {
+          namen.add(lowerNaam);
+        }
+      }
+      
+      if (row.captain_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.captain_email)) {
+        errors.push("Ongeldig e-mailadres");
+      }
+      
+      validated.push({ team: row, errors });
+    });
+    
+    return validated;
+  };
+
+  const updateCsvPreviewRow = (index: number, field: keyof Team, value: string) => {
+    const updated = [...csvPreview];
+    updated[index] = {
+      ...updated[index],
+      team: { ...updated[index].team, [field]: value }
+    };
+    setCsvPreview(updated);
+  };
+
+  const removeCsvPreviewRow = (index: number) => {
+    setCsvPreview(csvPreview.filter((_, i) => i !== index));
+  };
+
+  const revalidateCsvPreview = () => {
+    const teams = csvPreview.map(r => r.team);
+    setCsvPreview(validateCSVRows(teams));
+  };
+
+  const commitValidCsvRows = () => {
+    const validTeams = csvPreview.filter(r => r.errors.length === 0 && r.team.naam.trim()).map(r => r.team);
+    setTeams(validTeams.length > 0 ? validTeams : teams);
+    setCsvPreview([]);
+  };
+
+  const clearCsvPreview = () => {
+    setCsvPreview([]);
+  };
 
   const addTeam = () => {
     setTeams([
@@ -77,9 +207,7 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSaveTeams = async () => {
     if (!validate()) return;
 
     setIsLoading(true);
@@ -94,15 +222,19 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
       });
       onNext();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      if (err.response?.data?.detail) {
-        setErrors({ algemeen: err.response.data.detail });
+      if (error instanceof ApiError && error.data?.detail) {
+        setErrors({ algemeen: error.data.detail as string });
       } else {
         setErrors({ algemeen: "Er is iets misgegaan. Probeer het opnieuw." });
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSaveTeams();
   };
 
   const downloadTemplate = () => {
@@ -120,33 +252,46 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsLoading(true);
+    setIsParsingFile(true);
     try {
       const text = await file.text();
-      const lines = text.split("\n").filter(line => line.trim());
-      const parsedTeams: Team[] = [];
-      
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(",").map(p => p.trim());
-        if (parts[0]) {
-          parsedTeams.push({
-            naam: parts[0] || "",
-            captain_naam: parts[1] || "",
-            captain_email: parts[2] || "",
-            speelklasse: parts[3] || "",
-          });
-        }
+      const rows = parseCSV(text);
+
+      if (rows.length < 2) {
+        setErrors({ algemeen: "Geen geldige teams gevonden in het bestand" });
+        return;
       }
-      
+
+      const headerRow = rows[0].map(h => h.trim().toLowerCase());
+      const naamIdx = headerRow.findIndex(h => h === "team_naam" || h === "naam" || h === "team");
+      const captainIdx = headerRow.findIndex(h => h === "captain_naam" || h === "captain" || h === "naam_captain");
+      const emailIdx = headerRow.findIndex(h => h === "captain_email" || h === "email" || h === "captain_mail");
+      const speelklasseIdx = headerRow.findIndex(h => h === "speelklasse" || h === "klasse" || h === "klasse_naam");
+
+      const parsedTeams: Team[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        parsedTeams.push({
+          naam: row[naamIdx !== -1 ? naamIdx : 0]?.trim() || "",
+          captain_naam: row[captainIdx !== -1 ? captainIdx : 1]?.trim() || "",
+          captain_email: row[emailIdx !== -1 ? emailIdx : 2]?.trim() || "",
+          speelklasse: row[speelklasseIdx !== -1 ? speelklasseIdx : 3]?.trim() || "",
+        });
+      }
+
       if (parsedTeams.length > 0) {
-        setTeams([...teams, ...parsedTeams]);
+        const validated = validateCSVRows(parsedTeams);
+        setCsvPreview(validated);
       } else {
         setErrors({ algemeen: "Geen geldige teams gevonden in het bestand" });
       }
-    } catch {
-      setErrors({ algemeen: "Kon het bestand niet lezen. Gebruik een geldige CSV." });
+    } catch (err: unknown) {
+      const message = err instanceof Error && err.message === "Malformed CSV: unterminated quoted field"
+        ? "Ongeldige CSV: een aangehaald veld is niet afgesloten"
+        : "Kon het bestand niet lezen. Gebruik een geldige CSV.";
+      setErrors({ algemeen: message });
     } finally {
-      setIsLoading(false);
+      setIsParsingFile(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -199,14 +344,27 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
               accept=".csv"
               ref={fileInputRef}
               onChange={handleFileImport}
+              data-testid="csv-file-input"
+              disabled={isParsingFile}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-lg file:border-0
                 file:text-sm file:font-semibold
                 file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
+                hover:file:bg-blue-100
+                disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
+          
+          {isParsingFile && (
+            <div className="mt-4 flex items-center gap-2 text-blue-700 font-medium">
+              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Importeren...</span>
+            </div>
+          )}
           
           <button
             type="button"
@@ -219,7 +377,156 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
             Download CSV-sjabloon
           </button>
           </div>
-          {teams.length > 0 && (
+
+          {errors.algemeen && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-lg">
+              {errors.algemeen}
+            </div>
+          )}
+
+          {csvPreview.length > 0 && (
+            <div className="mt-6">
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-4">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Importvoorbeelden</h3>
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-green-700 font-semibold">
+                    ✓ {csvPreview.filter(r => r.errors.length === 0 && r.team.naam.trim()).length} teams geldig
+                  </span>
+                  {csvPreview.filter(r => r.errors.length > 0 || !r.team.naam.trim()).length > 0 && (
+                    <span className="text-red-700 font-semibold">
+                      ✗ {csvPreview.filter(r => r.errors.length > 0 || !r.team.naam.trim()).length} fouten
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {csvPreview.map((row, index) => (
+                    <div
+                      key={index}
+                      className={`border rounded-lg p-4 ${
+                        row.errors.length > 0
+                          ? "border-red-300 bg-red-50"
+                          : row.team.naam.trim()
+                          ? "border-green-300 bg-green-50"
+                          : "border-yellow-300 bg-yellow-50"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-semibold text-gray-700">
+                          Rij {index + 1}: {row.team.naam.trim() || "(geen teamnaam)"}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => removeCsvPreviewRow(index)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Verwijderen
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Teamnaam <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={row.team.naam}
+                            onChange={(e) => {
+                              updateCsvPreviewRow(index, "naam", e.target.value);
+                              setTimeout(revalidateCsvPreview, 0);
+                            }}
+                            className={`w-full p-2 text-sm border rounded ${
+                              row.errors.some(e => e.includes("Teamnaam"))
+                                ? "border-red-400 bg-red-100"
+                                : "border-gray-300"
+                            }`}
+                            placeholder="Teamnaam"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Captain e-mail
+                          </label>
+                          <input
+                            type="text"
+                            value={row.team.captain_email || ""}
+                            onChange={(e) => {
+                              updateCsvPreviewRow(index, "captain_email", e.target.value);
+                              setTimeout(revalidateCsvPreview, 0);
+                            }}
+                            className={`w-full p-2 text-sm border rounded ${
+                              row.errors.some(e => e.includes("e-mailadres"))
+                                ? "border-red-400 bg-red-100"
+                                : "border-gray-300"
+                            }`}
+                            placeholder="email@example.com"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Captain naam
+                          </label>
+                          <input
+                            type="text"
+                            value={row.team.captain_naam || ""}
+                            onChange={(e) => updateCsvPreviewRow(index, "captain_naam", e.target.value)}
+                            className="w-full p-2 text-sm border border-gray-300 rounded"
+                            placeholder="Naam captain"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Speelklasse
+                          </label>
+                          <input
+                            type="text"
+                            value={row.team.speelklasse || ""}
+                            onChange={(e) => updateCsvPreviewRow(index, "speelklasse", e.target.value)}
+                            className="w-full p-2 text-sm border border-gray-300 rounded"
+                            placeholder="Speelklasse"
+                          />
+                        </div>
+                      </div>
+
+                      {row.errors.length > 0 && (
+                        <div className="mt-3 flex flex-col gap-1">
+                          {row.errors.map((error, errIdx) => (
+                            <p key={errIdx} className="text-sm text-red-600 font-medium">
+                              ⚠ {error}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={commitValidCsvRows}
+                    disabled={csvPreview.filter(r => r.errors.length === 0 && r.team.naam.trim()).length === 0}
+                    className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Importeer geldige teams ({csvPreview.filter(r => r.errors.length === 0 && r.team.naam.trim()).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearCsvPreview}
+                    className="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Annuleren
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {teams.length > 0 && csvPreview.length === 0 && (
             <div className="mt-6">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <p className="text-green-700 font-medium">
@@ -236,7 +543,7 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
+                  onClick={handleSaveTeams}
                   disabled={isLoading}
                   className="px-8 py-4 bg-green-600 text-white text-lg font-bold rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -256,9 +563,7 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
               onClick={() => setShowHelp(!showHelp)}
               className="flex items-center gap-2 text-blue-700 font-semibold"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <InfoIcon />
               Tips voor het invoeren van teams
             </button>
             {showHelp && (
@@ -296,71 +601,75 @@ export default function TeamsStep({ competitieId, onNext, onBack }: TeamsStepPro
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-lg font-semibold text-gray-700 mb-2">
-                      Teamnaam <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={team.naam}
-                      onChange={(e) => updateTeam(index, "naam", e.target.value)}
-                      className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                        errors[`team_${index}`] 
-                          ? "border-red-400 bg-red-50" 
-                          : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                      }`}
-                      placeholder="Bijv. Heren 1"
-                    />
-                    {errors[`team_${index}`] && (
-                      <p className="mt-2 text-lg text-red-600 font-medium">{errors[`team_${index}`]}</p>
-                    )}
-                  </div>
+                   <div>
+                     <label htmlFor={`team_naam_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                       Teamnaam <span className="text-red-500">*</span>
+                     </label>
+                     <input
+                       type="text"
+                       id={`team_naam_${index}`}
+                       value={team.naam}
+                       onChange={(e) => updateTeam(index, "naam", e.target.value)}
+                       className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+                         errors[`team_${index}`] 
+                           ? "border-red-400 bg-red-50" 
+                           : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                       }`}
+                       placeholder="Bijv. Heren 1"
+                     />
+                     {errors[`team_${index}`] && (
+                       <p className="mt-2 text-lg text-red-600 font-medium">{errors[`team_${index}`]}</p>
+                     )}
+                   </div>
 
-                  <div>
-                    <label className="block text-lg font-semibold text-gray-700 mb-2">
-                      Speelklasse
-                    </label>
-                    <input
-                      type="text"
-                      value={team.speelklasse || ""}
-                      onChange={(e) => updateTeam(index, "speelklasse", e.target.value)}
-                      className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                      placeholder="Bijv. Heren 1e klasse"
-                    />
-                  </div>
+                   <div>
+                     <label htmlFor={`team_speelklasse_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                       Speelklasse
+                     </label>
+                     <input
+                       type="text"
+                       id={`team_speelklasse_${index}`}
+                       value={team.speelklasse || ""}
+                       onChange={(e) => updateTeam(index, "speelklasse", e.target.value)}
+                       className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+                       placeholder="Bijv. Heren 1e klasse"
+                     />
+                   </div>
 
-                  <div>
-                    <label className="block text-lg font-semibold text-gray-700 mb-2">
-                      Captain naam
-                    </label>
-                    <input
-                      type="text"
-                      value={team.captain_naam || ""}
-                      onChange={(e) => updateTeam(index, "captain_naam", e.target.value)}
-                      className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                      placeholder="Naam van de captain"
-                    />
-                  </div>
+                   <div>
+                     <label htmlFor={`team_captain_naam_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                       Captain naam
+                     </label>
+                     <input
+                       type="text"
+                       id={`team_captain_naam_${index}`}
+                       value={team.captain_naam || ""}
+                       onChange={(e) => updateTeam(index, "captain_naam", e.target.value)}
+                       className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+                       placeholder="Naam van de captain"
+                     />
+                   </div>
 
-                  <div>
-                    <label className="block text-lg font-semibold text-gray-700 mb-2">
-                      Captain e-mail
-                    </label>
-                    <input
-                      type="email"
-                      value={team.captain_email || ""}
-                      onChange={(e) => updateTeam(index, "captain_email", e.target.value)}
-                      className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                        errors[`team_${index}_email`] 
-                          ? "border-red-400 bg-red-50" 
-                          : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                      }`}
-                      placeholder="email@example.com"
-                    />
-                    {errors[`team_${index}_email`] && (
-                      <p className="mt-2 text-lg text-red-600 font-medium">{errors[`team_${index}_email`]}</p>
-                    )}
-                  </div>
+                   <div>
+                     <label htmlFor={`team_captain_email_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                       Captain e-mail
+                     </label>
+                     <input
+                       type="email"
+                       id={`team_captain_email_${index}`}
+                       value={team.captain_email || ""}
+                       onChange={(e) => updateTeam(index, "captain_email", e.target.value)}
+                       className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+                         errors[`team_${index}_email`] 
+                           ? "border-red-400 bg-red-50" 
+                           : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                       }`}
+                       placeholder="email@example.com"
+                     />
+                     {errors[`team_${index}_email`] && (
+                       <p className="mt-2 text-lg text-red-600 font-medium">{errors[`team_${index}_email`]}</p>
+                     )}
+                   </div>
                 </div>
               </div>
             ))}

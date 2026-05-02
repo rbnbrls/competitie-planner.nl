@@ -8,13 +8,15 @@
  */
 
 import { Page } from '@playwright/test'
+import { createRequire } from 'module'
+import path from 'path'
 
-/**
- * Inject axe-core into the page for accessibility testing
- */
+const require = createRequire(import.meta.url)
+const axeCorePath = path.dirname(require.resolve('axe-core/package.json'))
+
 export async function injectAxe(page: Page): Promise<void> {
   await page.addScriptTag({
-    url: 'https://cdn.jsdelivr.net/npm/axe-core@4.10.0/axe.min.js',
+    path: path.join(axeCorePath, 'axe.min.js'),
   })
 }
 
@@ -27,7 +29,7 @@ export async function injectAxe(page: Page): Promise<void> {
 export async function runAxeAudit(
   page: Page,
   options?: { runOnly?: { type: string; values: string[] } }
-): Promise<any> {
+): Promise<unknown> {
   await injectAxe(page)
   
   const result = await page.evaluate(async (axeOptions) => {
@@ -56,12 +58,12 @@ export async function expectNoAccessibilityViolations(
   
   if (result.violations && result.violations.length > 0) {
     console.error(`Accessibility violations found on ${context}:`)
-    result.violations.forEach((violation: any) => {
+    result.violations.forEach((violation: { id: string; description: string; impact: string; help: string; nodes: { html: string }[] }) => {
       console.error(`\n  [${violation.id}] ${violation.description}`)
       console.error(`  Impact: ${violation.impact}`)
       console.error(`  Help: ${violation.help}`)
       console.error(`  Nodes affected: ${violation.nodes.length}`)
-      violation.nodes.forEach((node: any) => {
+      violation.nodes.forEach((node: { html: string }) => {
         console.error(`    - ${node.html.split('\n')[0].trim()}`)
       })
     })
@@ -75,7 +77,7 @@ export async function expectNoAccessibilityViolations(
  */
 export async function checkColorContrast(page: Page): Promise<void> {
   const result = await runAxeAudit(page, {
-    runOnly: { id: 'color-contrast' },
+    runOnly: { type: 'rule', values: ['color-contrast'] },
   })
   
   expect(result.violations?.length).toBe(0)

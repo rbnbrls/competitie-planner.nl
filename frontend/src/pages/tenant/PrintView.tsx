@@ -9,18 +9,35 @@
 
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useRondeDetail } from "../../hooks/useRondeDetail";
+import { useRondeDetail, Toewijzing } from "../../hooks/useRondeDetail";
 import { useAuth } from "../../contexts/AuthContext";
 import { tenantApi } from "../../lib/api";
 import { QRCodeSVG } from "qrcode.react";
 import { Printer, ArrowLeft, Download } from "lucide-react";
 import { Button, LoadingSkeleton } from "../../components";
 
+interface Team {
+  id: string;
+  naam: string;
+  captain_naam?: string;
+  speelklasse?: string;
+}
+
+interface Baan {
+  id: string;
+  nummer: number;
+  naam?: string;
+  prioriteit_score: number;
+  overdekt: boolean;
+  verlichting_type: string;
+  notitie?: string;
+}
+
 export default function PrintView() {
   const { rondeId, competitieId } = useParams<{ rondeId: string; competitieId: string }>();
   const navigate = useNavigate();
   const { club } = useAuth();
-  const { ronde, banen, teams, isLoading } = useRondeDetail(rondeId,  competitieId);
+  const { ronde, banen, teams, isLoadingRonde } = useRondeDetail(rondeId,  competitieId);
 
   useEffect(() => {
     // Set page title for print filename
@@ -29,7 +46,7 @@ export default function PrintView() {
     }
   }, [ronde, club]);
 
-  if (isLoading) return <LoadingSkeleton rows={20} />;
+  if (isLoadingRonde) return <LoadingSkeleton rows={20} />;
   if (!ronde) return (
     <div className="min-h-screen flex items-center justify-center">
        <div className="text-center">
@@ -133,14 +150,14 @@ export default function PrintView() {
             </thead>
             <tbody>
               {(ronde.toewijzingen || [])
-                .sort((a: any, b: any) => {
-                  const bA = banen.find((bn: any) => bn.id === a.baan_id);
-                  const bB = banen.find((bn: any) => bn.id === b.baan_id);
+                .sort((a: Toewijzing, b: Toewijzing) => {
+                  const bA = banen.find((bn: Baan) => bn.id === a.baan_id);
+                  const bB = banen.find((bn: Baan) => bn.id === b.baan_id);
                   return (bA?.nummer || 0) - (bB?.nummer || 0);
                 })
-                .map((t: any, idx: number) => {
-                  const team = teams.find((tm: any) => tm.id === t.team_id);
-                  const baan = banen.find((bn: any) => bn.id === t.baan_id);
+                .map((t: Toewijzing, idx: number) => {
+                  const team = teams.find((tm: Team) => tm.id === t.team_id);
+                  const baan = banen.find((bn: Baan) => bn.id === t.baan_id);
                   return (
                     <tr key={t.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/30"}>
                       <td className="border-2 border-gray-300 px-6 py-6 text-center">

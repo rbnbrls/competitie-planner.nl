@@ -9,7 +9,7 @@
 
 import { useState, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { superadminApi } from "../../lib/api";
+import { superadminApi, ApiError } from "../../lib/api";
 import { newClubSchema, zodErrors } from "../../lib/schemas";
 
 export default function NewClubPage() {
@@ -68,9 +68,8 @@ export default function NewClubPage() {
       });
       navigate("/clubs");
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Failed to create club");
+      if (err instanceof ApiError) {
+        setError(err.data?.detail || "Failed to create club");
       } else {
         setError("An unexpected error occurred");
       }

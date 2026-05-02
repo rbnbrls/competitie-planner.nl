@@ -55,17 +55,41 @@ const isRetryableError = (status?: number): boolean => {
   return status === 502 || status === 503 || status === 504;
 };
 
-// Helper: create a user-friendly error object
-const createUserError = (
+export class ApiError extends Error {
+  public status?: number;
+  public isNetworkError?: boolean;
+  public isRetryable?: boolean;
+  public data?: { detail?: string };
+
+  constructor(
+    message: string,
+    options?: {
+      status?: number;
+      isNetworkError?: boolean;
+      isRetryable?: boolean;
+      data?: { detail?: string };
+    }
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = options?.status;
+    this.isNetworkError = options?.isNetworkError;
+    this.isRetryable = options?.isRetryable ?? isRetryableError(options?.status);
+    this.data = options?.data;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
+const createApiError = (
   status: number | undefined,
   message: string,
-  isNetworkError = false
-): Error & { status?: number; isNetworkError?: boolean; isRetryable?: boolean } => {
-  const error = new Error(message);
-  (error as any).status = status;
-  (error as any).isNetworkError = isNetworkError;
-  (error as any).isRetryable = isRetryableError(status);
-  return error as any;
+  options?: { isNetworkError?: boolean; data?: { detail?: string } }
+): ApiError => {
+  return new ApiError(message, {
+    status,
+    isNetworkError: options?.isNetworkError,
+    data: options?.data,
+  });
 };
 
 api.interceptors.response.use(
@@ -95,7 +119,7 @@ api.interceptors.response.use(
           window.location.href = "/login";
         }
       }
-      return Promise.reject(createUserError(401, 'Uw sessie is verlopen. Log opnieuw in.'));
+      return Promise.reject(createApiError(401, 'Uw sessie is verlopen. Log opnieuw in.'));
     }
 
     // Handle 5xx Server Errors
@@ -115,20 +139,22 @@ api.interceptors.response.use(
         }
       }
 
-      return Promise.reject(createUserError(status, friendlyMessage));
+      return Promise.reject(createApiError(status, friendlyMessage, {
+        data: error.response?.data,
+      }));
     }
 
     // Handle network errors (no response from server)
     if (!error.response && error.code !== 'ECONNABORTED') {
       return Promise.reject(
-        createUserError(undefined, 'Geen verbinding met de server. Controleer uw internetverbinding.', true)
+        createApiError(undefined, 'Geen verbinding met de server. Controleer uw internetverbinding.', { isNetworkError: true })
       );
     }
 
     // Handle timeout errors
     if (error.code === 'ECONNABORTED') {
       return Promise.reject(
-        createUserError(undefined, 'De aanvraag duurde te lang. Probeer het opnieuw.')
+        createApiError(undefined, 'De aanvraag duurde te lang. Probeer het opnieuw.')
       );
     }
 
@@ -144,7 +170,9 @@ api.interceptors.response.use(
         429: 'Te veel aanvragen. Wacht even en probeer opnieuw.',
       };
       return Promise.reject(
-        createUserError(status, clientMessages[status] || 'Er is een fout opgetreden. Probeer het opnieuw.')
+        createApiError(status, clientMessages[status] || 'Er is een fout opgetreden. Probeer het opnieuw.', {
+          data: error.response?.data,
+        })
       );
     }
 
@@ -174,12 +202,14 @@ export const tenantApi = {
     const data = new URLSearchParams();
     data.append("username", email);
     data.append("password", password);
-    return api.post(`/tenant/login?slug=${slug}`, data, {
+    const queryParams = new URLSearchParams({ slug });
+    return api.post(`/tenant/login?${queryParams.toString()}`, data, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
   },
   superadminLogin: (slug: string) => {
-    return api.post(`/tenant/superadmin-login?slug=${slug}`);
+    const queryParams = new URLSearchParams({ slug });
+    return api.post(`/tenant/superadmin-login?${queryParams.toString()}`);
   },
   refresh: () =>
     api.post("/tenant/refresh"),

@@ -8,7 +8,8 @@
  */
 
 import { useState } from "react";
-import { onboardingApi } from "../../lib/api";
+import { onboardingApi, ApiError } from "../../lib/api";
+import { InfoIcon } from "../icons/InfoIcon";
 
 interface Court {
   naam: string;
@@ -22,7 +23,7 @@ interface CourtsStepProps {
   onBack: () => void;
 }
 
-export default function CourtsStep({ onNext, onBack }: CourtsStepProps) {
+export function CourtsStep({ onNext, onBack }: CourtsStepProps) {
   const [courts, setCourts] = useState<Court[]>([
     { naam: "", ondergrond: "gravel", prioriteit_score: 5, nummer: 1 }
   ]);
@@ -96,9 +97,8 @@ export default function CourtsStep({ onNext, onBack }: CourtsStepProps) {
       });
       onNext();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      if (err.response?.data?.detail) {
-        setErrors({ algemeen: err.response.data.detail });
+      if (error instanceof ApiError && error.data?.detail) {
+        setErrors({ algemeen: error.data.detail as string });
       } else {
         setErrors({ algemeen: "Er is iets misgegaan. Probeer het opnieuw." });
       }
@@ -120,9 +120,7 @@ export default function CourtsStep({ onNext, onBack }: CourtsStepProps) {
           onClick={() => setShowHelp(!showHelp)}
           className="flex items-center gap-2 text-blue-700 font-semibold"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <InfoIcon />
           Wat is de prioriteitsscore?
         </button>
         {showHelp && (
@@ -162,58 +160,65 @@ export default function CourtsStep({ onNext, onBack }: CourtsStepProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-lg font-semibold text-gray-700 mb-2">
-                  Naam <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={court.naam}
-                  onChange={(e) => updateCourt(index, "naam", e.target.value)}
-                  className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
-                    errors[`baan_${index}`] 
-                      ? "border-red-400 bg-red-50" 
-                      : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  }`}
-                  placeholder="Bijv. Baan 1 - Gravel"
-                />
-                {errors[`baan_${index}`] && (
-                  <p className="mt-2 text-lg text-red-600 font-medium">{errors[`baan_${index}`]}</p>
-                )}
-              </div>
+               <div>
+                 <label htmlFor={`court_naam_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                   Naam <span className="text-red-500">*</span>
+                 </label>
+                 <input
+                   type="text"
+                   id={`court_naam_${index}`}
+                   value={court.naam}
+                   onChange={(e) => updateCourt(index, "naam", e.target.value)}
+                   className={`w-full p-4 text-lg border-2 rounded-lg transition-colors ${
+                     errors[`baan_${index}`] 
+                       ? "border-red-400 bg-red-50" 
+                       : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                   }`}
+                   placeholder="Bijv. Baan 1 - Gravel"
+                 />
+                 {errors[`baan_${index}`] && (
+                   <p className="mt-2 text-lg text-red-600 font-medium">{errors[`baan_${index}`]}</p>
+                 )}
+               </div>
 
-              <div>
-                <label className="block text-lg font-semibold text-gray-700 mb-2">
-                  Ondergrond <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={court.ondergrond}
-                  onChange={(e) => updateCourt(index, "ondergrond", e.target.value)}
-                  className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                >
-                  {ondergrondOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
+               <div>
+                 <label htmlFor={`court_ondergrond_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                   Ondergrond <span className="text-red-500">*</span>
+                 </label>
+                 <select
+                   id={`court_ondergrond_${index}`}
+                   value={court.ondergrond}
+                   onChange={(e) => updateCourt(index, "ondergrond", e.target.value)}
+                   className="w-full p-4 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+                 >
+                   {ondergrondOptions.map(opt => (
+                     <option key={opt.value} value={opt.value}>{opt.label}</option>
+                   ))}
+                 </select>
+               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-lg font-semibold text-gray-700 mb-2">
-                  Prioriteitsscore: <span className="text-blue-600 font-bold">{court.prioriteit_score}</span>
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={court.prioriteit_score}
-                  onChange={(e) => updateCourt(index, "prioriteit_score", parseInt(e.target.value))}
-                  className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-sm text-gray-500 mt-1">
-                  <span>1 - Minst gebruikt</span>
-                  <span>10 - Meest gebruikt</span>
+                <div className="md:col-span-2">
+                  <label id={`court_prioriteit_score_label_${index}`} htmlFor={`court_prioriteit_score_${index}`} className="block text-lg font-semibold text-gray-700 mb-2">
+                    Prioriteitsscore: <span className="text-blue-600 font-bold">{court.prioriteit_score}</span>
+                  </label>
+                  <input
+                    id={`court_prioriteit_score_${index}`}
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={court.prioriteit_score}
+                    onChange={(e) => updateCourt(index, "prioriteit_score", parseInt(e.target.value))}
+                    aria-valuemin="1"
+                    aria-valuemax="10"
+                    aria-valuenow={court.prioriteit_score}
+                    aria-labelledby={`court_prioriteit_score_label_${index}`}
+                    className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-300"
+                  />
+                  <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <span>1 - Minst gebruikt</span>
+                    <span>10 - Meest gebruikt</span>
+                  </div>
                 </div>
-              </div>
             </div>
           </div>
         ))}

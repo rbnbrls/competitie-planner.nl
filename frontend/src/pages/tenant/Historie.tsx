@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import type { AxiosResponse } from "axios";
 import { tenantApi } from "../../lib/api";
 import { 
   BarChart3, 
@@ -21,7 +22,8 @@ import {
   Button, 
   Badge, 
   Card, 
-  LoadingSkeleton
+  LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface HistorieTeamRow {
@@ -52,7 +54,7 @@ export default function HistoriePage() {
     if (competitieId) {
       tenantApi
         .getCompetitieHistorie(competitieId)
-        .then((res: any) => {
+        .then((res: AxiosResponse<HistorieData>) => {
           setHistorie(res.data);
         })
         .catch(() => {
@@ -77,15 +79,23 @@ export default function HistoriePage() {
 
   if (!historie || historie.teams.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto py-20 text-center space-y-6">
-        <div className="mx-auto h-20 w-20 rounded-full bg-gray-50 flex items-center justify-center border border-dashed border-gray-200">
-           <BarChart3 size={40} className="text-gray-200" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black text-gray-900">Geen historie beschikbaar</h2>
-          <p className="text-gray-500 max-w-sm mx-auto">Zodra speelrondes zijn gepubliceerd en toegewezen, wordt hier de baanverdeling over het seizoen inzichtelijk.</p>
-        </div>
-        <Button variant="secondary" onClick={() => navigate(-1)}>Ga terug</Button>
+      <div className="max-w-4xl mx-auto">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-blue-600 -ml-2 gap-2 font-bold mb-6" 
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={16} /> Terug
+        </Button>
+        <EmptyState
+          icon={BarChart3}
+          title="Geen historie beschikbaar"
+          description="Zodra speelrondes zijn gepubliceerd en toegewezen, wordt hier de baanverdeling over het seizoen inzichtelijk."
+          actionLabel="Ga terug"
+          variant="page"
+          onAction={() => navigate(-1)}
+        />
       </div>
     );
   }

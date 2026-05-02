@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, ApiError } from "../../lib/api";
 import { passwordSchema, zodErrors } from "../../lib/schemas";
 
 export default function ResetPasswordPage() {
@@ -39,9 +39,8 @@ export default function ResetPasswordPage() {
       setSuccess(true);
       setTimeout(() => navigate("/login"), 3000);
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Fout bij resetten");
+      if (err instanceof ApiError) {
+        setError(err.data?.detail || "Fout bij resetten");
       } else {
         setError("Onverwachte fout");
       }

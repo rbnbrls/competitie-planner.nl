@@ -22,8 +22,8 @@ test.describe('Performance Tests', () => {
   test('bulk operation: creating 10 teams should take less than 5 seconds', async ({ page }) => {
     // Log in first (assuming we have a test user)
     await page.goto('http://localhost:3000/login');
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'password');
+    await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL || '');
+    await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD || '');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
 

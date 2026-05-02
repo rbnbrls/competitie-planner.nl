@@ -12,11 +12,13 @@ import { tenantApi } from "../lib/api";
 import { showToast } from "../components/Toast";
 import { getErrorMessage } from "../lib/utils";
 
+const DEFAULT_PARAMS = { page: 1, size: 20, actiefOnly: true } as const;
+
 export function useCompetities(params: { 
   page?: number; 
   size?: number; 
   actiefOnly?: boolean 
-} = { page: 1, size: 20, actiefOnly: true }) {
+} = DEFAULT_PARAMS) {
   const queryClient = useQueryClient();
 
   // Queries

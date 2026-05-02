@@ -7,7 +7,7 @@
  *   - 2026-05-01: Initial metadata header added
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PaginationProps {
@@ -25,7 +25,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 }) => {
   if (totalPages <= 1) return null;
 
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const pages = useMemo(() => Array.from({ length: totalPages }, (_, i) => i + 1), [totalPages]);
   
   let visiblePages = pages;
   if (totalPages > 5) {

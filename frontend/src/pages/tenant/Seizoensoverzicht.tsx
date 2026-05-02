@@ -27,6 +27,7 @@ import {
   Badge, 
   Card, 
   LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface Ronde {
@@ -126,7 +127,16 @@ export default function Seizoensoverzicht() {
   };
 
   if (isLoading) return <LoadingSkeleton rows={10} />;
-  if (!data || !competitie) return <div className="p-20 text-center font-bold text-gray-400">Geen gegevens gevonden.</div>;
+  if (!data || !competitie) return (
+    <EmptyState
+      icon={FileSpreadsheet}
+      title="Geen gegevens gevonden"
+      description="Er zijn nog geen speelrondes gegenereerd voor deze competitie."
+      actionLabel="Genereer speelrondes"
+      variant="card"
+      onAction={() => navigate(`/rondes/${competitieId}`)}
+    />
+  );
 
   return (
     <div className="max-w-full space-y-6">

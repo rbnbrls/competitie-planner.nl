@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, ApiError } from "../../lib/api";
 import { passwordSchema, zodErrors } from "../../lib/schemas";
 import { ShieldCheck, Lock, UserCheck, ArrowRight, Sparkles } from "lucide-react";
 import { showToast } from "../../components/Toast";
@@ -48,8 +48,8 @@ export default function InvitePage() {
       showToast.success("Account geactiveerd!");
       setTimeout(() => navigate(`/${slug}/login`), 3000);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { detail?: string } } };
-      showToast.error(axiosErr.response?.data?.detail || "Fout bij activeren");
+      const axiosErr = err instanceof ApiError ? err : null;
+      showToast.error(axiosErr?.data?.detail || "Fout bij activeren");
     } finally {
       setIsLoading(false);
     }

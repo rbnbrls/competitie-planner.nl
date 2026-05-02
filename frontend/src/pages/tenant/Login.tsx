@@ -10,7 +10,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { loginSchema, zodErrors } from "../../lib/schemas";
 
 export default function TenantLoginPage() {
@@ -49,13 +49,10 @@ export default function TenantLoginPage() {
         await api.get(`/display/${slug}/actueel`);
         setIsSlugValid(true);
       } catch (err: unknown) {
-        if (err && typeof err === "object" && "response" in err) {
-          const axiosErr = err as { response?: { status?: number } };
-          if (axiosErr.response?.status === 404) {
-            setIsSlugValid(false);
-            setError("Vereniging niet gevonden");
-            return;
-          }
+        if (err instanceof ApiError && err.status === 404) {
+          setIsSlugValid(false);
+          setError("Vereniging niet gevonden");
+          return;
         }
 
         setIsSlugValid(true);
@@ -93,14 +90,13 @@ export default function TenantLoginPage() {
       await login(emailValue, passwordValue, slug);
       navigate("/tenant/dashboard");
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
-        if (axiosErr.response?.status === 401) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
           setError("ongeldige inloggegevens");
-        } else if (axiosErr.response?.status === 400 && axiosErr.response?.data?.detail?.includes("superadmin")) {
+        } else if (err.status === 400 && err.data?.detail?.includes("superadmin")) {
           setError("Gebruik het superadmin portaal voor superadmin accounts");
         } else {
-          setError(axiosErr.response?.data?.detail || "Login mislukt");
+          setError(err.data?.detail || "Login mislukt");
         }
       } else if (err instanceof Error && err.message === "ongeldige inloggegevens") {
         setError("ongeldige inloggegevens");

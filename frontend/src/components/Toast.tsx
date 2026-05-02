@@ -16,18 +16,21 @@ export const ToastContainer = () => {
       toastOptions={{
         duration: 5000,
         style: {
-          background: '#333',
-          color: '#fff',
+          background: 'var(--theme-card-bg)',
+          color: 'var(--theme-nav-foreground)',
+          borderRadius: '0.75rem',
+          boxShadow: 'var(--theme-card-shadow)',
+          border: '1px solid var(--tw-border-opacity, rgba(0,0,0,0.1))',
         },
         success: {
           duration: 5000,
           iconTheme: {
-            primary: 'green',
-            secondary: 'black',
+            primary: 'var(--theme-primary)',
+            secondary: 'var(--theme-accent-foreground)',
           },
         },
         error: {
-          duration: Infinity, // Persistent bij fouten totdat user het wegklikt? React-hot-toast automatically keeps it if user hovers, but to make it completely persistent we can set duration to Infinity. Prompt says "maar persistent bij fouten" -> duration: Infinity.
+          duration: 10000, // 10 seconds - long enough to read, prevents accumulation
         },
       }}
     />
@@ -36,6 +39,6 @@ export const ToastContainer = () => {
 
 export const showToast = {
   success: (message: string) => toast.success(message, { id: message }),
-  error: (message: string) => toast.error(message, { id: message, duration: Infinity }),
+  error: (message: string) => toast.error(message, { id: message }),
   info: (message: string) => toast(message, { id: message }),
 };

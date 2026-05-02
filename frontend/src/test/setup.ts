@@ -23,7 +23,7 @@ if (!globalThis.WritableStream) {
 
 // Force axios to use the Node http adapter so MSW can intercept requests
 // (jsdom environment uses XHR by default, which bypasses MSW's Node server)
-axios.defaults.adapter = 'http'
+axios.defaults.adapter = axios.getAdapter('http')
 
 afterEach(() => {
   cleanup()

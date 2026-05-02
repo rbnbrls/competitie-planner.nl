@@ -28,7 +28,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { showToast } from "../../components/Toast";
-import { 
+import {
   Button, 
   Badge, 
   Card, 
@@ -39,7 +39,9 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  LoadingSkeleton
+  LoadingSkeleton,
+  EmptyState,
+  Skeleton,
 } from "../../components";
 import {
   ArrowLeft,
@@ -84,9 +86,9 @@ interface Baan {
 interface Toewijzing {
   id: string;
   team_id: string;
-  baan_id: string;
-  tijdslot_start: string;
-  tijdslot_eind?: string;
+  baan_id?: string;
+  tijdslot_start?: string | null;
+  tijdslot_eind?: string | null;
   notitie?: string;
   team?: Team;
   baan?: Baan;
@@ -108,7 +110,7 @@ interface SortableRowProps {
   teams: Team[];
   allBanen: Baan[];
   isReadOnly: boolean;
-  onUpdate: (id: string, data: any) => void;
+  onUpdate: (id: string, data: Partial<{ team_id: string; baan_id: string; tijdslot_start: string | null; tijdslot_eind: string | null; notitie: string }>) => void;
 }
 
 function SortableToewijzingRow({
@@ -118,9 +120,9 @@ function SortableToewijzingRow({
   isReadOnly,
   onUpdate,
 }: SortableRowProps) {
-  const [localStart, setLocalStart] = useState(toewijzing.tijdslot_start?.slice(0, 5) || "");
-  const [localEnd, setLocalEnd] = useState(toewijzing.tijdslot_eind?.slice(0, 5) || "");
-  const [localNotitie, setLocalNotitie] = useState(toewijzing.notitie || "");
+  const [localStart, setLocalStart] = useState(toewijzing.tijdslot_start?.slice(0, 5) ?? "");
+  const [localEnd, setLocalEnd] = useState(toewijzing.tijdslot_eind?.slice(0, 5) ?? "");
+  const [localNotitie, setLocalNotitie] = useState(toewijzing.notitie ?? "");
 
   useEffect(() => {
     setLocalStart(toewijzing.tijdslot_start?.slice(0, 5) || "");
@@ -268,7 +270,11 @@ export default function RondeDetailPage() {
     banen,
     wedstrijden,
     snapshots,
-    isLoading,
+    isLoadingRonde,
+    isLoadingTeams,
+    isLoadingBanen,
+    isLoadingWedstrijden,
+    isLoadingSnapshots,
     updateToewijzing,
     swapToewijzingen,
     generateIndeling,
@@ -276,6 +282,8 @@ export default function RondeDetailPage() {
     depublishRonde,
     herstellSnapshot,
   } = useRondeDetail(rondeId, competitieId);
+
+  const isInitialLoad = isLoadingRonde;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -318,7 +326,7 @@ export default function RondeDetailPage() {
     }
   };
 
-  const handleUpdateToewijzing = async (id: string, data: any) => {
+  const handleUpdateToewijzing = async (id: string, data: Partial<{ team_id: string; baan_id: string; tijdslot_start: string | null; tijdslot_eind: string | null; notitie: string }>) => {
     await updateToewijzing({ id, data });
   };
 
@@ -350,8 +358,9 @@ export default function RondeDetailPage() {
 
   const toewijzingenPerBaan = (ronde?.toewijzingen || []).reduce(
     (acc: Record<string, Toewijzing[]>, t: Toewijzing) => {
-      if (!acc[t.baan_id]) acc[t.baan_id] = [];
-      acc[t.baan_id].push(t);
+      const baanId = t.baan_id || 'unknown';
+      if (!acc[baanId]) acc[baanId] = [];
+      acc[baanId].push(t);
       return acc;
     },
     {}
@@ -369,7 +378,7 @@ export default function RondeDetailPage() {
   const assignedTeamIds = new Set(ronde?.toewijzingen?.map((t: Toewijzing) => t.team_id) || []);
   const unassignedTeams = teamsForDropdown.filter((t: Team) => !assignedTeamIds.has(t.id));
 
-  if (isLoading) {
+  if (isInitialLoad) {
     return <LoadingSkeleton rows={15} />;
   }
 
@@ -507,7 +516,7 @@ export default function RondeDetailPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           {/* Main Indeling Table */}
           <section className="space-y-4">
@@ -516,259 +525,321 @@ export default function RondeDetailPage() {
                  <Layout size={18} className="text-blue-600" />
                  Baanbezetting
                </h3>
-               {unassignedTeams.length > 0 && (
+               {!isLoadingTeams && unassignedTeams.length > 0 && (
                  <Badge variant="warning" className="animate-pulse">
                    {unassignedTeams.length} Teams over
                  </Badge>
                )}
              </div>
 
-             <Card className="overflow-hidden border-gray-100">
-               <Table>
-                 <TableHeader className="bg-gray-50/50">
-                   <TableRow>
-                     <TableHead className="w-10"></TableHead>
-                     <TableHead>Baan</TableHead>
-                     <TableHead>Team (Thuis)</TableHead>
-                     <TableHead>Tijdslot</TableHead>
-                     <TableHead>Notitie</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {!isReadOnly ? (
-                     <DndContext
-                       sensors={sensors}
-                       collisionDetection={closestCenter}
-                       onDragStart={handleDragStart}
-                       onDragEnd={handleDragEnd}
-                     >
-                       <SortableContext items={toewijzingIds} strategy={verticalListSortingStrategy}>
-                         {(ronde.toewijzingen || []).map((t: Toewijzing) => (
-                           <SortableToewijzingRow
-                             key={t.id}
-                             toewijzing={t}
-                             teams={teamsForDropdown}
-                             allBanen={banen}
-                             isReadOnly={isReadOnly}
-                             onUpdate={handleUpdateToewijzing}
-                           />
-                         ))}
-                       </SortableContext>
-                       <DragOverlay>
-                         {activeId ? (
-                           <div className="bg-white p-4 rounded-xl border-2 border-blue-600 shadow-2xl flex items-center gap-4 opacity-90 scale-105 transition-transform">
-                             <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black">
-                                {ronde.toewijzingen.find((t: Toewijzing) => t.id === activeId)?.baan?.nummer}
-                             </div>
-                             <div>
-                               <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Wissel positie</p>
-                               <p className="font-bold text-gray-900">Sleep om banen te wisselen</p>
-                             </div>
-                           </div>
-                         ) : null}
-                       </DragOverlay>
-                     </DndContext>
-                   ) : (
-                    ronde.toewijzingen.map((t: Toewijzing) => (
-                      <TableRow key={t.id}>
-                         <TableCell></TableCell>
-                         <TableCell>
-                            <div className="flex items-center gap-2 font-bold text-gray-900">
-                              Baan {t.baan?.nummer}
-                              {t.baan?.overdekt && <Badge variant="secondary" className="scale-75">Binnen</Badge>}
-                            </div>
-                         </TableCell>
-                         <TableCell className="font-bold text-blue-600">{t.team?.naam || "-"}</TableCell>
-                         <TableCell className="font-mono text-xs">
-                            <Badge variant="outline" className="gap-1.5 font-bold">
-                              <Clock size={10} />
-                              {t.tijdslot_start?.slice(0, 5)} - {t.tijdslot_eind?.slice(0, 5)}
-                            </Badge>
-                         </TableCell>
-                         <TableCell className="text-xs text-gray-500 italic font-medium">
-                            {t.notitie || "-"}
-                         </TableCell>
-                      </TableRow>
-                    ))
-                   )}
-                   {ronde.toewijzingen?.length === 0 && (
+             {isLoadingTeams || isLoadingBanen ? (
+               <Card className="overflow-hidden border-gray-100">
+                 <Table>
+                   <TableHeader className="bg-gray-50/50">
                      <TableRow>
-                       <TableCell colSpan={5} className="h-60 text-center text-gray-400">
-                          <div className="flex flex-col items-center gap-3">
-                             <div className="p-4 bg-gray-50 rounded-full">
-                               <Wand2 size={40} className="text-gray-200" />
-                             </div>
-                             <p className="font-bold">Nog geen indeling gegenereerd</p>
-                             <Button variant="secondary" size="sm" onClick={handleGenerate}>Nu genereren</Button>
-                          </div>
-                       </TableCell>
+                       <TableHead className="w-10"></TableHead>
+                       <TableHead>Baan</TableHead>
+                       <TableHead>Team (Thuis)</TableHead>
+                       <TableHead>Tijdslot</TableHead>
+                       <TableHead>Notitie</TableHead>
                      </TableRow>
-                   )}
-                 </TableBody>
-               </Table>
-             </Card>
+                   </TableHeader>
+                   <TableBody>
+                     {[...Array(5)].map((_, i) => (
+                       <TableRow key={i}>
+                         <TableCell className="w-10"><Skeleton className="h-4 w-4" /></TableCell>
+                         <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                         <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                         <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                         <TableCell><Skeleton className="h-8 w-28" /></TableCell>
+                       </TableRow>
+                     ))}
+                   </TableBody>
+                 </Table>
+               </Card>
+             ) : (
+               <Card className="overflow-hidden border-gray-100">
+                 <Table>
+                   <TableHeader className="bg-gray-50/50">
+                     <TableRow>
+                       <TableHead className="w-10"></TableHead>
+                       <TableHead>Baan</TableHead>
+                       <TableHead>Team (Thuis)</TableHead>
+                       <TableHead>Tijdslot</TableHead>
+                       <TableHead>Notitie</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                    {!isReadOnly ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext items={toewijzingIds} strategy={verticalListSortingStrategy}>
+                          {(ronde.toewijzingen || []).map((t: Toewijzing) => (
+                            <SortableToewijzingRow
+                              key={t.id}
+                              toewijzing={t}
+                              teams={teamsForDropdown}
+                              allBanen={banen}
+                              isReadOnly={isReadOnly}
+                              onUpdate={handleUpdateToewijzing}
+                            />
+                          ))}
+                        </SortableContext>
+                        <DragOverlay>
+                          {activeId ? (
+                            <div className="bg-white p-4 rounded-xl border-2 border-blue-600 shadow-2xl flex items-center gap-4 opacity-90 scale-105 transition-transform">
+                              <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black">
+                                 {ronde.toewijzingen.find((t: Toewijzing) => t.id === activeId)?.baan?.nummer}
+                              </div>
+                              <div>
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Wissel positie</p>
+                                <p className="font-bold text-gray-900">Sleep om banen te wisselen</p>
+                              </div>
+                            </div>
+                          ) : null}
+                        </DragOverlay>
+                      </DndContext>
+                    ) : (
+                       ronde.toewijzingen.map((t: Toewijzing) => (
+                         <TableRow key={t.id}>
+                            <TableCell></TableCell>
+                            <TableCell>
+                               <div className="flex items-center gap-2 font-bold text-gray-900">
+                                 Baan {t.baan?.nummer}
+                                 {t.baan?.overdekt && <Badge variant="secondary" className="scale-75">Binnen</Badge>}
+                               </div>
+                            </TableCell>
+                            <TableCell className="font-bold text-blue-600">{t.team?.naam || "-"}</TableCell>
+                            <TableCell className="font-mono text-xs">
+                               <Badge variant="outline" className="gap-1.5 font-bold">
+                                 <Clock size={10} />
+                                 {t.tijdslot_start?.slice(0, 5)} - {t.tijdslot_eind?.slice(0, 5)}
+                               </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-gray-500 italic font-medium">
+                               {t.notitie || "-"}
+                            </TableCell>
+                         </TableRow>
+                       ))
+                    )}
+                     {ronde.toewijzingen?.length === 0 && (
+                       <TableRow>
+                         <EmptyState
+                           icon={Wand2}
+                           title="Nog geen indeling gegenereerd"
+                           description="Genereer automatisch een indeling voor deze speelronde."
+                           actionLabel="Nu genereren"
+                           variant="table"
+                           colSpan={5}
+                           onAction={handleGenerate}
+                         />
+                       </TableRow>
+                     )}
+                   </TableBody>
+                 </Table>
+               </Card>
+             )}
           </section>
         </div>
 
         <div className="space-y-8">
-          {/* Timeline Visualization */}
-          <section className="space-y-4">
-             <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-               <Activity size={18} className="text-indigo-600" />
-               Tijdlijn
-             </h3>
-             <Card className="p-4 bg-gray-50/50">
-               <div className="space-y-4">
-                {banen
-                  .filter((b: Baan) => toewijzingenPerBaan[b.id]?.length > 0)
-                  .sort((a: Baan, b: Baan) => a.nummer - b.nummer)
-                  .map((baan: Baan) => {
-                    const baanToewijzingen = toewijzingenPerBaan[baan.id] || [];
-                    return (
-                      <div key={baan.id} className="space-y-1.5">
+           {/* Timeline Visualization */}
+           <section className="space-y-4">
+              <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                <Activity size={18} className="text-indigo-600" />
+                Tijdlijn
+              </h3>
+              {isLoadingBanen ? (
+                <Card className="p-4 bg-gray-50/50">
+                  <div className="space-y-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="space-y-1.5">
                         <div className="flex justify-between items-center px-1">
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Baan {baan.nummer}</span>
-                          {baan.overdekt && <Umbrella size={10} className="text-blue-400" />}
+                          <Skeleton className="h-3 w-16" />
                         </div>
-                        <div className="relative h-7 bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden p-0.5">
-                          {baanToewijzingen.map((t: Toewijzing, idx: number) => {
-                            const startMinutes = t.tijdslot_start ? parseTimeToMinutes(t.tijdslot_start) : 19 * 60;
-                            const endMinutes = t.tijdslot_eind ? parseTimeToMinutes(t.tijdslot_eind) : 21 * 60;
-                            const team = teams.find((team: Team) => team.id === t.team_id);
-                            
-                            // Visualize from 18:00 to 23:00 (300 minutes)
-                            const width = Math.max(((endMinutes - startMinutes) / 300) * 100, 10);
-                            const left = ((startMinutes - 18 * 60) / 300) * 100;
-                            
-                            return (
-                              <div
-                                key={t.id}
-                                className={`absolute h-5 top-0.5 rounded-md text-[9px] font-black text-white px-1.5 flex items-center truncate ${idx % 2 === 0 ? 'bg-blue-500 shadow-sm shadow-blue-100' : 'bg-indigo-500 shadow-sm shadow-indigo-100'}`}
-                                style={{
-                                  left: `${Math.max(left, 0.5)}%`,
-                                  width: `${Math.min(width, 100 - left - 1)}%`,
-                                }}
-                                title={`${team?.naam || "-"}: ${t.tijdslot_start?.slice(0, 5) || "19:00"} - ${t.tijdslot_eind?.slice(0, 5) || "21:00"}`}
-                              >
-                                {team?.naam || "-"}
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <Skeleton className="h-7 w-full rounded-lg" />
                       </div>
-                    );
-                  })}
-                  <div className="flex justify-between text-[9px] font-black text-gray-300 uppercase tracking-tighter pt-2 border-t px-1">
-                    <span>18:00</span>
-                    <span>19:00</span>
-                    <span>20:00</span>
-                    <span>21:00</span>
-                    <span>22:00</span>
-                    <span>23:00</span>
-                  </div>
-               </div>
-             </Card>
-          </section>
-
-          {/* Wedstrijd Details sidebar */}
-          <section className="space-y-4 text-gray-900">
-            <h3 className="text-lg font-black flex items-center gap-2">
-              <Trophy size={18} className="text-amber-500" />
-              Ingeroosterde Teams
-            </h3>
-            <div className="space-y-2">
-              {wedstrijden.map((w: Wedstrijd) => (
-                <Card key={w.id} className="border-gray-50 hover:border-blue-100 transition-colors">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between text-[10px] mb-2 font-black uppercase tracking-widest text-gray-400">
-                       <span>Wedstrijd</span>
-                       <Badge variant="outline" className="h-4 p-1 text-[8px]">KNLTB</Badge>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <div className="flex-1 space-y-1">
-                          <div className="text-sm font-bold truncate text-gray-700">{w.thuisteam?.naam}</div>
-                          <div className="text-[10px] text-gray-300 font-bold flex items-center gap-1">VS <span className="text-gray-400 font-medium">{w.uitteam?.naam}</span></div>
-                       </div>
-                       <Badge variant="success" className="h-6">THUIS</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          {/* Unassigned Teams */}
-          {unassignedTeams.length > 0 && (
-             <section className="space-y-4">
-               <h3 className="text-lg font-black text-red-600 flex items-center gap-2">
-                 <ShieldAlert size={18} />
-                 Niet Ingepland
-               </h3>
-               <div className="p-4 bg-red-50 border border-red-100 rounded-2xl space-y-3">
-                 <p className="text-xs font-medium text-red-800">De volgende teams hebben een thuiswedstrijd maar zijn nog niet toegewezen aan een baan.</p>
-                 <div className="flex flex-wrap gap-2">
-                    {unassignedTeams.map((t: Team) => (
-                      <Badge key={t.id} variant="danger" className="py-1 px-3 border-none bg-white text-red-600 font-black shadow-sm">
-                        {t.naam}
-                      </Badge>
                     ))}
+                  </div>
+                </Card>
+              ) : (
+                <Card className="p-4 bg-gray-50/50">
+                  <div className="space-y-4">
+                    {banen
+                      .filter((b: Baan) => toewijzingenPerBaan[b.id]?.length > 0)
+                      .sort((a: Baan, b: Baan) => a.nummer - b.nummer)
+                      .map((baan: Baan) => {
+                        const baanToewijzingen = toewijzingenPerBaan[baan.id] || [];
+                        return (
+                          <div key={baan.id} className="space-y-1.5">
+                            <div className="flex justify-between items-center px-1">
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Baan {baan.nummer}</span>
+                              {baan.overdekt && <Umbrella size={10} className="text-blue-400" />}
+                            </div>
+                            <div className="relative h-7 bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden p-0.5">
+                              {baanToewijzingen.map((t: Toewijzing, idx: number) => {
+                                const startMinutes = t.tijdslot_start ? parseTimeToMinutes(t.tijdslot_start) : 19 * 60;
+                                const endMinutes = t.tijdslot_eind ? parseTimeToMinutes(t.tijdslot_eind) : 21 * 60;
+                                const team = teams.find((team: Team) => team.id === t.team_id);
+                                
+                                const width = Math.max(((endMinutes - startMinutes) / 300) * 100, 10);
+                                const left = ((startMinutes - 18 * 60) / 300) * 100;
+                                
+                                return (
+                                  <div
+                                    key={t.id}
+                                    className={`absolute h-5 top-0.5 rounded-md text-[9px] font-black text-white px-1.5 flex items-center truncate ${idx % 2 === 0 ? 'bg-blue-500 shadow-sm shadow-blue-100' : 'bg-indigo-500 shadow-sm shadow-indigo-100'}`}
+                                    style={{
+                                      left: `${Math.max(left, 0.5)}%`,
+                                      width: `${Math.min(width, 100 - left - 1)}%`,
+                                    }}
+                                    title={`${team?.naam || "-"}: ${t.tijdslot_start?.slice(0, 5) || "19:00"} - ${t.tijdslot_eind?.slice(0, 5) || "21:00"}`}
+                                  >
+                                    {team?.naam || "-"}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between text-[9px] font-black text-gray-300 uppercase tracking-tighter pt-2 border-t px-1">
+                        <span>18:00</span>
+                        <span>19:00</span>
+                        <span>20:00</span>
+                        <span>21:00</span>
+                        <span>22:00</span>
+                        <span>23:00</span>
+                      </div>
+                  </div>
+                </Card>
+              )}
+           </section>
+
+           {/* Wedstrijd Details sidebar */}
+           <section className="space-y-4 text-gray-900">
+             <h3 className="text-lg font-black flex items-center gap-2">
+               <Trophy size={18} className="text-amber-500" />
+               Ingeroosterde Teams
+             </h3>
+             {isLoadingWedstrijden ? (
+               <div className="space-y-2">
+                 {[...Array(3)].map((_, i) => (
+                   <Card key={i} className="border-gray-50">
+                     <CardContent className="p-3">
+                       <div className="flex items-center gap-3">
+                         <div className="flex-1 space-y-2">
+                           <Skeleton className="h-4 w-3/4" />
+                           <Skeleton className="h-3 w-1/2" />
+                         </div>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 ))}
+               </div>
+             ) : (
+               wedstrijden.length === 0 ? (
+                 <p className="text-sm text-gray-500">Geen wedstrijden gevonden</p>
+               ) : (
+                 <div className="space-y-2">
+                   {wedstrijden.map((w: Wedstrijd) => (
+                     <Card key={w.id} className="border-gray-50 hover:border-blue-100 transition-colors">
+                       <CardContent className="p-3">
+                         <div className="flex items-center justify-between text-[10px] mb-2 font-black uppercase tracking-widest text-gray-400">
+                            <span>Wedstrijd</span>
+                            <Badge variant="outline" className="h-4 p-1 text-[8px]">KNLTB</Badge>
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="flex-1 space-y-1">
+                               <div className="text-sm font-bold truncate text-gray-700">{w.thuisteam?.naam}</div>
+                               <div className="text-[10px] text-gray-300 font-bold flex items-center gap-1">VS <span className="text-gray-400 font-medium">{w.uitteam?.naam}</span></div>
+                            </div>
+                            <Badge variant="success" className="h-6">THUIS</Badge>
+                         </div>
+                       </CardContent>
+                     </Card>
+                   ))}
                  </div>
-                 <Button variant="secondary" className="w-full h-10 border-red-200 text-red-700 font-bold bg-white" onClick={handleGenerate}>
-                   Slim Proberen te Plannen
-                 </Button>
+               )
+             )}
+           </section>
+
+           {/* Unassigned Teams */}
+           {!isLoadingTeams && unassignedTeams.length > 0 && (
+              <section className="space-y-4">
+                <h3 className="text-lg font-black text-red-600 flex items-center gap-2">
+                  <ShieldAlert size={18} />
+                  Niet Ingepland
+                </h3>
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl space-y-3">
+                  <p className="text-xs font-medium text-red-800">De volgende teams hebben een thuiswedstrijd maar zijn nog niet toegewezen aan een baan.</p>
+                  <div className="flex flex-wrap gap-2">
+                     {unassignedTeams.map((t: Team) => (
+                       <Badge key={t.id} variant="danger" className="py-1 px-3 border-none bg-white text-red-600 font-black shadow-sm">
+                         {t.naam}
+                       </Badge>
+                     ))}
+                  </div>
+                  <Button variant="secondary" className="w-full h-10 border-red-200 text-red-700 font-bold bg-white" onClick={handleGenerate}>
+                    Slim Proberen te Plannen
+                  </Button>
+                </div>
+              </section>
+           )}
+
+           {/* Version History */}
+           {!isReadOnly && (!isLoadingSnapshots && snapshots.length > 0) && (
+             <section className="space-y-4">
+               <h3 className="text-lg font-black text-gray-700 flex items-center gap-2">
+                 <History size={18} className="text-gray-400" />
+                 Versiegeschiedenis
+               </h3>
+               <div className="space-y-2">
+                 {snapshots.map((s, idx) => (
+                   <div
+                     key={s.id}
+                     className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-blue-100 transition-colors"
+                   >
+                     <div className="space-y-0.5">
+                       <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                         {idx === 0 ? "Meest recent" : `Versie ${snapshots.length - idx}`}
+                       </div>
+                       <div className="text-[10px] text-gray-400">
+                         {new Date(s.created_at).toLocaleString("nl-NL", {
+                           day: "numeric",
+                           month: "short",
+                           hour: "2-digit",
+                           minute: "2-digit",
+                         })}
+                         {" · "}
+                         <span className="text-gray-500 font-semibold">{s.count} toewijzingen</span>
+                       </div>
+                     </div>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       className="h-8 gap-1.5 text-xs border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700"
+                       isLoading={herstellSnapshot.isPending}
+                       onClick={() => {
+                         if (window.confirm("Huidige indeling wordt vervangen door deze versie. Doorgaan?")) {
+                           herstellSnapshot.mutateAsync(s.id);
+                         }
+                       }}
+                     >
+                       <RotateCcw size={12} />
+                       Herstel
+                     </Button>
+                   </div>
+                 ))}
                </div>
              </section>
-          )}
-
-          {/* Version History */}
-          {!isReadOnly && snapshots.length > 0 && (
-            <section className="space-y-4">
-              <h3 className="text-lg font-black text-gray-700 flex items-center gap-2">
-                <History size={18} className="text-gray-400" />
-                Versiegeschiedenis
-              </h3>
-              <div className="space-y-2">
-                {snapshots.map((s, idx) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-blue-100 transition-colors"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                        {idx === 0 ? "Meest recent" : `Versie ${snapshots.length - idx}`}
-                      </div>
-                      <div className="text-[10px] text-gray-400">
-                        {new Date(s.created_at).toLocaleString("nl-NL", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        {" · "}
-                        <span className="text-gray-500 font-semibold">{s.count} toewijzingen</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700"
-                      isLoading={herstellSnapshot.isPending}
-                      onClick={() => {
-                        if (window.confirm("Huidige indeling wordt vervangen door deze versie. Doorgaan?")) {
-                          herstellSnapshot.mutateAsync(s.id);
-                        }
-                      }}
-                    >
-                      <RotateCcw size={12} />
-                      Herstel
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+           )}
+         </div>
+       </div>
+     </div>
+   );
+ }

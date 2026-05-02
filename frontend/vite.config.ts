@@ -5,12 +5,14 @@
  * Author: Ruben Barels <ruben@rabar.nl>
  * Changelog:
  *   - 2026-05-01: Initial metadata header added
+ *   - 2026-05-02: Added rollup-plugin-visualizer for bundle analysis
  */
 
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
   plugins: [
@@ -20,6 +22,16 @@ export default defineConfig({
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
       telemetry: false,
+      sourcemaps: {
+        deleteAfterUpload: true,
+      },
+    }),
+    visualizer({
+      template: "treemap",
+      filename: "stats.html",
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
     }),
   ],
   resolve: {
@@ -28,7 +40,7 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,
+    sourcemap: !!process.env.SENTRY_AUTH_TOKEN,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -42,7 +54,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    allowedHosts: [".lvh.me", "meppers.lvh.me", "localhost", "127.0.0.1"],
+    // Allowed hosts for local development only.
+    // - localhost/127.0.0.1: Standard dev server access
+    // - meppers.lvh.me: Specific subdomain used for local multi-tenant testing
+    // Wildcard patterns (e.g. ".lvh.me") are intentionally excluded to prevent DNS rebinding attacks.
+    // This setting only affects the dev server; production builds (vite build) are not impacted.
+    allowedHosts: ["meppers.lvh.me", "localhost", "127.0.0.1"],
     proxy: {
       "/api": {
         target: "http://backend:8000",

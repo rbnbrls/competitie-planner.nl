@@ -10,6 +10,7 @@
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { ApiError } from "../lib/api";
 import { loginSchema, zodErrors } from "../lib/schemas";
 
 export default function LoginPage() {
@@ -42,9 +43,8 @@ export default function LoginPage() {
       await login(emailValue, passwordValue);
       navigate("/dashboard");
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Login mislukt");
+      if (err instanceof ApiError) {
+        setError(err.data?.detail || "Login mislukt");
       } else {
         setError("An unexpected error occurred");
       }

@@ -27,6 +27,7 @@ import {
   Select,
   Pagination,
   LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface Competitie {
@@ -450,9 +451,15 @@ export default function CompetitiesPage() {
           ))}
           {competities.length === 0 && !activeComp && (
             <TableRow>
-              <TableCell colSpan={6} className="h-40 text-center text-gray-500">
-                Nog geen competities aangemaakt. Klik op "Competitie aanmaken" om te beginnen.
-              </TableCell>
+              <EmptyState
+                icon={Calendar}
+                title="Nog geen competities aangemaakt"
+                description="Klik op 'Competitie aanmaken' om je eerste competitie te starten."
+                actionLabel="Competitie aanmaken"
+                variant="table"
+                colSpan={6}
+                onAction={() => { setShowModal(true); loadTemplates(); }}
+              />
             </TableRow>
           )}
         </TableBody>

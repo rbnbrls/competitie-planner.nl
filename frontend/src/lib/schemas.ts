@@ -93,7 +93,16 @@ export const clubSchema = z.object({
     .optional()
     .or(z.literal("")),
   stad: z.string().optional(),
-  telefoon: z.string().optional(),
+  telefoon: z
+    .string()
+    .refine(
+      (v) =>
+        v === "" ||
+        /^(\+31|0)\d{1,9}$/.test(v.replace(/[\s-]/g, "")),
+      "Voer een geldig Nederlands telefoonnummer in (bijv. 06-12345678 of +31 6 12345678)"
+    )
+    .optional()
+    .or(z.literal("")),
   email: z
     .string()
     .refine(
@@ -151,7 +160,7 @@ export const competitionSchema = z
 // Superadmin
 // ---------------------------------------------------------------------------
 
-const RESERVED_SLUGS = ["admin", "api", "display", "www", "mail", "app", "static"];
+export const RESERVED_SLUGS = ["admin", "api", "display", "www", "mail", "app", "static"];
 
 /**
  * New club form (superadmin).

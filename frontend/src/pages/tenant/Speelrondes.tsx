@@ -22,7 +22,8 @@ import {
   TableCell, 
   Badge,
   LoadingSkeleton,
-  Card
+  Card,
+  EmptyState,
 } from "../../components";
 
 interface Speelronde {
@@ -393,14 +394,15 @@ export default function SpeelrondesPage() {
               </TableRow>
             );
           })}
-          {rondes.length === 0 && (
+          {filteredRondes().length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="h-40 text-center text-gray-500">
-                <div className="flex flex-col items-center gap-2">
-                  <AlertCircle className="h-8 w-8 text-gray-300" />
-                  <span>Geen speelrondes gevonden.</span>
-                </div>
-              </TableCell>
+              <EmptyState
+                icon={AlertCircle}
+                title="Geen speelrondes gevonden"
+                description="Genereer eerst speelrondes via de 'Genereer alle' knop."
+                variant="table"
+                colSpan={6}
+              />
             </TableRow>
           )}
         </TableBody>

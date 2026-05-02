@@ -8,6 +8,7 @@
  */
 
 import './button.css';
+import { cn } from '../lib/utils';
 
 export interface ButtonProps {
   /** Is this the principal call to action on the page? */
@@ -17,7 +18,7 @@ export interface ButtonProps {
   /** How large should the button be? */
   size?: 'small' | 'medium' | 'large';
   /** Button contents */
-  label: string;
+  children: React.ReactNode;
   /** Optional click handler */
   onClick?: () => void;
 }
@@ -27,18 +28,18 @@ export const Button = ({
   primary = false,
   size = 'medium',
   backgroundColor,
-  label,
+  children,
   ...props
 }: ButtonProps) => {
   const mode = primary ? 'storybook-button--primary' : 'storybook-button--secondary';
   return (
     <button
       type="button"
-      className={['storybook-button', `storybook-button--${size}`, mode].join(' ')}
+      className={cn('storybook-button', `storybook-button--${size}`, mode)}
       style={{ backgroundColor }}
       {...props}
     >
-      {label}
+      {children}
     </button>
   );
 };

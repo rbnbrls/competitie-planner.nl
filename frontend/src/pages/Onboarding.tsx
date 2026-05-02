@@ -11,11 +11,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { onboardingApi } from "../lib/api";
-import ProgressBar from "../components/onboarding/ProgressBar";
-import ClubStep from "../components/onboarding/ClubStep";
-import CourtsStep from "../components/onboarding/CourtsStep";
-import CompetitionStep from "../components/onboarding/CompetitionStep";
-import TeamsStep from "../components/onboarding/TeamsStep";
+import { ProgressBar } from "../components/onboarding/ProgressBar";
+import { ClubStep } from "../components/onboarding/ClubStep";
+import { CourtsStep } from "../components/onboarding/CourtsStep";
+import { CompetitionStep } from "../components/onboarding/CompetitionStep";
+import { TeamsStep } from "../components/onboarding/TeamsStep";
 
 interface OnboardingStatus {
   onboarding_completed: boolean;

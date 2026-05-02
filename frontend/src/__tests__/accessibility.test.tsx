@@ -10,7 +10,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import axe from 'axe-core'
+import axe, { type AxeResults } from 'axe-core'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { Card } from '../components/Card'
@@ -20,7 +20,7 @@ describe('Accessibility Unit Tests', () => {
     cleanup()
   })
 
-  async function checkA11y(container: HTMLElement): Promise<any> {
+  async function checkA11y(container: HTMLElement): Promise<AxeResults> {
     return await axe.run(container, {
       runOnly: {
         type: 'tag',

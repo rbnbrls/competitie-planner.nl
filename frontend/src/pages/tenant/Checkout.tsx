@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { paymentApi, tenantApi } from "../../lib/api";
+import { paymentApi, tenantApi, ApiError } from "../../lib/api";
 import { CreditCard, ShieldCheck, CheckCircle2, Info, Landmark, HelpCircle, ArrowRight, ShieldAlert, Clock, Target, Trophy } from "lucide-react";
 import { showToast } from "../../components/Toast";
 import { 
@@ -77,8 +77,8 @@ export default function CheckoutPage() {
       showToast.success("Machtiging aangemaakt. Verifieer met je bank.");
       loadData();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Machtiging aanmaken mislukt");
+      const error = err instanceof ApiError ? err : null;
+      showToast.error(error?.data?.detail || "Machtiging aanmaken mislukt");
     } finally {
       setIsCreatingMandate(false);
     }
@@ -91,8 +91,8 @@ export default function CheckoutPage() {
       showToast.success("Verificatie succesvol!");
       loadData();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Verificatie mislukt");
+      const error = err instanceof ApiError ? err : null;
+      showToast.error(error?.data?.detail || "Verificatie mislukt");
     } finally {
       setIsCreatingMandate(false);
     }
@@ -106,8 +106,8 @@ export default function CheckoutPage() {
       showToast.success(`Betaling voor ${competition} voltooid!`);
       loadData();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Betaling mislukt");
+      const error = err instanceof ApiError ? err : null;
+      showToast.error(error?.data?.detail || "Betaling mislukt");
     } finally {
       setIsCreatingPayment(false);
     }

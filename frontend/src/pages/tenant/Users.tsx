@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, ApiError } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { inviteUserSchema, zodErrors } from "../../lib/schemas";
 import { UserPlus, Edit, Shield, Mail, Calendar, UserCheck, UserMinus, AlertCircle } from "lucide-react";
@@ -25,7 +25,8 @@ import {
   TableHead, 
   TableCell, 
   Badge, 
-  LoadingSkeleton 
+  LoadingSkeleton,
+  EmptyState,
 } from "../../components";
 
 interface User {
@@ -112,8 +113,8 @@ export default function UsersPage() {
       setShowInviteModal(false);
       setInviteData({ email: "", role: "planner" });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      showToast.error(error.response?.data?.detail || "Fout bij uitnodigen");
+      const error = err instanceof ApiError ? err : null;
+      showToast.error(error?.data?.detail || "Fout bij uitnodigen");
     } finally {
       setIsSaving(false);
     }
@@ -220,9 +221,15 @@ export default function UsersPage() {
           ))}
           {users.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="h-40 text-center text-gray-500 font-medium">
-                Geen gebruikers gevonden.
-              </TableCell>
+              <EmptyState
+                icon={UserPlus}
+                title="Geen gebruikers gevonden"
+                description="Nodig je eerste gebruiker uit om toegang te geven."
+                actionLabel="Gebruiker uitnodigen"
+                variant="table"
+                colSpan={5}
+                onAction={() => setShowInviteModal(true)}
+              />
             </TableRow>
           )}
         </TableBody>

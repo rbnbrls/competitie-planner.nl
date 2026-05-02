@@ -8,6 +8,7 @@
  */
 
 import { cn } from "../lib/utils";
+import { useMemo } from "react";
 
 function Skeleton({
   className,
@@ -21,17 +22,23 @@ function Skeleton({
   );
 }
 
+Skeleton.displayName = "Skeleton";
+
 function LoadingSkeleton({ rows = 5 }: { rows?: number }) {
+  const skeletonRows = useMemo(() => Array.from({ length: rows }), [rows]);
+
   return (
     <div className="space-y-4 w-full">
       <Skeleton className="h-10 w-full" />
       <div className="space-y-2">
-        {Array.from({ length: rows }).map((_, i) => (
+        {skeletonRows.map((_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
     </div>
   );
 }
+
+LoadingSkeleton.displayName = "LoadingSkeleton";
 
 export { Skeleton, LoadingSkeleton };

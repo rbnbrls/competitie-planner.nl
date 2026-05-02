@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { tenantApi } from "../../lib/api";
+import { tenantApi, ApiError } from "../../lib/api";
 import { forgotPasswordSchema, zodErrors } from "../../lib/schemas";
 
 export default function ForgotPasswordPage() {
@@ -37,9 +37,8 @@ export default function ForgotPasswordPage() {
       await tenantApi.forgotPassword(email.trim(), slug);
       setSuccess(true);
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } };
-        setError(axiosErr.response?.data?.detail || "Fout bij versturen");
+      if (err instanceof ApiError) {
+        setError(err.data?.detail || "Fout bij versturen");
       } else {
         setError("Onverwachte fout");
       }

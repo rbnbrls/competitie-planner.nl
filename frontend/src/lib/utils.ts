@@ -9,45 +9,47 @@
 
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { ApiError } from "./api";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface AxiosErrorResponse {
-  response?: {
-    data?: {
-      detail?: unknown;
-    };
-  };
-}
-
 export function getErrorMessage(err: unknown, fallback = "Er is iets misgegaan"): string {
-  const error = err as AxiosErrorResponse | undefined;
-  const detail = error?.response?.data?.detail;
-  
-  if (!detail) {
-    return fallback;
+  if (err instanceof ApiError && err.data?.detail) {
+    const detail = err.data.detail;
+    if (typeof detail === "string") {
+      return detail;
+    }
   }
   
-  if (typeof detail === "string") {
-    return detail;
-  }
-  
-  if (Array.isArray(detail)) {
-    if (detail.length > 0) {
-      const firstError = detail[0];
-      if (typeof firstError === "string") {
-        return firstError;
-      }
-      if (typeof firstError === "object" && firstError !== null) {
-        const msg = (firstError as { msg?: string }).msg;
-        if (msg) {
-          return msg;
+  if (typeof err === "object" && err !== null && "response" in err) {
+    const axiosErr = err as { response?: { data?: { detail?: unknown } } };
+    const detail = axiosErr.response?.data?.detail;
+    
+    if (!detail) {
+      return fallback;
+    }
+    
+    if (typeof detail === "string") {
+      return detail;
+    }
+    
+    if (Array.isArray(detail)) {
+      if (detail.length > 0) {
+        const firstError = detail[0];
+        if (typeof firstError === "string") {
+          return firstError;
+        }
+        if (typeof firstError === "object" && firstError !== null) {
+          const msg = (firstError as { msg?: string }).msg;
+          if (msg) {
+            return msg;
+          }
         }
       }
+      return fallback;
     }
-    return fallback;
   }
   
   return fallback;

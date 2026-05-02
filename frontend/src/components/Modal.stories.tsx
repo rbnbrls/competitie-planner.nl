@@ -8,7 +8,7 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Modal } from './Modal';
+import { Modal, ModalProps } from './Modal';
 import { Button } from './Button';
 import { useState } from 'react';
 
@@ -35,7 +35,7 @@ const meta: Meta<typeof Modal> = {
 export default meta;
 type Story = StoryObj<typeof Modal>;
 
-const ModalWithState = (args: any) => {
+const ModalWithState = (args: ModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>
@@ -135,7 +135,7 @@ export const AllSizes: Story = {
             isOpen={true}
             onClose={() => setOpenSize(null)}
             title={`Size: ${openSize.toUpperCase()}`}
-            maxWidth={openSize as any}
+            maxWidth={openSize as ModalProps['maxWidth']}
           >
             <p>Modal width: {openSize}</p>
           </Modal>

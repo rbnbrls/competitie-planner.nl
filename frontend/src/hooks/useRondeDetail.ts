@@ -11,6 +11,30 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tenantApi } from "../lib/api";
 import { showToast } from "../components/Toast";
 
+export interface Toewijzing {
+  id: string;
+  team_id: string;
+  baan_id?: string;
+  tijdslot_start?: string | null;
+  tijdslot_eind?: string | null;
+  notitie?: string;
+}
+
+export interface RondeResponse {
+  data: {
+    toewijzingen: Toewijzing[];
+    [key: string]: unknown;
+  };
+}
+
+export interface RondeCacheQueryData {
+  data: {
+    toewijzingen: Toewijzing[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 export function useRondeDetail(rondeId: string | undefined, competitieId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -37,26 +61,26 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
     enabled: !!rondeId,
   });
 
-  const { data: snapshotsData, refetch: refetchSnapshots } = useQuery({
+  const { data: snapshotsData, refetch: refetchSnapshots, isLoading: isLoadingSnapshots } = useQuery({
     queryKey: ["snapshots", rondeId],
     queryFn: () => tenantApi.getSnapshots(rondeId!),
     enabled: !!rondeId,
   });
 
   const updateToewijzingMutation = useMutation({
-    mutationFn: (variables: { id: string; data: any }) => 
-      tenantApi.updateToewijzing(variables.id, variables.data),
+    mutationFn: (variables: { id: string; data: Partial<Toewijzing> }) => 
+      tenantApi.updateToewijzing(variables.id, variables.data as { team_id?: string; baan_id?: string; tijdslot_start?: string; tijdslot_eind?: string; notitie?: string }),
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["ronde", rondeId] });
       const previousRonde = queryClient.getQueryData(["ronde", rondeId]);
 
-      queryClient.setQueryData(["ronde", rondeId], (old: any) => {
+      queryClient.setQueryData(["ronde", rondeId], (old: RondeCacheQueryData | undefined) => {
         if (!old || !old.data) return old;
         return {
           ...old,
           data: {
             ...old.data,
-            toewijzingen: old.data.toewijzingen.map((t: any) => 
+            toewijzingen: old.data.toewijzingen.map((t: Toewijzing) => 
               t.id === id ? { ...t, ...data } : t
             ),
           }
@@ -87,13 +111,13 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
       await queryClient.cancelQueries({ queryKey: ["ronde", rondeId] });
       const previousRonde = queryClient.getQueryData(["ronde", rondeId]);
 
-      queryClient.setQueryData(["ronde", rondeId], (old: any) => {
+      queryClient.setQueryData(["ronde", rondeId], (old: RondeCacheQueryData | undefined) => {
         if (!old || !old.data) return old;
         return {
           ...old,
           data: {
             ...old.data,
-            toewijzingen: old.data.toewijzingen.map((t: any) => {
+            toewijzingen: old.data.toewijzingen.map((t: Toewijzing) => {
               if (t.id === activeId) return { ...t, team_id: overTeamId };
               if (t.id === overId) return { ...t, team_id: activeTeamId };
               return t;
@@ -118,7 +142,7 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
   const generateIndelingMutation = useMutation({
     mutationFn: () => tenantApi.generateIndeling(rondeId!),
     onSuccess: (res) => {
-      queryClient.setQueryData(["ronde", rondeId], (old: any) => {
+      queryClient.setQueryData(["ronde", rondeId], (old: RondeCacheQueryData | undefined) => {
          if (!old || !old.data) return { data: res.data };
          return {
            ...old,
@@ -160,7 +184,7 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
   const herstellSnapshotMutation = useMutation({
     mutationFn: (snapshotId: string) => tenantApi.herstellSnapshot(rondeId!, snapshotId),
     onSuccess: (res) => {
-      queryClient.setQueryData(["ronde", rondeId], (old: any) => {
+      queryClient.setQueryData(["ronde", rondeId], (old: RondeCacheQueryData | undefined) => {
         if (!old || !old.data) return { data: res.data };
         return { ...old, data: res.data };
       });
@@ -172,13 +196,17 @@ export function useRondeDetail(rondeId: string | undefined, competitieId: string
     },
   });
 
-  return {
+return {
     ronde: rondeData?.data,
     teams: teamsData?.data || [],
     banen: banenData?.data || [],
     wedstrijden: wedstrijdenData?.data?.wedstrijden || [],
     snapshots: (snapshotsData?.data || []) as Array<{ id: string; aanleiding: string; created_at: string; count: number }>,
-    isLoading: isLoadingRonde || isLoadingTeams || isLoadingBanen || isLoadingWedstrijden,
+    isLoadingRonde,
+    isLoadingTeams,
+    isLoadingBanen,
+    isLoadingWedstrijden,
+    isLoadingSnapshots,
     updateToewijzing: updateToewijzingMutation.mutateAsync,
     swapToewijzingen: swapToewijzingenMutation.mutateAsync,
     generateIndeling: generateIndelingMutation,

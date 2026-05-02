@@ -24,6 +24,9 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', 'tests/e2e/**'],
+    reporters: process.env.CI
+      ? ['default', ['junit', { outputFile: 'test-results/vitest-junit.xml' }]]
+      : ['default'],
     env: {
       VITE_API_URL: 'http://localhost:8000/api/v1',
       VITE_PLATFORM_DOMAIN: 'localhost'
@@ -49,7 +52,13 @@ export default defineConfig({
         '**/*.stories.ts',
         '**/*.stories.tsx',
         'src/pages/**'
-      ]
+      ],
+      thresholds: {
+        lines: 60,
+        functions: 50,
+        branches: 50,
+        statements: 60
+      }
     }
   }
 });
